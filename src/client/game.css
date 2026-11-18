@@ -1101,23 +1101,21 @@ footer button {
 .touring footer {
   display: none !important;
 }
-.touring #restart {
-  display: none;
-}
-.touring .actions {
-  display: flex;
-}
-.touring .actions button {
-  flex: 1;
-}
 .touring .control-column {
   gap: 10px;
 }
 .touring #tour-panel {
   order: 3;
 }
-.touring .actions {
-  order: 4;
+.touring .daily-line,
+.touring .puzzle-heading p {
+  display: none;
+}
+.touring .play-layout {
+  align-items: start;
+}
+#tour-copy {
+  min-height: 4.1em;
 }
 .guide-animals {
   display: flex;
@@ -1194,9 +1192,6 @@ footer button {
   #tour-panel h3 {
     font-size: 19px;
   }
-  .touring #game-container {
-    width: min(100%, calc(100dvh - 270px));
-  }
   .touring .bridge-key {
     display: none;
   }
@@ -1205,9 +1200,6 @@ footer button {
   display: none !important;
 }
 @media (max-width: 559px) and (max-height: 620px) {
-  .touring #game-container {
-    width: min(100%, calc(100dvh - 300px));
-  }
   #tour-panel {
     padding: 9px;
   }
@@ -1302,9 +1294,6 @@ footer button {
   }
   .feedback {
     margin: 3px 0;
-  }
-  .touring #game-container {
-    width: min(100%, calc(100dvh - 300px));
   }
 }
 .touring #preview-picker {
@@ -1700,5 +1689,22 @@ h2,
   .result #card-undos,
   .result #clean-badge {
     margin-block: 2px;
+  }
+}
+
+@media (max-width: 559px) {
+  .touring #game-container {
+    width: min(100%, 420px, max(204px, calc(100dvh - 245px)));
+  }
+  .touring .puzzle-heading {
+    margin-bottom: 5px;
+  }
+  #tour-panel {
+    margin: 8px 0 0;
+  }
+}
+@media (max-width: 559px) and (max-height: 620px) {
+  .touring #game-container {
+    width: min(100%, 224px, max(204px, calc(100dvh - 286px)));
   }
 }

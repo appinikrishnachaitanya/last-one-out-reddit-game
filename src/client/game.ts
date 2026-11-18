@@ -98,10 +98,14 @@ function refresh(): void {
   );
   scene.session = session;
   scene.selected = selected;
+  scene.practiceTarget =
+    tourActive && tourPhase === 'preview' ? 'turtle' : undefined;
   scene.refresh();
   element('rescue-count', HTMLSpanElement).textContent =
     `${session.state.home.length} / 4`;
-  element('board-title', HTMLHeadingElement).textContent = session.board.title;
+  element('board-title', HTMLHeadingElement).textContent = tourActive
+    ? 'Practice crossing'
+    : session.board.title;
   document.title = `Last One Out · ${session.board.title}`;
   element('game-container', HTMLDivElement).setAttribute(
     'aria-label',
@@ -567,26 +571,26 @@ function renderTour(): void {
   const steps = {
     preview: [
       '1 / 4 · PRACTICE',
-      'Look before you leave.',
-      'Turtle has a clear exit. Tap Turtle to preview its path and the ☾ bridge it is holding open.',
+      'Preview Turtle.',
+      'Tap the highlighted Turtle or use the button to see its route.',
       'Show Turtle’s path',
     ],
     send: [
       '2 / 4 · PRACTICE',
-      'A clear path. A consequence.',
-      'The ☾ symbol connects Turtle to Rabbit’s bridge. Send Turtle and watch what happens after it reaches home.',
+      'Send Turtle.',
+      'Turtle holds the ☾ bridge open. Send Turtle and watch the bridge.',
       'Send Turtle home',
     ],
     undo: [
       '3 / 4 · PRACTICE',
-      'Rabbit still needs that bridge.',
-      'Turtle is safe, but the ☾ bridge folded. Rabbit’s highlighted route stops at the gap. Bring Turtle and its bridge back together.',
+      'Rabbit is stranded.',
+      'The ☾ bridge folded. Rabbit’s route ends at the gap. Undo to reopen it.',
       'Undo the move',
     ],
     finish: [
       '4 / 4 · PRACTICE',
-      'That’s the crossing.',
-      'Undo restored everyone and the bridge. In the daily, look for who needs a friend to stay. You can preview freely and Undo any move.',
+      'The bridge is open.',
+      'The bridge is open again. Before sending an animal, check who still needs its bridge.',
       'Play my daily crossing',
     ],
   };
@@ -596,6 +600,7 @@ function renderTour(): void {
   element('tour-copy', HTMLParagraphElement).textContent = step[2] ?? '';
   button('tour-action').textContent = step[3] ?? '';
   button('tour-action').disabled = busy;
+  if (!busy) button('tour-action').focus({ preventScroll: true });
 }
 function finishTour(): void {
   if (busy || !dailyRun) return;
@@ -621,28 +626,14 @@ function finishTour(): void {
   refresh();
   if (won(session.board, session.state)) scene.celebrate(reduced);
   say('Your daily crossing. Practice did not change your result.');
+  button('help').focus({ preventScroll: true });
 }
-function beginPractice(event: MouseEvent): void {
-  startTour();
-  if (!localDemo && tourActive) {
-    try {
-      if (getWebViewMode() !== 'expanded') {
-        persistTour();
-        requestExpandedMode(event, 'game', {
-          title: 'Learn the crossing · guided practice',
-        });
-      }
-    } catch {
-      /* practice still works inline */
-    }
-  }
-}
-button('welcome-practice').addEventListener('click', beginPractice);
+button('welcome-practice').addEventListener('click', startTour);
 button('welcome-skip').addEventListener('click', () => {
   markGuideSeen();
   welcome.close();
 });
-button('help-practice').addEventListener('click', beginPractice);
+button('help-practice').addEventListener('click', startTour);
 button('exit-tour').addEventListener('click', finishTour);
 button('tour-action').addEventListener('click', () => {
   if (busy) return;

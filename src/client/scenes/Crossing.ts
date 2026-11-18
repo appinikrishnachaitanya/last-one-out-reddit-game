@@ -17,6 +17,7 @@ export class Crossing extends Phaser.Scene {
   session: Session;
   onSelect: (id: AnimalId) => void;
   selected: AnimalId | undefined;
+  practiceTarget: AnimalId | undefined;
   blocked: AnimalId[] = [];
   busy = false;
   ready = false;
@@ -209,6 +210,16 @@ export class Crossing extends Phaser.Scene {
       g.fillRoundedRect(ex - 4, ey - 5, 8, 10, 2);
       g.lineStyle(1, 0x956e46);
       g.strokeRoundedRect(ex - 5, ey - 6, 10, 12, 2);
+    }
+    const target = this.session.board.animals.find(
+      ({ id }) => id === this.practiceTarget
+    );
+    if (target) {
+      const { x, y } = pixel(target);
+      this.routeArt.lineStyle(6, 0x173c2f);
+      this.routeArt.strokeCircle(x, y, 25);
+      this.routeArt.lineStyle(3, 0xffe09a);
+      this.routeArt.strokeCircle(x, y, 25);
     }
     const routes = this.selected ? [this.selected] : this.blocked;
     for (const id of routes) {

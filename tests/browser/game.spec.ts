@@ -506,21 +506,15 @@ test('first visit teaches the rules, guides a real practice, and never changes d
   await expect(page.locator('#welcome-dialog')).toBeVisible();
   await page.screenshot({ path: 'artifacts/guide-welcome.png' });
   await page.locator('#welcome-practice').click();
-  await expect(page.locator('#tour-title')).toHaveText(
-    'Look before you leave.'
-  );
+  await expect(page.locator('#tour-title')).toHaveText('Preview Turtle.');
   await page.locator('#tour-action').click();
-  await expect(page.locator('#tour-title')).toHaveText(
-    'A clear path. A consequence.'
-  );
+  await expect(page.locator('#tour-title')).toHaveText('Send Turtle.');
   await page.locator('#tour-action').click();
-  await expect(page.locator('#tour-title')).toHaveText(
-    'Rabbit still needs that bridge.'
-  );
+  await expect(page.locator('#tour-title')).toHaveText('Rabbit is stranded.');
   await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
   await page.screenshot({ path: 'artifacts/guide-stranded-rabbit.png' });
   await page.locator('#tour-action').click();
-  await expect(page.locator('#tour-title')).toHaveText('That’s the crossing.');
+  await expect(page.locator('#tour-title')).toHaveText('The bridge is open.');
   await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
   await page.locator('#tour-action').click();
   await expect(page.locator('#tour-panel')).toBeHidden();
@@ -737,3 +731,44 @@ test('first-visit guide starts at the title and offers practice without a long s
   await page.screenshot({ path: 'artifacts/guide-compact-phone.png' });
   await context.close();
 });
+
+for (const width of [288, 390, 640, 1024]) {
+  test(`practice keeps its board and actions visible at ${width}×512`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width, height: 512 },
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    await page.goto('http://127.0.0.1:5173/game.html');
+    await page.locator('#welcome-practice').click();
+    const action = page.locator('#tour-action');
+    const board = page.locator('#game-container canvas');
+    for (const label of [
+      'Show Turtle’s path',
+      'Send Turtle home',
+      'Undo the move',
+      'Play my daily crossing',
+    ]) {
+      await expect(action).toHaveText(label);
+      const canvas = await board.boundingBox();
+      const panel = await page.locator('#tour-panel').boundingBox();
+      if (!canvas || !panel)
+        throw new Error('Practice board or panel is missing');
+      expect(canvas.width).toBeGreaterThanOrEqual(200);
+      expect(canvas.y).toBeGreaterThanOrEqual(0);
+      expect(panel.y + panel.height).toBeLessThanOrEqual(512);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth)
+      ).toBeLessThanOrEqual(width);
+      if (width < 560)
+        expect(canvas.y + canvas.height).toBeLessThanOrEqual(panel.y);
+      else expect(canvas.x + canvas.width).toBeLessThanOrEqual(panel.x);
+      await action.click();
+    }
+    await expect(page.locator('#tour-panel')).toBeHidden();
+    await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
+    await context.close();
+  });
+}
