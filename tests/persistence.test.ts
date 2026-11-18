@@ -244,3 +244,26 @@ test('post creation is at-most-once across concurrent attempts; uncertain public
   assert.equal(await recoverPost(other, day1, 't3_recovered'), 't3_recovered');
   assert.equal(await createOrRetrievePost(other, day1, submit), 't3_recovered');
 });
+
+test('crossing archive only lists registered past posts, marks personal completions and uses the UTC schedule', async () => {
+  const { app, store, setClock } = fixture();
+  const day2 = EDITIONS[1]!;
+  await recoverPost(store, day1, 't3_moonroot');
+  await recoverPost(store, day3, 't3_later');
+  await complete(store, day1, 't2_player', payload(), now);
+  setClock(new Date(`${day2.date}T00:00:01Z`));
+  const response = await request(app, 'crossings', undefined, 't2_player');
+  assert.equal(response.headers.get('cache-control'), 'private, no-store');
+  const crossings = await response.json();
+  assert.equal(crossings.nextAt, Date.parse(`${day3.date}T00:00:00Z`));
+  assert.deepEqual(crossings.past, [
+    {
+      day: 1,
+      title: 'Moonroot Crossing',
+      url: 'https://www.reddit.com/comments/moonroot/',
+      completed: true,
+    },
+  ]);
+  setClock(new Date('2027-01-01T00:00:00Z'));
+  assert.equal((await (await request(app, 'crossings')).json()).nextAt, null);
+});

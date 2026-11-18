@@ -106,6 +106,7 @@
               <div class="card-facts">
                 <p id="card-day"></p>
                 <p id="card-undos"></p>
+                <p id="clean-badge" hidden>✦ Clean crossing</p>
                 <p id="card-animal"></p>
               </div>
             </div>
@@ -127,6 +128,11 @@
         <details id="community-details" hidden>
           <summary>How others started their successful rescue</summary>
           <section id="community" hidden></section>
+        </details>
+        <p id="next-crossing" hidden></p>
+        <details id="past-crossings">
+          <summary>Past crossings</summary>
+          <div id="archive-result"></div>
         </details>
         <p class="discussion">Which move fooled you?</p>
       </section>
@@ -185,6 +191,8 @@
         <p class="eyebrow">A QUIET WAY HOME</p>
         <h2>Look before you leave.</h2>
         <button id="help-practice" class="primary">Try guided practice</button>
+        <button id="hint">Get a hint</button>
+        <p id="hint-text" role="status" hidden></p>
         <p>
           Each animal follows its arrow straight to a lantern exit. Tap once to
           preview; tap again or choose <b>Send home</b> to move.

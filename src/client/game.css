@@ -1667,3 +1667,25 @@ h2,
 .skip-animations *::after {
   transition: none !important;
 }
+
+#hint-text {
+  border-inline-start: 3px solid #887239;
+  padding-inline-start: 10px;
+}
+#clean-badge {
+  color: #34572d;
+  font-weight: 700;
+}
+#past-crossings {
+  text-align: left;
+  font:
+    12px/1.5 system-ui,
+    sans-serif;
+}
+#past-crossings summary {
+  cursor: pointer;
+  padding: 5px 0;
+}
+#past-crossings a {
+  color: #214d3b;
+}

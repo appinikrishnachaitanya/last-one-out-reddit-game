@@ -7,7 +7,14 @@ import { Results } from './results';
 import { JourneyFlow } from './journeys';
 import { createTelemetryClient } from '@devvit/analytics/client/reddit';
 import type { Edition } from '../shared/daily';
-import { Session, isHome, titleCase, trace, won } from '../shared/engine';
+import {
+  Session,
+  isHome,
+  titleCase,
+  trace,
+  won,
+  solve,
+} from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
 import { ANIMAL_COLORS, Crossing } from './scenes/Crossing';
 declare const __LOCAL_DEMO__: boolean;
@@ -285,7 +292,34 @@ button('motion-dialog').addEventListener('click', () => {
   refresh();
 });
 const help = element('help-dialog', HTMLDialogElement);
-button('help').addEventListener('click', () => help.showModal());
+button('help').addEventListener('click', () => {
+  element('hint-text', HTMLParagraphElement).hidden = true;
+  button('hint').hidden =
+    busy || tourActive || won(session.board, session.state);
+  help.showModal();
+});
+button('hint').addEventListener('click', () => {
+  const tip = element('hint-text', HTMLParagraphElement);
+  const safe = new Set(
+    solve(session.board, session.state).map(([first]) => first)
+  );
+  const risky = session.board.animals.find(
+    ({ id }) =>
+      !safe.has(id) &&
+      trace(session.board, session.state, id).legal &&
+      session.board.bridges.some((bridge) => bridge.holder === id)
+  );
+  const bridge = session.board.bridges.find(
+    ({ holder }) => holder === risky?.id
+  );
+  tip.hidden = false;
+  tip.textContent =
+    safe.size === 0
+      ? 'This position has no route to a full rescue. Undo a move and look at which crossing it restores.'
+      : bridge
+        ? `Look at the ${bridge.symbol} bridge. Who still needs it before its holder leaves?`
+        : 'Preview a blocked animal’s path. See which friend is in the way, then check what that friend is holding open.';
+});
 button('close-help').addEventListener('click', () => help.close());
 async function persistFavorite(): Promise<void> {
   if (!results.validated || !edition) return;
@@ -397,7 +431,8 @@ async function load(previewId?: string): Promise<void> {
       session.undos = data.completion.personalUndos;
       submission = { ...data.completion };
       results.show(edition, session.undos, commentsUrl, data.completion);
-      if (data.community) results.community(data.community);
+      if (data.community)
+        results.community(data.community, data.completion.opening);
     }
     busy = false;
     refresh();

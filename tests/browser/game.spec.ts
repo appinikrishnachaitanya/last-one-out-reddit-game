@@ -29,6 +29,10 @@ test('Moonroot tempting exit, exact blocked route feedback, Undo, real animation
   page.on('pageerror', (e) => errors.push(e.message));
   await open(page);
   await page.screenshot({ path: 'artifacts/moonroot-mobile.png' });
+  await page.locator('#help').click();
+  await page.locator('#hint').click();
+  await expect(page.locator('#hint-text')).toContainText('Who still needs it');
+  await page.locator('#close-help').click();
   await page.locator('.animal-picker summary').click();
   await page.locator('[data-animal=turtle]').click();
   await expect(page.locator('#feedback')).toContainText(
@@ -649,7 +653,7 @@ test('the compact saved result keeps copy and comments inside one short frame', 
     boardVersion: 1,
     sequence: ['fox', 'rabbit', 'turtle', 'badger'],
     opening: 'fox',
-    personalUndos: 1,
+    personalUndos: 0,
     favorite: 'rabbit',
     completedAt: '2026-11-18T10:00:00Z',
   };
@@ -661,7 +665,7 @@ test('the compact saved result keeps copy and comments inside one short frame', 
         mode: 'reddit',
         edition,
         completion,
-        community: { total: 1, openings: { fox: 1 } },
+        community: { total: 3, openings: { fox: 2, rabbit: 1 } },
         commentsUrl: 'https://www.reddit.com/comments/judgepost/',
       }),
     })
@@ -671,6 +675,21 @@ test('the compact saved result keeps copy and comments inside one short frame', 
       status: 503,
       contentType: 'application/json',
       body: '{"error":"Local test only"}',
+    })
+  );
+  await page.route('**/api/crossings', (route) =>
+    route.fulfill({
+      json: {
+        serverTime: 0,
+        nextAt: 3600000,
+        past: [
+          {
+            title: 'Earlier crossing',
+            url: 'https://www.reddit.com/comments/earlier/',
+            completed: true,
+          },
+        ],
+      },
     })
   );
   for (const width of [288, 390, 640, 900]) {
@@ -691,6 +710,14 @@ test('the compact saved result keeps copy and comments inside one short frame', 
         .evaluate((el) => el.getBoundingClientRect().bottom)
     ).toBeLessThanOrEqual(512);
   }
+  await expect(page.locator('#clean-badge')).toBeVisible();
+  await expect(page.locator('#next-crossing')).toContainText('1h');
+  await page.locator('#past-crossings summary').click();
+  await expect(
+    page.getByRole('link', { name: 'Earlier crossing · Completed' })
+  ).toBeVisible();
+  await page.locator('#community-details summary').click();
+  await expect(page.getByLabel('Fox: 1 of 2')).toBeVisible();
   await page.screenshot({ path: 'artifacts/compact-result-desktop.png' });
 });
 test('first-visit guide starts at the title and offers practice without a long scroll', async ({

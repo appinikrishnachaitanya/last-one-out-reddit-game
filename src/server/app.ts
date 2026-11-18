@@ -1,3 +1,5 @@
+import { postRegistryKey } from './core/posts.ts';
+import { boardById } from '../shared/boards.ts';
 import { Hono } from 'hono';
 import type { Context as HonoContext } from 'hono';
 import { isAnimalId } from '../shared/engine.ts';
@@ -34,6 +36,34 @@ export function createApi(deps: Dependencies) {
       ? { ...saved, favorite: preference }
       : saved;
   };
+  api.get('/crossings', async (c) => {
+    const now = deps.now();
+    const today = now.toISOString().slice(0, 10);
+    const { userId } = await deps.getContext(c);
+    const next = EDITIONS.find((edition) => edition.date > today);
+    const past = await Promise.all(
+      EDITIONS.filter((edition) => edition.date < today).map(
+        async (edition) => {
+          const post = await deps.store.hGet(postRegistryKey(edition), 'post');
+          if (!post || !/^t3_[a-z0-9]+$/.test(post)) return null;
+          return {
+            day: edition.number,
+            title: boardById(edition.puzzleId, edition.boardVersion).title,
+            url: `https://www.reddit.com/comments/${post.slice(3)}/`,
+            completed: userId
+              ? !!(await loadCompletion(deps.store, edition, userId))
+              : false,
+          };
+        }
+      )
+    );
+    c.header('Cache-Control', 'private, no-store');
+    return c.json({
+      serverTime: now.getTime(),
+      nextAt: next ? Date.parse(`${next.date}T00:00:00Z`) : null,
+      past: past.filter((entry) => entry !== null).reverse(),
+    });
+  });
   api.get('/init', async (c) => {
     try {
       const { ctx, edition } = await requestEdition(c);
