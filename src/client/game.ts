@@ -40,7 +40,14 @@ const results = new Results(
   }
 );
 let selected: AnimalId | undefined;
-let reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = motionPreference.matches;
+try {
+  const savedMotion = localStorage.getItem('loo-skip-animations');
+  if (savedMotion !== null) reduced = savedMotion === 'true';
+} catch {
+  /* Play with the device preference if storage is unavailable. */
+}
 let busy = true;
 type TourPhase = 'preview' | 'send' | 'undo' | 'finish';
 let tourActive = false;
@@ -120,7 +127,6 @@ function refresh(): void {
   }
   button('undo').disabled = busy || !session.history.length;
   button('restart').disabled = busy;
-  button('motion').disabled = busy;
   button('motion-dialog').disabled = busy;
   button('expand').disabled = busy;
   button('tour-action').disabled = busy;
@@ -131,12 +137,8 @@ function refresh(): void {
     : selected
       ? `Send ${titleCase(selected)} →`
       : 'Send home →';
-  button('motion').setAttribute('aria-pressed', String(reduced));
-  button('motion').textContent = reduced ? 'Motion reduced' : 'Reduce motion';
   button('motion-dialog').setAttribute('aria-pressed', String(reduced));
-  button('motion-dialog').textContent = reduced
-    ? 'Motion reduced'
-    : 'Reduce motion';
+  element('app', HTMLElement).classList.toggle('skip-animations', reduced);
   rememberRun();
   element('personal-stats', HTMLSpanElement).textContent = session.undos
     ? `${session.undos} personal undo${session.undos === 1 ? '' : 's'} · no penalty`
@@ -210,7 +212,7 @@ async function send(): Promise<void> {
   refresh();
   if (blocked.length)
     say(
-      `${blocked.map(titleCase).join(' and ')}’s bridge just folded. Undo is here if you need it.`,
+      `${blocked.map(titleCase).join(' and ')}’s bridge just folded. Undo to reopen it.`,
       true
     );
   else
@@ -275,11 +277,11 @@ button('restart').addEventListener('click', () => {
 button('motion-dialog').addEventListener('click', () => {
   if (busy) return;
   reduced = !reduced;
-  refresh();
-});
-button('motion').addEventListener('click', () => {
-  if (busy) return;
-  reduced = !reduced;
+  try {
+    localStorage.setItem('loo-skip-animations', String(reduced));
+  } catch {
+    /* Settings still apply for this session. */
+  }
   refresh();
 });
 const help = element('help-dialog', HTMLDialogElement);

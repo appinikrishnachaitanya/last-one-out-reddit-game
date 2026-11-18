@@ -51,7 +51,7 @@
               <p>Send everyone home.</p>
             </div>
             <div class="rescue">
-              <span id="rescue-count">0 / 4</span><small>HOME</small>
+              <span id="rescue-count">0 / 4</span><small>home</small>
             </div>
           </section>
           <section id="tour-panel" hidden aria-labelledby="tour-title">
@@ -61,13 +61,15 @@
             <button id="tour-action" class="primary"></button
             ><button id="exit-tour" class="tour-exit">Exit practice</button>
           </section>
-          <div
-            id="animal-controls"
-            data-play
-            class="animal-controls"
-            role="group"
-            aria-label="Choose an animal"
-          ></div>
+          <details class="animal-picker" data-play>
+            <summary>Animal buttons</summary>
+            <div
+              id="animal-controls"
+              class="animal-controls"
+              role="group"
+              aria-label="Choose an animal"
+            ></div>
+          </details>
           <p
             id="feedback"
             data-play
@@ -84,8 +86,7 @@
             ><button id="restart" class="secondary">↻ Restart</button>
           </div>
           <footer data-play>
-            <span id="personal-stats">No timer. Take your time.</span
-            ><button id="motion" aria-pressed="false">Reduce motion</button>
+            <span id="personal-stats">No timer. Take your time.</span>
           </footer>
         </aside>
       </div>
@@ -197,10 +198,20 @@
           Blocked paths end at a coral cross. Undo restores the animal and its
           bridge. There’s no timer or penalty.
         </p>
-        <button id="motion-dialog" aria-pressed="false">Reduce motion</button>
+        <fieldset class="motion-setting">
+          <legend>Animations</legend>
+          <p>
+            Skip animal movement and bridge-fold animations. Moves still work
+            the same way. Your device preference applies by default.
+          </p>
+          <button id="motion-dialog" aria-pressed="false">
+            Skip animations
+          </button>
+        </fieldset>
         <p>
-          Keyboard: Tab to an animal and press Enter or Space. Then use Send
-          home. Undo and Restart are always in reach.
+          Keyboard: Open Animal buttons, then Tab to an animal. Press Enter or
+          Space to preview, then again to send. Undo takes back one move.
+          Restart resets the puzzle.
         </p>
       </dialog>
     </main>

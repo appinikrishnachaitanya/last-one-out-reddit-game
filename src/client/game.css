@@ -1605,3 +1605,65 @@ h1 {
     min-height: 28px;
   }
 }
+
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/fonts/source-serif-4-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+h1,
+h2,
+#tour-title {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-weight: 700;
+}
+.actions button,
+.animal-picker,
+.animal-controls button,
+.feedback,
+.motion-setting {
+  font-family: system-ui, sans-serif;
+}
+.rescue {
+  font-variant-numeric: tabular-nums;
+}
+.animal-picker {
+  order: 7;
+  width: 100%;
+  color: #3f5438;
+}
+.animal-picker summary {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 0;
+}
+.animal-picker summary:focus-visible {
+  outline: 2px solid #166955;
+  outline-offset: 3px;
+}
+.animal-picker .animal-controls {
+  margin-top: 4px;
+}
+.control-column .animal-picker {
+  margin-top: 0;
+}
+.solved .animal-picker,
+.touring .animal-picker {
+  display: none;
+}
+.motion-setting {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.motion-setting p {
+  margin: 0 0 10px;
+}
+.skip-animations *,
+.skip-animations *::before,
+.skip-animations *::after {
+  transition: none !important;
+}

@@ -9,7 +9,15 @@ async function open(page: import('@playwright/test').Page) {
   await expect(page.getByText('LOCAL PREVIEW', { exact: true })).toBeVisible();
   await expect(page.locator('canvas')).toBeVisible();
 }
+async function toggleMotion(page: import('@playwright/test').Page) {
+  await page.locator('#help').click();
+  await page.locator('#motion-dialog').click();
+  await page.locator('#close-help').click();
+}
 async function send(page: import('@playwright/test').Page, name: string) {
+  await page
+    .locator('.animal-picker')
+    .evaluate((el) => el.setAttribute('open', ''));
   await page.locator(`[data-animal=${name}]`).click();
   await page.locator('#send').click();
   await expect(page.locator('#restart')).toBeEnabled();
@@ -21,6 +29,7 @@ test('Moonroot tempting exit, exact blocked route feedback, Undo, real animation
   page.on('pageerror', (e) => errors.push(e.message));
   await open(page);
   await page.screenshot({ path: 'artifacts/moonroot-mobile.png' });
+  await page.locator('.animal-picker summary').click();
   await page.locator('[data-animal=turtle]').click();
   await expect(page.locator('#feedback')).toContainText(
     'Leaving folds the ☾ bridge'
@@ -65,7 +74,10 @@ test('320px keyboard and reduced motion; board and primary controls fit', async 
   await page.setViewportSize({ width: 320, height: 720 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page);
-  await expect(page.locator('#motion')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#motion-dialog')).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
   const sendBox = await page.locator('#send').boundingBox();
   expect(sendBox?.y).toBeLessThan(650);
   expect(
@@ -74,6 +86,9 @@ test('320px keyboard and reduced motion; board and primary controls fit', async 
     )
   ).toBe(true);
   for (const id of ['fox', 'rabbit', 'turtle', 'badger']) {
+    await page
+      .locator('.animal-picker')
+      .evaluate((el) => el.setAttribute('open', ''));
     await page.locator(`[data-animal=${id}]`).focus();
     await page.keyboard.press('Enter');
     await page.locator('#send').focus();
@@ -143,8 +158,11 @@ test('all first three editions solve, favorite art changes, saved result survive
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await open(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  if ((await page.locator('#motion').getAttribute('aria-pressed')) !== 'true')
-    await page.locator('#motion').click();
+  if (
+    (await page.locator('#motion-dialog').getAttribute('aria-pressed')) !==
+    'true'
+  )
+    await toggleMotion(page);
   const editions = [
     [
       'loo-2026-11-18',
@@ -197,7 +215,7 @@ test('save failure keeps reunion and exact submission available for retry withou
   page,
 }) => {
   await open(page);
-  await page.locator('#motion').click();
+  await toggleMotion(page);
   let attempts = 0;
   await page.route('**/api/complete*', async (route) => {
     attempts++;
