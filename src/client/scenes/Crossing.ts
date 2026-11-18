@@ -45,6 +45,7 @@ export class Crossing extends Phaser.Scene {
           color,
         })
         .setOrigin(0.5)
+        .setDepth(5)
     );
   }
   refresh(): void {
@@ -59,7 +60,7 @@ export class Crossing extends Phaser.Scene {
       token
         .setSize(46, 46)
         .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
+        .on('pointerup', () => {
           if (!this.busy) this.onSelect(animal.id);
         });
       this.tokens.set(animal.id, token);
@@ -130,8 +131,10 @@ export class Crossing extends Phaser.Scene {
     for (const b of this.session.board.bridges) {
       const p = pixel(b),
         open = bridgeOpen(this.session.state, b);
-      const bridgeColor = b.id === 'star' ? 0xacc6e8 : 0xf3cd86;
-      const bridgeText = b.id === 'star' ? '#bdd5fa' : '#ffdf9b';
+      const bridgeColor =
+        b.id === 'star' ? 0xacc6e8 : b.id === 'leaf' ? 0xaad8a0 : 0xf3cd86;
+      const bridgeText =
+        b.id === 'star' ? '#bdd5fa' : b.id === 'leaf' ? '#caefb7' : '#ffdf9b';
       const scale = open
         ? 1
         : this.recentlyFolded.includes(b.id)
@@ -139,7 +142,15 @@ export class Crossing extends Phaser.Scene {
           : 0.16;
       g.fillStyle(0x091d26);
       g.fillRoundedRect(p.x - 23, p.y - 23, 46, 46, 6);
-      g.fillStyle(open ? (b.id === 'star' ? 0x829aab : 0xb49b6b) : 0x806b59);
+      g.fillStyle(
+        open
+          ? b.id === 'star'
+            ? 0x829aab
+            : b.id === 'leaf'
+              ? 0x809b78
+              : 0xb49b6b
+          : 0x806b59
+      );
       for (let i = 0; i < 4; i++)
         g.fillRoundedRect(
           p.x - 20,
@@ -229,16 +240,24 @@ export class Crossing extends Phaser.Scene {
       const holder = this.session.board.animals.find((a) => a.id === b.holder);
       if (!holder || isHome(this.session.state, b.holder)) continue;
       const p = pixel(holder);
+      const siblings = this.session.board.bridges.filter(
+        (other) => other.holder === b.holder
+      );
+      const badgeX =
+        p.x - 17 + siblings.findIndex((other) => other.id === b.id) * 27;
       g.fillStyle(0x183c40);
-      g.fillCircle(p.x - 17, p.y - 19, 11);
-      g.lineStyle(2, b.id === 'star' ? 0xacc6e8 : 0xf3cd86);
-      g.strokeCircle(p.x - 17, p.y - 19, 11);
+      g.fillCircle(badgeX, p.y - 19, 11);
+      g.lineStyle(
+        2,
+        b.id === 'star' ? 0xacc6e8 : b.id === 'leaf' ? 0xaad8a0 : 0xf3cd86
+      );
+      g.strokeCircle(badgeX, p.y - 19, 11);
       this.label(
-        p.x - 17,
+        badgeX,
         p.y - 20,
         b.symbol,
         16,
-        b.id === 'star' ? '#bdd5fa' : '#ffdf9b'
+        b.id === 'star' ? '#bdd5fa' : b.id === 'leaf' ? '#caefb7' : '#ffdf9b'
       );
     }
   }

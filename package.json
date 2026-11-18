@@ -13,15 +13,17 @@
     "prettier": "prettier --write .",
     "test:types": "tsc --build",
     "test:unit": "node --experimental-strip-types --test tests/*.test.ts",
-    "demo": "vite --config vite.demo.config.ts --host 0.0.0.0",
+    "demo": "node scripts/demo.mjs",
     "check": "npm run test:unit && npm run test:types && npm run lint && npm run build",
-    "test:browser": "playwright test",
-    "devvit": "node scripts/devvit.mjs"
+    "test:browser": "npm run build && playwright test",
+    "devvit": "node scripts/devvit.mjs",
+    "solver:report": "node --experimental-strip-types scripts/solver-report.ts"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "dependencies": {
+    "@devvit/analytics": "0.15.4",
     "@devvit/start": "0.15.4",
     "@devvit/web": "0.15.4",
     "@hono/node-server": "2.1.6",

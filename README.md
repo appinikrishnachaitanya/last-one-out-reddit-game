@@ -1,31 +1,25 @@
-# Last One Out · Milestone 1
+# Last One Out
 
-A mobile-first Reddit rescue puzzle built from Reddit’s official **Devvit Phaser + TypeScript** starter. One board: **Moonroot Crossing**. Phaser draws the illustrated animals, routes, lantern exits, movement, folding bridges, and reunion. HTML buttons provide keyboard and accessible controls. No animal emoji or external art/font services are used.
+A mobile-first daily rescue puzzle inside Reddit, built on the official **Devvit + Phaser + TypeScript** starter. Seven curated editions share a pure rule engine. Moonroot Crossing preserves the signature moment: Turtle can leave safely, but its moon bridge folds and strands Rabbit; Undo restores both.
 
-## Play locally
+## Local preview
 
-Use Node **24+** (`.nvmrc` pins the starter’s version).
+Node **24+** is required (`.nvmrc` pins the starter version).
 
 ```sh
 npm ci
 npm run demo
 ```
 
-Open `http://localhost:5173/game.html` in your browser. The visible **Local preview** label distinguishes it from Reddit. Both builds use the same board and shared TypeScript engine; no Reddit account or mock backend is required locally. In this cloud workspace, use `npm ci --cache /workspace/.npm-cache` if the default npm cache is unwritable.
+Open `http://localhost:5173/game.html`. The local-only picker offers all seven editions. Phaser renders the board and animations; HTML controls support keyboard play. Tap once to preview, again to send, or use Send home. Reduced motion respects the OS setting and can be toggled. All four animal choices, the board, Undo, and Send home fit a simulated 512px-high Reddit frame.
 
-Tap an animal once to preview and again to send it, or use **Send home**. The matching symbol and color identify the bridge it holds open. Coral paths and a cross mark the precise obstruction. Use the animal buttons with Tab and Enter/Space for keyboard play. Undo and Restart remain visible; input is locked during movement and folding. The OS reduced-motion setting is respected, with a manual toggle as well.
+The preview uses the **same Hono API, canonical boards, validator, and completion service**, with an explicitly labeled mock identity and local storage adapter. Its cookie identifies a local mock player, and ignored `.local/demo-store.json` keeps results across reloads/server restarts. Community participation and Reddit telemetry are not simulated. Preview results are not Reddit completions. Use a new browser profile/context for a fresh mock player. The API runs on loopback port 5174, proxied by Vite on 5173.
 
-Try **Turtle first**: its path is clear, but leaving folds the moon bridge and strands Rabbit. **Undo**, then rescue **Fox → Rabbit → Turtle → Badger**. All three solver-verified orders are:
-
-- Fox → Rabbit → Turtle → Badger
-- Fox → Rabbit → Badger → Turtle
-- Fox → Badger → Rabbit → Turtle
+In this cloud workspace, use `npm ci --cache /workspace/.npm-cache` if the default npm cache is unwritable.
 
 ## Private Reddit playtest
 
-`devvit.json` configures `last-one-out-app`, the Phaser entrypoint, a tall inline post, the starter’s Hono server, and the **Create Moonroot Crossing** moderator menu action. It contains no credentials. The app name must belong to the signed-in Reddit developer account.
-
-From the project directory:
+The official SDKs provide player context, Reddit post creation/navigation, and Devvit Redis. `devvit.json` defines the app `last-one-out-app`, inline Phaser entrypoint, Hono server, moderator actions, and permissions. Credentials are kept out of Git and configuration.
 
 ```sh
 npm run login -- --copy-paste
@@ -34,36 +28,52 @@ npm run deploy
 npm run dev
 ```
 
-Complete the login in your browser and enter its code **in the CLI terminal**, never in Git, `devvit.json`, or chat. The wrapper keeps local CLI credentials/cache under ignored `.local/`, honors existing environment overrides, and enables Node’s environment-proxy support.
+Use **`npm run login`**, not `npm login`. Complete the printed Reddit OAuth URL, then enter the returned code into the **CLI terminal**, never chat or source. The copy/paste flow avoids an unreachable `localhost:65010` callback when the CLI is in the cloud. `.local/` contains ignored CLI auth/cache; existing environment overrides are honored.
 
-`deploy` checks/builds and runs **devvit upload**, which uploads an owner-visible app and automatically creates a **private** playtest subreddit with you as moderator. `dev` runs **devvit playtest** and prints its link. A manually created subreddit is unnecessary. Optionally use `npm run dev -- your_private_test_subreddit` for another small community where you are a moderator.
+`deploy` checks/builds and runs `devvit upload`. Uploads are owner-visible, and Devvit creates a private default test community with you as moderator. `dev` starts the playtest and prints its link. An alternate small private community where you have moderator post permissions can be selected with `npm run dev -- community_name`.
 
-Open the printed community, use its moderator menu → **Create Moonroot Crossing**, and open the resulting post. It starts directly on the board. Keep the playtest process running for updates; Ctrl+C stops it. These commands do **not** publish the app publicly or submit it for review.
+In that community's moderator menu:
 
-See [official playtest documentation](https://developers.reddit.com/docs/guides/tools/playtest).
+1. **Open today’s daily** creates or retrieves the UTC edition's post.
+2. **Choose playtest edition** opens any of the seven dated editions, including future ones for testing.
+3. **Recover edition post** registers an existing app post after an interrupted creation or to adopt a legacy Moonroot post. Enter its `t3_...` ID.
 
-## Checks and current evidence
+Server checks enforce authenticated moderator post permissions and a **private** community. The one-post registry atomically reserves each edition. Concurrent attempts reuse its registered post or show a recoverable pending/recovery error. Ambiguous Reddit timeouts are never retried blindly: a durable reservation prevents a second submission. If a post exists, use Recover with its ID. If no post exists after a failed ambiguous submission, an administrator must audit the failed reservation before clearing it; do not delete reservations merely because a request timed out.
+
+These commands do **not** publicly publish the app or submit it to Devpost. See [official playtest documentation](https://developers.reddit.com/docs/guides/tools/playtest).
+
+## Daily bindings and saved results
+
+The server-only schedule is `src/server/core/schedule.ts`, with explicit UTC dates **2026-11-18 through 2026-11-24**, immutable edition IDs, puzzle IDs, and board versions. Outside these dates, today's action shows a clear no-edition message. Existing posts always resolve their stored binding; midnight never substitutes another board. Legacy Milestone 1 Moonroot bindings remain Day 1. There is no modulo rotation and no client-controlled production picker.
+
+A signed-in player's final sequence is replayed on the server against the post's canonical version. Illegal, incomplete, malformed, mismatched-edition and wrong-version submissions are rejected. Identity comes exclusively from Devvit context. One atomic Redis `HSETNX` stores the first valid record, including its first move. Community aggregates are derived from those unique records, without a separate counter that could double-increment on retries. Reloading restores the recorded rescue, personal undo count, card art preference, and saved result without submitting again. Undo counts are **personal, unverified stats**.
+
+The reunion appears immediately. Saving errors leave it visible with a retry button; replaying is unnecessary. Replays never replace the recorded opening. Favorite-animal art is a separate preference. Copy results contain “Everyone home,” day number, personal undo count, favorite animal, and the same post's comments URL—never the rescue order. Players choose whether to copy or open comments. Aggregates are returned only after that player's completion; low participation has an honest empty state.
+
+## Verification
 
 ```sh
-npm run check          # solver/rules tests, TypeScript, ESLint, production Reddit build
-npm run test:browser   # local preview, real Chromium canvas, touch and keyboard flows
+npm run check          # rules, schedule/API/storage tests, TypeScript, lint, Reddit build
+npm run test:browser   # builds the production bundle, then runs real Chromium acceptance checks
+npm run solver:report  # regenerates developer-only spoilers/report
 ```
 
-Browser tests use `/usr/bin/chromium` by default. Set `CHROMIUM_PATH` for another installation, or run `npx playwright install chromium` and set `PLAYWRIGHT_BUNDLED_CHROMIUM=1`. CI installs bundled Chromium. Screenshots are written to ignored `artifacts/`.
+The browser suite checks the actual Phaser canvas, mouse/touch, rapid-tap protection, keyboard, reduced motion, all seven solves, save failure/retry, favorite art, reload, clipboard, compact layout, and the production bundle's comments navigation SDK effect. Production-bundle API responses in local browser tests are fixtures; they are not evidence of in-Reddit execution.
 
-Verified locally: Turtle-first dead end, exact obstruction, bridge restoration, all solver orders, full rescue/reunion, Restart, keyboard, reduced motion, canvas touch events, and rapid-tap protection. Layout checks cover **288, 320, 390, and 640px widths in a 512px-high frame**, plus **320×720** and **390×844** viewports. These are automated Chromium checks, including touch emulation, **not physical-device tests**.
+Browser tests use `/usr/bin/chromium` by default. Set `CHROMIUM_PATH`, or install Playwright Chromium and set `PLAYWRIGHT_BUNDLED_CHROMIUM=1`. Tests run the local preview on 5173/5174 and serve the production client on 5175. Screenshots are under ignored `artifacts/`. Widths 288, 320, 390, and 640 are checked at height 512, alongside narrow phone viewports.
 
-**Not yet verified inside Reddit:** the CLI reports no signed-in account. After sign-in, run the private playtest above and check the full flow in Reddit desktop and the Reddit iOS/Android app. Confirm the bridge consequence is clear without reading the text, all controls fit, and touch works. No in-Reddit or physical phone success is claimed yet.
+[Developer solver report](docs/SOLVER-REPORT.md) records solution counts, safe openings, dead-end openings, and every valid order. It is not imported into the player UI. [Journeys notes](docs/JOURNEYS.md) document SDK integration, the map, approval requirements, and the distinction between local event tests and Reddit ingestion. [Judge playtest notes](docs/PLAYTEST.md) record the tested revision and remaining runtime/device checks.
 
-## Source map and scope
+## Add a solver-verified edition
 
-- `src/shared/engine.ts`: pure rules, route tracing, exhaustive solver, snapshots/Undo.
-- `src/shared/boards.ts`: the one canonical Moonroot board.
-- `src/client/scenes/Crossing.ts`: Phaser drawing and animations.
-- `src/client/game.ts`: accessible controls and game flow.
-- `src/server/`: Hono server and private-playtest post creation.
-- `tests/`: engine and browser acceptance checks.
+1. Add a new immutable board in `src/shared/boards.ts`; use the existing four animals, straight arrows, paths, and matching bridge/latch symbols. Do not edit any already published board/version. Add a new ID/version for a revision.
+2. Add an explicit new date, unique edition ID, consecutive daily number, puzzle ID, and exact board version to the **server** schedule. Keep existing entries intact. Do not cycle old boards by array index.
+3. Run `npm run solver:report`. Require at least one complete solution; inspect safe/tempting openings and test the intended dependency. Update the targeted solver-count tests when adding editions, keeping previous counts stable.
+4. Play it in the local picker at phone size, including blocked moves, bridge folding, Undo, and reunion. Run `npm run check` and `npm run test:browser`.
+5. Upload to the private playtest and use **Choose playtest edition** to create/retrieve its bound post. Check it on Reddit and a physical phone before releasing it.
 
-Daily scheduling, persistent completions, Redis, community statistics, result sharing, and Journeys are deferred until after the phone playtest. Reloading resets this milestone’s local run. Public launch and hackathon submission are separate tasks.
+## Scope and provenance
 
-Starter source: [reddit/devvit-template-phaser](https://github.com/reddit/devvit-template-phaser), commit `537cb84534dde85ae21b26912141cd525c20d86e`. Existing repository history is preserved; its original license is retained in `docs/ORIGINAL-LICENSE`. The starter’s BSD license is in `LICENSE`.
+Implemented: seven editions, stable private posts, validated Redis completions, restored results, favorite art, spoiler-free copying/comments, real aggregates after completion, and isolated Journeys calls. Journeys ingestion requires Reddit approval and is not assumed from local tests. Streaks, leaderboards, editor, campaign, payments, public publishing, and submissions remain out of scope.
+
+Starter: [reddit/devvit-template-phaser](https://github.com/reddit/devvit-template-phaser), commit `537cb84534dde85ae21b26912141cd525c20d86e`. Existing Git history and Moonroot board/version are preserved. The starter's license is `LICENSE`; the repository's original license is retained in `docs/ORIGINAL-LICENSE`.

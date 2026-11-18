@@ -13,10 +13,17 @@ export default defineConfig({
       args: ['--no-sandbox'],
     },
   },
-  webServer: {
-    command: 'npm run demo',
-    url: 'http://127.0.0.1:5173/game.html',
-    reuseExistingServer: true,
-  },
+  webServer: [
+    {
+      command: 'npm run demo',
+      url: 'http://127.0.0.1:5173/game.html',
+      reuseExistingServer: true,
+    },
+    {
+      command: 'node scripts/serve-build.mjs',
+      url: 'http://127.0.0.1:5175/game.html',
+      reuseExistingServer: true,
+    },
+  ],
   reporter: 'list',
 });

@@ -18,16 +18,39 @@
   "menu": {
     "items": [
       {
-        "label": "Create Moonroot Crossing",
-        "description": "Create a Last One Out puzzle post",
+        "label": "Open today’s daily",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
+      },
+      {
+        "label": "Choose playtest edition",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/choose-edition"
+      },
+      {
+        "label": "Recover edition post",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/recover"
       }
     ]
   },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch"
+  },
+  "permissions": {
+    "reddit": true,
+    "redis": true,
+    "journeys": true
+  },
+  "forms": {
+    "editionForm": "/internal/menu/edition-submit",
+    "recoverForm": "/internal/menu/recover-submit"
+  },
+  "dev": {
+    "subreddit": "last_one_out_app_dev"
   }
 }

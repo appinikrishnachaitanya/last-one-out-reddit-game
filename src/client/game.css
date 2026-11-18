@@ -473,3 +473,137 @@ dialog h2 {
     margin-top: 14px;
   }
 }
+.result fieldset {
+  border: 0;
+  padding: 0;
+  margin: 18px 0 12px;
+}
+.result legend {
+  font-size: 12px;
+  color: #c6d7c4;
+  margin: auto auto 8px;
+}
+#favorites {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+#favorites button {
+  padding: 7px 2px;
+  font-size: 11px;
+  min-height: 44px;
+}
+.result-card {
+  background: #0e292e;
+  border: 1px solid #557064;
+  border-radius: 16px;
+  padding: 15px;
+}
+.result-card h3 {
+  font-family: Georgia, serif;
+  font-size: 25px;
+  color: var(--gold);
+  font-weight: 400;
+  margin: 5px 0;
+}
+.result-card p {
+  margin: 5px 0;
+}
+#card-portrait {
+  width: 100px;
+  height: 100px;
+  margin: auto;
+}
+#card-portrait svg {
+  width: 100%;
+  height: 100%;
+  fill: #173035;
+}
+#card-day {
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.result-actions {
+  display: flex;
+  gap: 8px;
+}
+.result-actions button {
+  flex: 1;
+  font-size: 12px;
+}
+.result #favorite-status {
+  font-size: 10px;
+  min-height: 16px;
+}
+#community {
+  border-top: 1px solid #526e5e;
+  margin-top: 16px;
+  padding-top: 15px;
+  text-align: left;
+}
+#community h3 {
+  font-size: 14px;
+  font-weight: 500;
+  color: #f3cd86;
+}
+#community p {
+  font-size: 11px;
+}
+.opening-row {
+  display: grid;
+  grid-template-columns: 55px 1fr 45px;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  margin: 9px 0;
+}
+.opening-row meter {
+  width: 100%;
+  height: 11px;
+}
+.discussion {
+  font-family: Georgia, serif;
+  font-size: 20px !important;
+}
+#copy-fallback {
+  white-space: pre-wrap;
+  font: 12px/1.6 inherit;
+  text-align: left;
+  user-select: text;
+}
+#preview-picker {
+  border-top: 1px solid #34554a;
+  margin-top: 18px;
+  padding-top: 15px;
+  font-size: 10px;
+  color: #b6c9be;
+}
+#preview-picker label {
+  display: block;
+  letter-spacing: 1px;
+  font-size: 9px;
+}
+#preview-picker select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  min-height: 44px;
+  padding: 8px;
+  color: #e5e9d9;
+  background: #173c3e;
+  border: 1px solid #466759;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+}
+#preview-picker p {
+  line-height: 1.5;
+}
+#empty-state {
+  padding: 35px 8px;
+  text-align: center;
+}
+#empty-message {
+  line-height: 1.6;
+  font-size: 13px;
+}

@@ -1,5 +1,10 @@
 import * as Phaser from 'phaser';
-import { MOONROOT } from '../shared/boards';
+import { MOONROOT, boardById } from '../shared/boards';
+import { DailyApi } from './daily-api';
+import { Results } from './results';
+import { JourneyFlow } from './journeys';
+import { createTelemetryClient } from '@devvit/analytics/client/reddit';
+import type { Edition } from '../shared/daily';
 import { Session, isHome, titleCase, trace, won } from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
 import { ANIMAL_COLORS, Crossing } from './scenes/Crossing';
@@ -13,10 +18,28 @@ function element<T extends HTMLElement>(id: string, ctor: { new (): T }): T {
 const button = (id: string) => element(id, HTMLButtonElement);
 const feedback = element('feedback', HTMLParagraphElement);
 const result = element('result', HTMLElement);
-const session = new Session(MOONROOT);
+let session = new Session(MOONROOT);
+const api = new DailyApi();
+let edition: Edition | undefined;
+let commentsUrl: string | null = null;
+let epoch = 0;
+const saving = new Set<number>();
+let submission: unknown;
+const journeyClient = (id: string) =>
+  createTelemetryClient({ storageKey: `loo-journey:${id}` });
+let flow = new JourneyFlow(journeyClient('loading'), !localDemo);
+const results = new Results(
+  localDemo,
+  () => {
+    void persistFavorite();
+  },
+  () => {
+    void saveResult();
+  }
+);
 let selected: AnimalId | undefined;
 let reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-let busy = false;
+let busy = true;
 const scene = new Crossing(session, choose);
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -113,6 +136,7 @@ async function send(): Promise<void> {
   if (busy || !selected || !trace(session.board, session.state, selected).legal)
     return;
   const id = selected;
+  flow.commit();
   busy = true;
   scene.busy = true;
   const previouslyClear = session.board.animals
@@ -122,6 +146,7 @@ async function send(): Promise<void> {
   say(`${titleCase(id)} is on the way home…`);
   await scene.animateHome(id, reduced);
   session.send(id);
+  flow.rescue(session.state.home.length);
   selected = undefined;
   scene.selected = undefined;
   const blocked = previouslyClear.filter(
@@ -151,7 +176,18 @@ async function send(): Promise<void> {
   if (won(session.board, session.state)) {
     scene.celebrate(reduced);
     say('Everyone home. The forest can rest.');
-    result.hidden = false;
+    if (edition) {
+      results.show(edition, session.undos, commentsUrl, null);
+      submission = {
+        editionId: edition.id,
+        puzzleId: edition.puzzleId,
+        boardVersion: edition.boardVersion,
+        sequence: [...session.state.home],
+        personalUndos: session.undos,
+        favorite: results.favorite,
+      };
+      void saveResult();
+    }
   } else button('undo').focus({ preventScroll: true });
 }
 button('send').addEventListener('click', () => {
@@ -159,6 +195,8 @@ button('send').addEventListener('click', () => {
 });
 button('undo').addEventListener('click', () => {
   if (busy || !session.undo()) return;
+  epoch++;
+  submission = undefined;
   selected = undefined;
   scene.blocked = [];
   result.hidden = true;
@@ -167,7 +205,11 @@ button('undo').addEventListener('click', () => {
 });
 button('restart').addEventListener('click', () => {
   if (busy) return;
+  flow.abandon();
+  flow = new JourneyFlow(journeyClient(edition?.id ?? 'loading'), !localDemo);
   session.restart();
+  epoch++;
+  submission = undefined;
   selected = undefined;
   scene.blocked = [];
   result.hidden = true;
@@ -182,15 +224,162 @@ button('motion').addEventListener('click', () => {
 const help = element('help-dialog', HTMLDialogElement);
 button('help').addEventListener('click', () => help.showModal());
 button('close-help').addEventListener('click', () => help.close());
-function initialize(): void {
-  const brandCaption = document.querySelector('.brand p');
-  if (brandCaption)
-    brandCaption.textContent = localDemo
-      ? 'LOCAL PREVIEW'
-      : 'A LITTLE FOREST LOGIC';
-  element('mode-label', HTMLSpanElement).textContent = localDemo
-    ? 'LOCAL PREVIEW · SAME PUZZLE RULES'
-    : 'REDDIT · MILESTONE 1';
-  refresh();
+async function persistFavorite(): Promise<void> {
+  if (!results.validated || !edition) return;
+  const current = epoch,
+    favorite = results.favorite;
+  try {
+    await api.request('favorite', { favorite });
+    if (current === epoch)
+      element('favorite-status', HTMLParagraphElement).textContent =
+        'Card art saved. Your rescue order is unchanged.';
+  } catch (error) {
+    if (current !== epoch) return;
+    element('favorite-status', HTMLParagraphElement).textContent =
+      error instanceof Error ? error.message : 'Card art could not be saved.';
+    button('retry-save').hidden = false;
+  }
 }
-game.events.once('board-ready', initialize);
+async function saveResult(): Promise<void> {
+  if (!edition || !submission || saving.has(epoch)) return;
+  const current = epoch,
+    savingEdition = edition,
+    payload = submission,
+    savingFlow = flow;
+  saving.add(current);
+  results.status('Everyone is home. Saving your rescue…');
+  try {
+    const saved = await api.save(
+      savingEdition,
+      payload,
+      await savingFlow.correlation()
+    );
+    savingFlow.validated();
+    if (current !== epoch) return;
+    results.saved(saved.completion, saved.community, saved.firstCompletion);
+    if (results.favorite !== saved.completion.favorite) await persistFavorite();
+  } catch (error) {
+    if (current === epoch)
+      results.status(
+        error instanceof Error
+          ? error.message
+          : 'Saving failed. You can retry without replaying.',
+        true
+      );
+  } finally {
+    saving.delete(current);
+  }
+}
+function playable(show: boolean): void {
+  document.querySelectorAll<HTMLElement>('[data-play]').forEach((el) => {
+    el.hidden = !show;
+  });
+  element('empty-state', HTMLElement).hidden = show;
+}
+async function load(previewId?: string): Promise<void> {
+  if (scene.busy) return;
+  const current = ++epoch;
+  flow.abandon();
+  flow = new JourneyFlow(journeyClient(edition?.id ?? 'loading'), !localDemo);
+  busy = true;
+  submission = undefined;
+  result.hidden = true;
+  if (localDemo && previewId) {
+    api.previewId = previewId;
+    try {
+      sessionStorage.setItem('loo-preview-edition', previewId);
+    } catch {
+      /* optional */
+    }
+  }
+  playable(true);
+  refresh();
+  say('Finding your crossing…');
+  button('retry-load').hidden = true;
+  try {
+    const data = await api.init();
+    if (current !== epoch) return;
+    if (data.status === 'empty') {
+      playable(false);
+      element('empty-message', HTMLParagraphElement).textContent = data.message;
+      return;
+    }
+    edition = data.edition;
+    commentsUrl = data.commentsUrl;
+    flow = new JourneyFlow(journeyClient(edition.id), !localDemo);
+    session = new Session(boardById(edition.puzzleId, edition.boardVersion));
+    selected = undefined;
+    scene.blocked = [];
+    element('daily-label', HTMLSpanElement).textContent =
+      `DAY ${edition.number} · ${edition.date} UTC`;
+    const brandCaption = document.querySelector('.brand p');
+    if (brandCaption)
+      brandCaption.textContent = localDemo
+        ? 'LOCAL PREVIEW'
+        : `DAILY ${edition.number} · A LITTLE FOREST LOGIC`;
+    element('mode-label', HTMLSpanElement).textContent = localDemo
+      ? 'MOCK IDENTITY · LOCAL STORAGE'
+      : 'A QUIET WAY HOME';
+    if (data.completion) {
+      for (const id of data.completion.sequence) session.send(id);
+      session.undos = data.completion.personalUndos;
+      submission = { ...data.completion };
+      results.show(edition, session.undos, commentsUrl, data.completion);
+      if (data.community) results.community(data.community);
+    }
+    busy = false;
+    refresh();
+    if (data.completion) {
+      scene.celebrate(reduced);
+      say('Your saved rescue. Everyone is still home.');
+    } else say('Tap an animal to see its path.');
+    flow.ready();
+  } catch (error) {
+    if (current !== epoch) return;
+    playable(false);
+    element('empty-message', HTMLParagraphElement).textContent =
+      error instanceof Error ? error.message : 'This daily could not load.';
+    button('retry-load').hidden = false;
+  }
+}
+button('retry-load').addEventListener('click', () => {
+  void load(api.previewId);
+});
+async function initialize(): Promise<void> {
+  if (localDemo) {
+    element('preview-picker', HTMLElement).hidden = false;
+    try {
+      const editions = await api.previews();
+      const picker = element('edition-picker', HTMLSelectElement);
+      for (const e of editions) {
+        const option = document.createElement('option');
+        option.value = e.id;
+        option.textContent = `Day ${e.number} · ${boardById(e.puzzleId, e.boardVersion).title}`;
+        picker.append(option);
+      }
+      let restored: string | null = null;
+      try {
+        restored = sessionStorage.getItem('loo-preview-edition');
+      } catch {
+        /* optional */
+      }
+      const first = editions.find((e) => e.id === restored) ?? editions[0];
+      if (first) {
+        picker.value = first.id;
+        api.previewId = first.id;
+      }
+      picker.addEventListener('change', () => {
+        if (!scene.busy) void load(picker.value);
+      });
+    } catch (error) {
+      say(
+        error instanceof Error ? error.message : 'Preview picker unavailable',
+        true
+      );
+    }
+  }
+  await load(api.previewId);
+}
+game.events.once('board-ready', () => {
+  void initialize();
+});

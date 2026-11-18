@@ -28,7 +28,7 @@
         <span id="daily-label">MOONROOT · 01</span
         ><span id="mode-label">Connecting to the forest…</span>
       </div>
-      <section class="puzzle-heading">
+      <section class="puzzle-heading" data-play>
         <div>
           <h2 id="board-title">Moonroot Crossing</h2>
           <p>Send everyone home.</p>
@@ -39,29 +39,37 @@
       </section>
       <div
         id="game-container"
+        data-play
         role="img"
         aria-label="Moonlit forest crossing. Select animals using the buttons below to preview their routes."
       ></div>
-      <div class="bridge-key">
+      <div class="bridge-key" data-play>
         <span>☾ <b>✦</b></span> Match the symbol. An animal holds its bridge
         open.
       </div>
       <div
         id="animal-controls"
+        data-play
         class="animal-controls"
         role="group"
         aria-label="Choose an animal"
       ></div>
-      <p id="feedback" class="feedback" role="status" aria-live="polite">
+      <p
+        id="feedback"
+        data-play
+        class="feedback"
+        role="status"
+        aria-live="polite"
+      >
         Tap an animal to see its path.
       </p>
-      <div class="actions">
+      <div class="actions" data-play>
         <button id="undo" class="secondary" disabled>↶ Undo</button
         ><button id="send" class="primary" disabled>
           Send home <span>→</span></button
         ><button id="restart" class="secondary">↻ Restart</button>
       </div>
-      <footer>
+      <footer data-play>
         <span id="personal-stats">No timer. Take your time.</span
         ><button id="motion" aria-pressed="false">Reduce motion</button>
       </footer>
@@ -70,9 +78,40 @@
         <p class="eyebrow">THE LANTERNS ARE LIT</p>
         <h2 id="result-title">Everyone home.</h2>
         <p>A little patience brought them all together.</p>
+        <p id="save-status" role="status"></p>
+        <button id="retry-save" hidden>Retry saving · no replay needed</button>
+        <fieldset>
+          <legend>Who’s on your result card?</legend>
+          <div id="favorites"></div>
+        </fieldset>
+        <div class="result-card" id="result-card">
+          <div id="card-portrait"></div>
+          <p id="card-day"></p>
+          <h3>Everyone home</h3>
+          <p id="card-undos"></p>
+          <p id="card-animal"></p>
+        </div>
+        <p id="favorite-status" role="status"></p>
+        <div class="result-actions">
+          <button id="copy-result" class="primary">Copy result</button
+          ><button id="comments" class="secondary">Back to comments</button>
+        </div>
+        <p id="copy-status" role="status"></p>
+        <pre id="copy-fallback" hidden tabindex="0"></pre>
+        <section id="community" hidden></section>
+        <p class="discussion">Which move fooled you?</p>
+      </section>
+      <section id="empty-state" hidden>
+        <h2>A quiet crossing</h2>
+        <p id="empty-message" role="status"></p>
+        <button id="retry-load" hidden>Try loading again</button>
+      </section>
+      <section id="preview-picker" hidden>
+        <label for="edition-picker">LOCAL PREVIEW · choose an edition</label
+        ><select id="edition-picker"></select>
         <p>
-          All four friends are safe. Stay a moment, or try a different rescue
-          order.
+          Mock player identity and local disk storage. No Reddit community
+          participation or telemetry is simulated.
         </p>
       </section>
       <dialog id="help-dialog">
