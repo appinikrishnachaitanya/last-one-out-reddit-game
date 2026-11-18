@@ -440,3 +440,17 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
     fullPage: true,
   });
 });
+test('storybook desktop board is large, fully visible, and does not overlap the heading', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 900, height: 512 });
+  await open(page);
+  const board = await page.locator('canvas').boundingBox(),
+    heading = await page.locator('header').boundingBox();
+  expect(board?.width).toBeGreaterThan(350);
+  expect(board?.y).toBeGreaterThanOrEqual(
+    (heading?.y ?? 0) + (heading?.height ?? 0)
+  );
+  expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(512);
+  await page.screenshot({ path: 'artifacts/storybook-desktop.png' });
+});

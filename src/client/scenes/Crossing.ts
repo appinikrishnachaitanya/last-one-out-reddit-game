@@ -24,13 +24,27 @@ export class Crossing extends Phaser.Scene {
   recentlyFolded: string[] = [];
   art: Phaser.GameObjects.Graphics;
   labels: Phaser.GameObjects.Text[] = [];
+  reunionArt: Phaser.GameObjects.Image | undefined;
   tokens = new Map<AnimalId, Phaser.GameObjects.Container>();
   constructor(session: Session, onSelect: (id: AnimalId) => void) {
     super('Crossing');
     this.session = session;
     this.onSelect = onSelect;
   }
+  preload(): void {
+    this.load.image('forest-art', '/art/forest-board.webp');
+    this.load.image('reunion-art', '/art/reunion.webp');
+    this.load.spritesheet('animal-art', '/art/animals.webp', {
+      frameWidth: 631,
+      frameHeight: 623,
+    });
+  }
   create(): void {
+    if (this.textures.exists('forest-art'))
+      this.add
+        .image(210, 210, 'forest-art')
+        .setDisplaySize(420, 420)
+        .setDepth(-2);
     this.art = this.add.graphics();
     this.ready = true;
     this.refresh();
@@ -50,6 +64,8 @@ export class Crossing extends Phaser.Scene {
   }
   refresh(): void {
     if (!this.ready) return;
+    this.reunionArt?.destroy();
+    this.reunionArt = undefined;
     this.drawBoard();
     for (const token of this.tokens.values()) token.destroy();
     this.tokens.clear();
@@ -65,9 +81,9 @@ export class Crossing extends Phaser.Scene {
         });
       this.tokens.set(animal.id, token);
       const badge = this.add.graphics();
-      badge.fillStyle(0x102c30);
+      badge.fillStyle(0xfff0ce);
       badge.fillCircle(17, 16, 11);
-      badge.lineStyle(1, 0xefd493);
+      badge.lineStyle(1.5, 0x8d743b);
       badge.strokeCircle(17, 16, 11);
       const v = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[
         animal.direction
@@ -76,7 +92,7 @@ export class Crossing extends Phaser.Scene {
         dy = v[1] ?? 0;
       const tipX = 17 + dx * 6,
         tipY = 16 + dy * 6;
-      badge.lineStyle(2.5, 0xffe2a5);
+      badge.lineStyle(2.7, 0x163f29);
       badge.lineBetween(17 - dx * 5, 16 - dy * 5, tipX, tipY);
       badge.lineBetween(tipX, tipY, 17 + dx * 1 - dy * 4, 16 + dy * 1 + dx * 4);
       badge.lineBetween(tipX, tipY, 17 + dx * 1 + dy * 4, 16 + dy * 1 - dx * 4);
@@ -88,45 +104,35 @@ export class Crossing extends Phaser.Scene {
     g.clear();
     this.labels.forEach((l) => l.destroy());
     this.labels = [];
-    g.fillStyle(0x102f35);
-    g.fillRoundedRect(3, 3, 414, 414, 26);
-    g.lineStyle(1, 0x416359, 0.45);
-    g.strokeRoundedRect(3, 3, 414, 414, 26);
-    // River glints are deterministic, calm, and behind every path.
-    for (let i = 0; i < 63; i++) {
-      const x = 20 + ((i * 67) % 380),
-        y = 28 + ((i * 113) % 367);
-      g.lineStyle(1, 0x416b6d, 0.3);
-      g.lineBetween(x, y, x + 7 + (i % 4) * 3, y);
+    if (!this.textures.exists('forest-art')) {
+      g.fillStyle(0x136773);
+      g.fillRoundedRect(3, 3, 414, 414, 18);
     }
-    // Fronds stay on the banks, never on routes.
-    for (const [x, y, r] of [
-      [17, 66, 0],
-      [395, 80, 1],
-      [22, 339, 0],
-      [390, 352, 1],
-      [83, 395, 0],
-      [325, 22, 1],
-    ]) {
-      if (x === undefined || y === undefined) continue;
-      for (let k = 0; k < 5; k++) {
-        g.fillStyle(k % 2 ? 0x31564c : 0x27483f);
-        g.fillEllipse(x + (r ? -1 : 1) * k * 3, y + k * 6, 18, 8);
-      }
-    }
-    this.label(33, 26, '✧', 20, '#a2b78e');
-    this.label(382, 387, '✧', 20, '#a2b78e');
+    g.lineStyle(3, 0x9e874b, 0.8);
+    g.strokeRoundedRect(3, 3, 414, 414, 18);
     for (const p of this.session.board.paths) {
       if (this.session.board.bridges.some((b) => samePoint(b, p))) continue;
       const pos = pixel(p);
       g.fillStyle(0x09262d, 0.5);
       g.fillRoundedRect(pos.x - 22, pos.y - 18, 44, 44, 8);
-      g.fillStyle(0x536f62);
+      g.fillStyle(0xe6d1a6);
       g.fillRoundedRect(pos.x - 22, pos.y - 22, 44, 42, 8);
-      g.lineStyle(1, 0x789180, 0.4);
+      g.lineStyle(1.5, 0xfff3ce, 0.9);
       g.strokeRoundedRect(pos.x - 21, pos.y - 21, 42, 40, 7);
-      g.lineStyle(1, 0x294d47, 0.6);
+      g.lineStyle(1, 0xb39562, 0.5);
       g.lineBetween(pos.x - 13, pos.y + 9, pos.x + 12, pos.y + 9);
+      for (let n = 0; n < 13; n++) {
+        const seed = p.x * 31 + p.y * 17 + n * 13;
+        g.fillStyle(n % 2 ? 0x9f8657 : 0xfff8dd, 0.22);
+        g.fillCircle(
+          pos.x - 17 + (seed % 34),
+          pos.y - 16 + ((seed * 7) % 32),
+          n % 3 === 0 ? 1.3 : 0.6
+        );
+      }
+      g.fillStyle(0x728349, 0.75);
+      g.fillEllipse(pos.x - 17, pos.y + 15, 8, 4);
+      g.fillEllipse(pos.x - 13, pos.y + 18, 7, 3);
     }
     for (const b of this.session.board.bridges) {
       const p = pixel(b),
@@ -134,7 +140,7 @@ export class Crossing extends Phaser.Scene {
       const bridgeColor =
         b.id === 'star' ? 0xacc6e8 : b.id === 'leaf' ? 0xaad8a0 : 0xf3cd86;
       const bridgeText =
-        b.id === 'star' ? '#bdd5fa' : b.id === 'leaf' ? '#caefb7' : '#ffdf9b';
+        b.id === 'star' ? '#234f69' : b.id === 'leaf' ? '#38582c' : '#75501d';
       const scale = open
         ? 1
         : this.recentlyFolded.includes(b.id)
@@ -162,7 +168,9 @@ export class Crossing extends Phaser.Scene {
       g.lineStyle(2, bridgeColor, open ? 0.85 : 0.25);
       g.lineBetween(p.x - 22, p.y - 22, p.x - 22, p.y + 22);
       g.lineBetween(p.x + 22, p.y - 22, p.x + 22, p.y + 22);
-      this.label(p.x, p.y - 29, b.symbol, 16, open ? bridgeText : '#edaa94');
+      g.fillStyle(0xffefce);
+      g.fillRoundedRect(p.x - 11, p.y - 39, 22, 21, 5);
+      this.label(p.x, p.y - 29, b.symbol, 16, open ? bridgeText : '#a63724');
       if (!open) {
         g.lineStyle(2, 0xebaa95, 0.8);
         g.lineBetween(p.x - 8, p.y - 8, p.x + 8, p.y + 8);
@@ -206,7 +214,7 @@ export class Crossing extends Phaser.Scene {
       if (!a || isHome(this.session.state, id)) continue;
       const route = trace(this.session.board, this.session.state, id),
         start = pixel(a);
-      const color = route.legal ? 0xf4d28d : 0xf4a78f;
+      const color = route.legal ? 0x195e46 : 0xbb3927;
       g.lineStyle(5, color, 0.8);
       g.beginPath();
       g.moveTo(start.x, start.y);
@@ -226,7 +234,7 @@ export class Crossing extends Phaser.Scene {
       }
       if (route.obstacle) {
         const q = pixel(route.obstacle.at);
-        g.fillStyle(0x332e2d, 0.85);
+        g.fillStyle(0xffedc5, 0.98);
         g.fillCircle(q.x, q.y, 13);
         g.lineStyle(3, color);
         g.lineBetween(q.x - 5, q.y - 5, q.x + 5, q.y + 5);
@@ -245,7 +253,7 @@ export class Crossing extends Phaser.Scene {
       );
       const badgeX =
         p.x - 17 + siblings.findIndex((other) => other.id === b.id) * 27;
-      g.fillStyle(0x183c40);
+      g.fillStyle(0xffefcc);
       g.fillCircle(badgeX, p.y - 19, 11);
       g.lineStyle(
         2,
@@ -257,7 +265,7 @@ export class Crossing extends Phaser.Scene {
         p.y - 20,
         b.symbol,
         16,
-        b.id === 'star' ? '#bdd5fa' : b.id === 'leaf' ? '#caefb7' : '#ffdf9b'
+        b.id === 'star' ? '#234f69' : b.id === 'leaf' ? '#38582c' : '#75501d'
       );
     }
   }
@@ -265,6 +273,16 @@ export class Crossing extends Phaser.Scene {
     const token = this.add.container(x, y),
       g = this.add.graphics();
     token.add(g);
+    if (this.textures.exists('animal-art')) {
+      const frames = { turtle: 0, rabbit: 1, fox: 2, badger: 3 };
+      g.fillStyle(0x233f28, 0.32);
+      g.fillEllipse(0, 16, 35, 13);
+      token.add(
+        this.add.image(0, -2, 'animal-art', frames[id]).setDisplaySize(54, 54)
+      );
+      return token;
+    }
+
     g.fillStyle(0x041c22, 0.55);
     g.fillEllipse(1, 11, 40, 25);
     if (id === 'turtle') {
@@ -405,12 +423,20 @@ export class Crossing extends Phaser.Scene {
           onComplete: () => spark.destroy(),
         });
       }
-    this.label(210, 195, 'Everyone home', 28, '#ffe2a5');
-    this.label(210, 228, 'The forest can rest.', 15, '#d0dbc2');
-    // Reunite all four original vector tokens at the lantern bank.
-    this.session.board.animals.forEach((a, i) => {
-      const token = this.animal(a.id, 115 + i * 64, 281);
-      this.tokens.set(a.id, token);
-    });
+    if (this.textures.exists('reunion-art')) {
+      this.reunionArt = this.add
+        .image(210, 210, 'reunion-art')
+        .setDisplaySize(414, 276)
+        .setDepth(2);
+      this.label(210, 40, 'Everyone home', 28, '#fff0c9');
+      this.label(210, 382, 'The forest can rest.', 17, '#fff0c9');
+    } else {
+      this.label(210, 195, 'Everyone home', 28, '#ffe2a5');
+      this.label(210, 228, 'The forest can rest.', 15, '#d0dbc2');
+      this.session.board.animals.forEach((a, i) => {
+        const token = this.animal(a.id, 115 + i * 64, 281);
+        this.tokens.set(a.id, token);
+      });
+    }
   }
 }

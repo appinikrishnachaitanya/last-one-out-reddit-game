@@ -2,13 +2,23 @@
 
 Private playtest URL: https://www.reddit.com/r/last_one_out_app_dev/?playtest=last-one-out-app
 
-Installed app: **last-one-out-app v0.0.1.4**, confirmed by `devvit list installs`. The initial owner-visible upload was **0.0.1**. The playtest watcher was stopped after installation to freeze this version; stopping it does not uninstall the private build. The source revision is recorded in the implementation commit and final task report. Restarting `npm run dev` will create a newer playtest build.
+Current private installation: **last-one-out-app v0.0.1.4**, confirmed by `devvit list installs`. The initial owner-visible upload was **0.0.1**. The playtest watcher was stopped after installation to freeze this version; stopping it does not uninstall the private build. The source revision is recorded in the implementation commit and final task report. Restarting `npm run dev` will create a newer playtest build.
+
+Private Day 1 post: https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/
+
+## Storybook redesign status
+
+The latest source replaces flat pieces and dark panels with generated painted animal sprites, a leafy turquoise-water board, parchment panels, gold controls, a larger desktop board, and a dedicated campfire reunion/result view. It preserves the rule engine, canonical boards, post bindings, Redis records, and spoiler-free results. See `ART.md`.
+
+The **redesign is verified locally but is not installed on Reddit yet**. Multiple CLI uploads failed with HTTP 503 connection timeouts at `reddit-service-devvit-webview-assets.s3.us-east-1.amazonaws.com`. The supported serial-upload mode failed too. Read-only HEAD checks of that host and `s3.us-east-1.amazonaws.com` also returned 503; the upload host failed outside the command sandbox as well. Network policy was confirmed unrestricted/enforced. TLS verification remained enabled. This is an external upload blocker, not a rule/build failure. Do not claim the private post has the new visuals until upload and installation succeed.
+
+To upload from a working local network: pull this repository, use Node 24+, run `npm ci`, `npm run login -- --copy-paste` if needed, `npm run deploy`, and `npm run dev`. These use the same private app/community. A successful new build can reuse the existing post and saved results. No public publishing is needed.
 
 ## Verified locally
 
 - 20 unit/API tests passed, including all seven boards, exact solver counts, wrong-edition/version rejection, malformed/illegal/incomplete sequences, concurrent duplicate submissions, preserved original openings, lost-response retry, independent favorite art, UTC rollover, old/legacy post reopening, and post publication reservations/recovery.
 - TypeScript, ESLint, production Devvit build, and configuration schema validation passed.
-- 9 Chromium acceptance tests passed. All seven editions were completed through the UI, with results restored after reload. Tests cover mouse and emulated touch, keyboard, reduced motion, rapid taps, the early-Turtle consequence, Undo, Restart, favorite portraits, clipboard, failure/retry, and honest community empty states.
+- 10 Chromium acceptance tests passed. All seven editions were completed through the UI, with results restored after reload. Tests cover mouse and emulated touch, keyboard, reduced motion, rapid taps, the early-Turtle consequence, Undo, Restart, favorite portraits, clipboard, failure/retry, and honest community empty states.
 - Layout checked at 288, 320, 390, and 640px widths in a 512px-high frame, plus narrow full-height phone viewports.
 - The production bundle completed the exact judge sequence against the actual Hono validator/completion service with local adapters: open Day 1 → Turtle early → Rabbit stranded → Undo → complete → persist → reload → copy spoiler-free text → emit Reddit SDK navigation to the same post's comments.
 - That production-bundle check also verified actual client SDK request ordering and server-side completion correlation using local telemetry fixtures. It does not establish Reddit ingestion.
@@ -20,7 +30,7 @@ Installed app: **last-one-out-app v0.0.1.4**, confirmed by `devvit list installs
 - `devvit playtest` reported ready; the final installed version is 0.0.1.4.
 - No public publishing or Devpost submission was performed.
 
-A full gameplay run inside Reddit is **not yet confirmed**, and no physical phone check is claimed. The moderator was asked to open today's daily and provide the post link/device or an error.
+The user confirmed that the existing Day 1 board loads on **Reddit desktop**. The private post was also found through authenticated Reddit listing access. A full save/reload run inside Reddit is **not yet confirmed**, and no physical phone check is claimed. The user requested the storybook visual redesign after trying the previous visuals.
 
 The cloud Chromium attempt reached a TLS trust error (`ERR_CERT_AUTHORITY_INVALID`). Automatic approval review rejected adding the environment's proxy CA to Chromium because it would persistently broaden interception trust without explicit authorization. TLS verification was left enabled and the trust setting was not changed. The user's own browser can open the private community without that cloud-browser change.
 

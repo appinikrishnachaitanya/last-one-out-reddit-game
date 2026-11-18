@@ -2,6 +2,8 @@
 
 A mobile-first daily rescue puzzle inside Reddit, built on the official **Devvit + Phaser + TypeScript** starter. Seven curated editions share a pure rule engine. Moonroot Crossing preserves the signature moment: Turtle can leave safely, but its moon bridge folds and strands Rabbit; Undo restores both.
 
+The visual design follows the supplied storybook reference: painted animal sprites, a leafy turquoise river, parchment panels, warm gold controls, and a campfire reunion. Wide Reddit frames use a larger board beside the controls; phones retain a compact layout. See [art notes](docs/ART.md) for asset details. The four-animal rules and published board versions remain unchanged.
+
 ## Local preview
 
 Node **24+** is required (`.nvmrc` pins the starter version).
@@ -16,6 +18,10 @@ Open `http://localhost:5173/game.html`. The local-only picker offers all seven e
 The preview uses the **same Hono API, canonical boards, validator, and completion service**, with an explicitly labeled mock identity and local storage adapter. Its cookie identifies a local mock player, and ignored `.local/demo-store.json` keeps results across reloads/server restarts. Community participation and Reddit telemetry are not simulated. Preview results are not Reddit completions. Use a new browser profile/context for a fresh mock player. The API runs on loopback port 5174, proxied by Vite on 5173.
 
 In this cloud workspace, use `npm ci --cache /workspace/.npm-cache` if the default npm cache is unwritable.
+
+## Current private build
+
+The existing [Day 1 Reddit post](https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/) is installed as v0.0.1.4, and the user confirmed it loads on desktop. **The storybook redesign in this source is not installed yet:** Reddit's S3 upload endpoint repeatedly returned HTTP 503 from the cloud, including serial uploads. Local checks passed (20 unit/API tests, 10 browser tests). Upload from a working local network using the commands below, or retry once the storage connection is restored. See [playtest evidence](docs/PLAYTEST.md).
 
 ## Private Reddit playtest
 

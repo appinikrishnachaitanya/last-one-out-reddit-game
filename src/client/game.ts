@@ -58,6 +58,10 @@ function say(text: string, warning = false): void {
   feedback.classList.toggle('warning', warning);
 }
 function refresh(): void {
+  element('app', HTMLElement).classList.toggle(
+    'solved',
+    won(session.board, session.state) && !result.hidden
+  );
   scene.session = session;
   scene.selected = selected;
   scene.refresh();

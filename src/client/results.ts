@@ -73,6 +73,7 @@ export class Results {
       /* storage is optional */
     }
     el('result').hidden = false;
+    el('app').classList.add('solved');
     el('copy-status').textContent = '';
     el('favorite-status').textContent = '';
     el('comments').hidden = !url;
