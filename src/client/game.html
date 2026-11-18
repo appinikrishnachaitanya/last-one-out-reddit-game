@@ -20,85 +20,113 @@
             <p>A LITTLE FOREST LOGIC</p>
           </div>
         </div>
-        <button id="help" class="icon-button" aria-label="How to play">
-          ?
-        </button>
+        <div class="header-actions">
+          <button id="expand" class="expand-button">Play larger</button
+          ><button id="help" class="icon-button" aria-label="How to play">
+            ?
+          </button>
+        </div>
       </header>
       <div class="daily-line">
         <span id="daily-label">MOONROOT · 01</span
         ><span id="mode-label">Connecting to the forest…</span>
       </div>
-      <section class="puzzle-heading" data-play>
-        <div>
-          <h2 id="board-title">Moonroot Crossing</h2>
-          <p>Send everyone home.</p>
+      <div id="play-layout" class="play-layout" data-play>
+        <div class="board-column">
+          <div
+            id="game-container"
+            data-play
+            role="img"
+            aria-label="Moonlit forest crossing. Select animals using the buttons below to preview their routes."
+          ></div>
+          <div class="bridge-key" data-play>
+            <span>☾ <b>✦</b></span> Match the symbol. An animal holds its bridge
+            open.
+          </div>
         </div>
-        <div class="rescue">
-          <span id="rescue-count">0 / 4</span><small>HOME</small>
-        </div>
-      </section>
-      <div
-        id="game-container"
-        data-play
-        role="img"
-        aria-label="Moonlit forest crossing. Select animals using the buttons below to preview their routes."
-      ></div>
-      <div class="bridge-key" data-play>
-        <span>☾ <b>✦</b></span> Match the symbol. An animal holds its bridge
-        open.
+        <aside class="control-column" aria-label="Rescue controls">
+          <section class="puzzle-heading" data-play>
+            <div>
+              <h2 id="board-title">Moonroot Crossing</h2>
+              <p>Send everyone home.</p>
+            </div>
+            <div class="rescue">
+              <span id="rescue-count">0 / 4</span><small>HOME</small>
+            </div>
+          </section>
+          <section id="tour-panel" hidden aria-labelledby="tour-title">
+            <p id="tour-step" class="eyebrow"></p>
+            <h3 id="tour-title"></h3>
+            <p id="tour-copy" role="status" aria-live="polite"></p>
+            <button id="tour-action" class="primary"></button
+            ><button id="exit-tour" class="tour-exit">Exit practice</button>
+          </section>
+          <div
+            id="animal-controls"
+            data-play
+            class="animal-controls"
+            role="group"
+            aria-label="Choose an animal"
+          ></div>
+          <p
+            id="feedback"
+            data-play
+            class="feedback"
+            role="status"
+            aria-live="polite"
+          >
+            Tap an animal to see its path.
+          </p>
+          <div class="actions" data-play>
+            <button id="undo" class="secondary" disabled>↶ Undo</button
+            ><button id="send" class="primary" disabled>
+              Send home <span>→</span></button
+            ><button id="restart" class="secondary">↻ Restart</button>
+          </div>
+          <footer data-play>
+            <span id="personal-stats">No timer. Take your time.</span
+            ><button id="motion" aria-pressed="false">Reduce motion</button>
+          </footer>
+        </aside>
       </div>
-      <div
-        id="animal-controls"
-        data-play
-        class="animal-controls"
-        role="group"
-        aria-label="Choose an animal"
-      ></div>
-      <p
-        id="feedback"
-        data-play
-        class="feedback"
-        role="status"
-        aria-live="polite"
-      >
-        Tap an animal to see its path.
-      </p>
-      <div class="actions" data-play>
-        <button id="undo" class="secondary" disabled>↶ Undo</button
-        ><button id="send" class="primary" disabled>
-          Send home <span>→</span></button
-        ><button id="restart" class="secondary">↻ Restart</button>
-      </div>
-      <footer data-play>
-        <span id="personal-stats">No timer. Take your time.</span
-        ><button id="motion" aria-pressed="false">Reduce motion</button>
-      </footer>
       <section id="result" class="result" hidden aria-labelledby="result-title">
-        <img class="reunion-illustration" src="/art/reunion.webp" alt="Turtle, Rabbit, Fox and Badger reunited beside a warm campfire" loading="lazy"/>
-        <p class="eyebrow">THE LANTERNS ARE LIT</p>
-        <h2 id="result-title">Everyone home.</h2>
-        <p>A little patience brought them all together.</p>
-        <p id="save-status" role="status"></p>
-        <button id="retry-save" hidden>Retry saving · no replay needed</button>
+        <div class="result-top">
+          <img
+            class="reunion-illustration"
+            src="/art/reunion.webp"
+            alt="The four friends reunited at their campfire"
+            loading="lazy"
+          />
+          <div class="result-summary">
+            <p class="eyebrow">ALL FOUR FRIENDS ARE SAFE</p>
+            <h2 id="result-title">Everyone home.</h2>
+            <div class="result-card" id="result-card">
+              <div id="card-portrait"></div>
+              <div class="card-facts">
+                <p id="card-day"></p>
+                <p id="card-undos"></p>
+                <p id="card-animal"></p>
+              </div>
+            </div>
+          </div>
+        </div>
         <fieldset>
-          <legend>Who’s on your result card?</legend>
+          <legend>Choose your card’s friend</legend>
           <div id="favorites"></div>
         </fieldset>
-        <div class="result-card" id="result-card">
-          <div id="card-portrait"></div>
-          <p id="card-day"></p>
-          <h3>Everyone home</h3>
-          <p id="card-undos"></p>
-          <p id="card-animal"></p>
-        </div>
-        <p id="favorite-status" role="status"></p>
         <div class="result-actions">
           <button id="copy-result" class="primary">Copy result</button
           ><button id="comments" class="secondary">Back to comments</button>
         </div>
+        <p id="save-status" role="status"></p>
+        <button id="retry-save" hidden>Retry saving · no replay needed</button>
+        <p id="favorite-status" role="status"></p>
         <p id="copy-status" role="status"></p>
         <pre id="copy-fallback" hidden tabindex="0"></pre>
-        <section id="community" hidden></section>
+        <details id="community-details" hidden>
+          <summary>How others started their successful rescue</summary>
+          <section id="community" hidden></section>
+        </details>
         <p class="discussion">Which move fooled you?</p>
       </section>
       <section id="empty-state" hidden>
@@ -114,6 +142,37 @@
           participation or telemetry is simulated.
         </p>
       </section>
+      <dialog id="welcome-dialog" aria-labelledby="welcome-title">
+        <p class="eyebrow">WELCOME TO THE CROSSING</p>
+        <h2 id="welcome-title">
+          A safe way home.<br />A little thought first.
+        </h2>
+        <div class="guide-animals" aria-hidden="true">
+          <span class="guide-animal turtle"></span
+          ><span class="guide-animal rabbit"></span
+          ><span class="guide-animal fox"></span
+          ><span class="guide-animal badger"></span>
+        </div>
+        <ol class="guide-rules">
+          <li><b>Follow the arrow.</b> Walk straight to a lantern.</li>
+          <li>
+            <b>Look for matching symbols.</b> A friend may be holding a bridge
+            open for someone else.
+          </li>
+          <li>
+            <b>Try, then Undo.</b> You can always bring a friend and its bridge
+            back.
+          </li>
+        </ol>
+        <p class="guide-note">
+          Try a short practice first. It won’t change your daily result.
+        </p>
+        <button id="welcome-practice" class="primary">
+          Teach me with a practice</button
+        ><button id="welcome-skip" class="secondary">
+          I know the rules · play
+        </button>
+      </dialog>
       <dialog id="help-dialog">
         <button
           id="close-help"
@@ -124,6 +183,7 @@
         </button>
         <p class="eyebrow">A QUIET WAY HOME</p>
         <h2>Look before you leave.</h2>
+        <button id="help-practice" class="primary">Try guided practice</button>
         <p>
           Each animal follows its arrow straight to a lantern exit. Tap once to
           preview; tap again or choose <b>Send home</b> to move.
@@ -137,6 +197,7 @@
           Blocked paths end at a coral cross. Undo restores the animal and its
           bridge. There’s no timer or penalty.
         </p>
+        <button id="motion-dialog" aria-pressed="false">Reduce motion</button>
         <p>
           Keyboard: Tab to an animal and press Enter or Space. Then use Send
           home. Undo and Restart are always in reach.

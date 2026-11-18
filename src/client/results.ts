@@ -78,10 +78,11 @@ export class Results {
     el('favorite-status').textContent = '';
     el('comments').hidden = !url;
     el('community').hidden = true;
+    el('community-details').hidden = true;
     el('retry-save').hidden = true;
     this.status(
       saved
-        ? 'Your first rescue is saved. You can replay without changing it.'
+        ? 'Your first rescue is saved.'
         : 'Everyone is home. Saving your rescue…'
     );
     this.renderCard();
@@ -109,9 +110,7 @@ export class Results {
     }
   }
   status(text: string, retry = false): void {
-    el('save-status').textContent = this.demo
-      ? `${text} Local preview uses mock identity and local storage, not Reddit.`
-      : text;
+    el('save-status').textContent = this.demo ? `${text} Preview only.` : text;
     el('retry-save').hidden = !retry;
   }
   saved(record: Completion, stats: Community, first: boolean): void {
@@ -120,8 +119,8 @@ export class Results {
     this.renderCard();
     this.status(
       first
-        ? 'Rescue validated and saved. Undo count is a personal stat.'
-        : 'Your first saved rescue is restored. Replays do not change your opening or total.'
+        ? 'Rescue validated and saved.'
+        : 'Your first saved rescue is restored.'
     );
     this.community(stats);
   }
@@ -129,6 +128,7 @@ export class Results {
     const box = el('community');
     box.replaceChildren();
     box.hidden = false;
+    el('community-details').hidden = false;
     const heading = document.createElement('h3');
     heading.textContent = 'How others started their successful rescue';
     box.append(heading);
@@ -181,8 +181,7 @@ export class Results {
     );
     try {
       await navigator.clipboard.writeText(text);
-      el('copy-status').textContent =
-        'Copied. No rescue order or puzzle spoilers included.';
+      el('copy-status').textContent = 'Copied. No puzzle spoilers.';
     } catch {
       if (!this.demo) {
         try {

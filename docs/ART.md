@@ -11,3 +11,7 @@ New illustrations were generated from that supplied direction and optimized to W
 The three optimized files total about 1.2MB. Artwork is local to the app; no external image service is called during play. If an asset fails to load, the existing Phaser vector animal fallback remains available. Reduced motion changes animations, not the final illustrations.
 
 At wide Reddit frame sizes, the board expands beside the controls. Compact phone frames retain the complete board and main controls. Winning opens a dedicated result view; Undo and Restart remain available. The favorite selection changes the actual illustrated portrait, and the share text remains spoiler-free.
+
+## Alignment and teaching update
+
+The latest layout replaces the earlier fixed grid/positioning with board and control columns in normal flow. The registered expanded Reddit view gives the board more screen space; high-resolution rendering keeps its text and sprites clear. A first-visit explanation and isolated Turtle/Rabbit practice teach the dependency before the daily. Warm paper, dark forest text, and semantic red obstruction markers improve contrast without relying on color alone. Compact results prioritize sharing/comments and fold optional community data into a disclosure.

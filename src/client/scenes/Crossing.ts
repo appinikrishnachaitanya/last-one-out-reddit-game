@@ -40,6 +40,7 @@ export class Crossing extends Phaser.Scene {
     });
   }
   create(): void {
+    this.cameras.main.setZoom(2).centerOn(210, 210);
     if (this.textures.exists('forest-art'))
       this.add
         .image(210, 210, 'forest-art')
@@ -58,6 +59,7 @@ export class Crossing extends Phaser.Scene {
           fontSize: size,
           color,
         })
+        .setResolution(2)
         .setOrigin(0.5)
         .setDepth(5)
     );

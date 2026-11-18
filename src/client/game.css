@@ -64,9 +64,9 @@ button[aria-pressed='true'] {
     inset 0 1px #f7f5d8;
 }
 #app {
-  width: min(100%, 480px);
+  width: min(100%, 1180px);
   margin: auto;
-  padding: 16px 18px 20px;
+  padding: 16px 22px 20px;
   background:
     radial-gradient(ellipse at 15% 15%, #fffae6b0, transparent 65%),
     repeating-linear-gradient(100deg, #a97e2b05 0 1px, transparent 1px 7px),
@@ -549,82 +549,413 @@ dialog p {
 .solved .result {
   margin-top: 14px;
 }
-@media (max-width: 360px) {
+/* Normal document flow at every size: no absolute-positioned canvas or overlapping grid rows. */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+}
+.expand-button {
+  font:
+    600 13px system-ui,
+    sans-serif;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-color: #a27324;
+  background: linear-gradient(#ffe4a0, #f5c45a);
+  white-space: nowrap;
+}
+.play-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.board-column,
+.control-column {
+  display: contents;
+}
+.puzzle-heading {
+  order: 0;
+}
+#game-container {
+  order: 1;
+  width: min(100%, 720px);
+  margin: 0 auto;
+  position: relative;
+  flex: none;
+}
+.bridge-key {
+  order: 2;
+}
+.animal-controls {
+  order: 3;
+}
+.feedback {
+  order: 4;
+}
+.actions {
+  order: 5;
+}
+footer {
+  order: 6;
+}
+.puzzle-heading {
+  width: 100%;
+  margin: 0 0 10px;
+}
+canvas {
+  margin: 0 !important;
+}
+.feedback {
+  font-size: 14px;
+  min-height: 44px;
+}
+.actions button {
+  font-size: 14px;
+  min-height: 48px;
+}
+.animal-controls button {
+  min-height: 46px;
+  font-size: 13px;
+}
+#preview-picker {
+  clear: both;
+}
+.solved .play-layout {
+  display: block;
+}
+.solved .board-column {
+  display: none;
+}
+.solved .control-column {
+  display: block;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: none;
+}
+.solved .actions {
+  display: flex;
+  max-width: 680px;
+  margin: 8px auto 0;
+}
+.solved .actions button {
+  min-height: 44px;
+}
+.solved .result {
+  max-width: 680px;
+  margin: 14px auto 0;
+}
+.solved .daily-line {
+  display: none;
+}
+#app.solved {
+  max-width: 740px;
+}
+.solved .puzzle-heading,
+.solved .animal-controls,
+.solved .feedback,
+.solved footer {
+  display: none !important;
+}
+@media (min-width: 560px) {
   #app {
-    padding: 12px 12px 16px;
+    padding: 12px 20px 20px;
+  }
+  header {
+    margin-bottom: 12px;
+    min-height: 40px;
+  }
+  .daily-line {
+    margin-bottom: 12px;
+  }
+  .play-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 24px;
+    align-items: center;
+  }
+  .board-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+  }
+  .control-column {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid #c1a46d;
+    border-radius: 17px;
+    background: linear-gradient(135deg, #fff8e0d9, #ead2a2a3);
+    box-shadow:
+      inset 0 1px #fffbed,
+      0 4px 12px #76552e18;
+  }
+  #game-container {
+    width: min(100%, calc(100dvh - 112px), 720px);
+    margin: 0;
+    position: relative;
+    height: auto;
+  }
+  .bridge-key {
+    font-size: 11px;
+    margin: 9px 0 0;
+    max-width: 100%;
+    text-align: center;
+  }
+  .bridge-key span {
+    flex-shrink: 0;
+  }
+  .puzzle-heading {
+    margin: 0;
+    gap: 8px;
+  }
+  .puzzle-heading h2 {
+    font-size: 26px;
+    line-height: 1.05;
+  }
+  .puzzle-heading p {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .rescue {
+    min-width: 55px;
+    padding: 7px;
+  }
+  .rescue span {
+    font-size: 17px;
+  }
+  .animal-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .animal-controls button {
+    min-height: 48px;
+    font-size: 14px;
+  }
+  .feedback {
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 64px;
+    margin: 0;
+  }
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .actions #send {
+    grid-column: 1/-1;
+    grid-row: 1;
+  }
+  .actions #undo {
+    grid-row: 2;
+    grid-column: 1;
+  }
+  .actions #restart {
+    grid-row: 2;
+    grid-column: 2;
+  }
+  .actions button {
+    font-size: 14px;
+    min-height: 46px;
+    padding: 8px;
+  }
+  footer {
+    font-size: 10px;
+    gap: 8px;
+    margin: 0;
+    flex-wrap: wrap;
+  }
+  footer button {
+    font-size: 10px;
+    min-height: 32px;
+  }
+}
+@media (min-width: 560px) and (max-height: 620px) {
+  #app {
+    padding: 8px 12px 12px;
+  }
+  header {
+    height: 36px;
+    min-height: 36px;
+    margin: 0 0 8px;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  .brand-moon {
+    font-size: 29px;
+  }
+  .brand p {
+    font-size: 7px;
+    margin: 1px 0;
+  }
+  .daily-line {
+    display: none;
+  }
+  .play-layout {
+    grid-template-columns: minmax(0, 1fr) 236px;
+    gap: 16px;
+  }
+  .control-column {
+    padding: 12px;
+    gap: 10px;
+  }
+  #game-container {
+    width: min(100%, calc(100dvh - 92px), 720px);
+  }
+  .bridge-key {
+    margin: 6px 0 0;
+    font-size: 10px;
+    line-height: 1.3;
+  }
+  .puzzle-heading h2 {
+    font-size: 23px;
+  }
+  .puzzle-heading p {
+    display: none;
+  }
+  .rescue {
+    padding: 5px;
+    min-width: 50px;
+  }
+  .rescue span {
+    font-size: 15px;
+  }
+  .rescue small {
+    font-size: 7px;
+  }
+  .animal-controls button {
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .feedback {
+    font-size: 13px;
+    min-height: 48px;
+  }
+  .actions button {
+    min-height: 44px;
+    font-size: 13px;
+  }
+  footer {
+    font-size: 9px;
+  }
+  footer button {
+    font-size: 9px;
+    min-height: 26px;
+  }
+}
+@media (max-width: 559px) {
+  #app {
+    max-width: 480px;
+    padding: 14px 14px 18px;
   }
   header {
     margin-bottom: 14px;
   }
+  .brand {
+    gap: 7px;
+  }
   h1 {
-    font-size: 27px;
+    font-size: 26px;
+  }
+  .brand-moon {
+    font-size: 33px;
+  }
+  .brand p {
+    font-size: 7px;
+    letter-spacing: 1.3px;
+  }
+  .header-actions {
+    gap: 7px;
+  }
+  .expand-button {
+    font-size: 11px;
+    min-height: 36px;
+    padding: 7px 9px;
+  }
+  .icon-button {
+    min-height: 32px;
+    width: 32px;
+    font-size: 17px;
   }
   h2 {
     font-size: 25px;
   }
-  .daily-line {
-    font-size: 8px;
-    letter-spacing: 0.7px;
+  .puzzle-heading p {
+    font-size: 12px;
+  }
+  .animal-controls {
+    gap: 5px;
+  }
+  .animal-controls button {
+    font-size: 12px;
+    padding: 6px 2px;
   }
   .bridge-key {
     font-size: 9px;
+    margin: 6px 0 10px;
   }
   .feedback {
-    font-size: 12px;
-    min-height: 36px;
-    margin: 7px 0;
+    font-size: 13px;
+    min-height: 38px;
+    margin: 8px 0;
   }
   .actions {
     gap: 6px;
   }
   .actions button {
-    font-size: 12px;
+    font-size: 13px;
+    padding: 8px 4px;
   }
-  .animal-controls button {
-    font-size: 11px;
+  .daily-line {
+    font-size: 8px;
+    letter-spacing: 0.7px;
+  }
+  #mode-label {
+    font-size: 8px;
   }
   .reunion-illustration {
     height: 190px;
   }
-  .result h2 {
-    font-size: 32px;
-  }
 }
-@media (max-height: 620px) {
+@media (max-width: 559px) and (max-height: 620px) {
   #app {
-    padding: 8px 12px 10px;
-    max-width: 480px;
+    padding: 8px 10px 12px;
   }
   header {
-    height: 32px;
-    margin: 0;
-  }
-  .brand {
-    gap: 7px;
-  }
-  .brand-moon {
-    font-size: 27px;
+    height: 34px;
+    margin: 0 0 2px;
   }
   h1 {
     font-size: 21px;
-    letter-spacing: -0.4px;
+  }
+  .brand-moon {
+    font-size: 25px;
   }
   .brand p {
     font-size: 7px;
-    letter-spacing: 1px;
-    margin: 1px 0 0;
+    margin: 0;
+  }
+  .expand-button {
+    min-height: 32px;
+    padding: 6px 8px;
+    font-size: 11px;
   }
   .icon-button {
     width: 30px;
     min-height: 30px;
-    font-size: 17px;
   }
   .daily-line {
     display: none;
   }
   .puzzle-heading {
-    height: 32px;
-    margin: 0;
+    height: 30px;
+    margin: 0 0 4px;
   }
   .puzzle-heading h2 {
     font-size: 22px;
@@ -636,8 +967,8 @@ dialog p {
     display: flex;
     align-items: center;
     gap: 5px;
-    min-width: 65px;
     padding: 3px 7px;
+    min-width: 65px;
     border-radius: 8px;
   }
   .rescue span {
@@ -647,21 +978,18 @@ dialog p {
     font-size: 7px;
   }
   #game-container {
-    width: min(100%, calc(100dvh - 256px));
-    margin: 0 auto;
+    width: min(100%, calc(100dvh - 238px));
     border-width: 2px;
     border-radius: 13px;
   }
   .bridge-key {
     height: 16px;
-    margin: 0;
+    margin: 3px 0 5px;
     font-size: 9px;
+    line-height: 1;
   }
   .bridge-key span {
     font-size: 12px;
-  }
-  .animal-controls {
-    gap: 5px;
   }
   .animal-controls button {
     height: 44px;
@@ -669,174 +997,22 @@ dialog p {
     font-size: 11px;
   }
   .feedback {
-    height: 34px;
-    min-height: 34px;
-    margin: 0;
+    height: 36px;
+    min-height: 36px;
     font-size: 12px;
     line-height: 1.3;
-  }
-  .actions {
-    gap: 6px;
+    margin: 3px 0;
   }
   .actions button {
     height: 44px;
     min-height: 44px;
-    padding: 7px 4px;
     font-size: 12px;
   }
   footer {
-    height: 28px;
-    margin: 0;
-    font-size: 9px;
-  }
-  footer button {
-    min-height: 28px;
-    font-size: 9px;
+    display: none;
   }
   .reunion-illustration {
     height: 180px;
-  }
-}
-@media (min-width: 650px) and (max-height: 650px) {
-  #app {
-    position: relative;
-    width: min(100%, 980px);
-    max-width: 980px;
-    height: 100dvh;
-    min-height: 512px;
-    padding: 12px 16px;
-    display: grid;
-    grid-template-columns: minmax(280px, 1fr) 260px;
-    grid-template-rows: 32px 52px 28px minmax(94px, 1fr) 58px 46px 26px;
-    gap: 6px 20px;
-  }
-  header {
-    grid-column: 1/-1;
-    grid-row: 1;
-    height: 32px;
-    margin: 0;
-  }
-  h1 {
-    font-size: 25px;
-  }
-  .brand-moon {
-    font-size: 30px;
-  }
-  .daily-line {
-    display: none;
-  }
-  .puzzle-heading {
-    grid-column: 2;
-    grid-row: 2;
-    height: auto;
-    margin: 0;
-  }
-  .puzzle-heading h2 {
-    font-size: 23px;
-  }
-  .puzzle-heading p {
-    display: block;
-    font-size: 12px;
-  }
-  .rescue {
-    min-width: 54px;
-    padding: 5px;
-    display: block;
-  }
-  .rescue span {
-    font-size: 16px;
-  }
-  .rescue small {
-    font-size: 7px;
-  }
-  #game-container {
-    position: absolute;
-    grid-column: auto;
-    grid-row: auto;
-    top: 58px;
-    left: calc((100% - 300px - min(100% - 320px, 100dvh - 78px)) / 2);
-    width: min(calc(100% - 320px), calc(100dvh - 78px));
-    height: auto;
-    margin: 0;
-    border-width: 3px;
-  }
-  .bridge-key {
-    grid-column: 2;
-    grid-row: 3;
-    height: auto;
-    align-self: center;
-    font-size: 10px;
-    line-height: 1.3;
-    text-align: left;
-  }
-  .animal-controls {
-    grid-column: 2;
-    grid-row: 4;
-    grid-template-columns: repeat(2, 1fr);
-    align-self: center;
-    gap: 7px;
-  }
-  .animal-controls button {
-    font-size: 13px;
-    min-height: 44px;
-  }
-  .feedback {
-    grid-column: 2;
-    grid-row: 5;
-    font-size: 13px;
-    height: auto;
-    min-height: 0;
-    margin: 0;
-  }
-  .actions {
-    grid-column: 2;
-    grid-row: 6;
-    gap: 6px;
-  }
-  .actions button {
-    font-size: 12px;
-    height: 44px;
-    min-height: 44px;
-  }
-  footer {
-    grid-column: 2;
-    grid-row: 7;
-    height: 26px;
-    margin: 0;
-    font-size: 9px;
-  }
-  footer button {
-    font-size: 9px;
-    min-height: 26px;
-  }
-  .result {
-    grid-column: 1/-1;
-    grid-row: 8;
-  }
-  #preview-picker {
-    grid-column: 1/-1;
-    grid-row: 9;
-  }
-  #empty-state {
-    grid-column: 1/-1;
-    grid-row: 2/8;
-  }
-  #app.solved {
-    display: block;
-    height: auto;
-    min-height: 100dvh;
-    max-width: 650px;
-  }
-  #app.solved .result {
-    max-width: 600px;
-    margin: 14px auto 0;
-  }
-  .solved .reunion-illustration {
-    height: 280px;
-  }
-  .solved .actions {
-    max-width: 600px;
-    margin: 8px auto 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -845,12 +1021,587 @@ dialog p {
     transition: none !important;
   }
 }
-
-canvas {
-  margin: 0 !important;
+/* Strong, consistent paper/forest contrast; meaning is also carried by symbols and labels. */
+:root {
+  --ink: #143d2a;
+  --muted: #57492f;
+  --line: #a78649;
+  --coral: #962817;
 }
-@media (min-width: 650px) and (max-height: 650px) {
-  #preview-picker {
-    margin-top: calc(100dvh - 412px);
+body {
+  color: var(--ink);
+}
+.feedback {
+  color: #254b32;
+}
+.feedback.warning {
+  color: #962817;
+}
+.bridge-key {
+  color: #51452d;
+}
+.daily-line,
+#mode-label,
+footer,
+footer button {
+  color: #5b4a2d;
+}
+.control-column .puzzle-heading {
+  align-items: center;
+}
+.rescue {
+  background: #f9edc7;
+  color: #183f2b;
+  border-color: #967a3f;
+}
+#tour-panel {
+  padding: 14px;
+  border: 2px solid #5c7847;
+  border-radius: 13px;
+  background: #f6efcf;
+  box-shadow: inset 0 1px #fffce9;
+}
+#tour-panel h3 {
+  font-size: 21px;
+  line-height: 1.15;
+  margin: 4px 0 7px;
+  color: #193f29;
+}
+#tour-copy {
+  font:
+    13px/1.5 system-ui,
+    sans-serif;
+  color: #354b2b;
+  margin: 6px 0 12px;
+}
+#tour-step {
+  margin: 0;
+  color: #62512c !important;
+}
+#tour-action {
+  width: 100%;
+  font-size: 14px;
+  min-height: 44px;
+}
+.tour-exit {
+  display: block;
+  margin: 6px auto 0;
+  padding: 5px 8px;
+  min-height: 30px;
+  border: 0;
+  box-shadow: none;
+  background: none;
+  color: #5c4c32;
+  font:
+    11px system-ui,
+    sans-serif;
+}
+.touring .animal-controls,
+.touring .feedback,
+.touring footer {
+  display: none !important;
+}
+.touring #restart {
+  display: none;
+}
+.touring .actions {
+  display: flex;
+}
+.touring .actions button {
+  flex: 1;
+}
+.touring .control-column {
+  gap: 10px;
+}
+.touring #tour-panel {
+  order: 3;
+}
+.touring .actions {
+  order: 4;
+}
+.guide-animals {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin: 14px 0;
+}
+.guide-animal {
+  display: block;
+  width: 66px;
+  height: 66px;
+  background-image: url('/art/animals.webp');
+  background-size: 200% 200%;
+  background-repeat: no-repeat;
+}
+.guide-animal.turtle {
+  background-position: 0 0;
+}
+.guide-animal.rabbit {
+  background-position: 100% 0;
+}
+.guide-animal.fox {
+  background-position: 0 100%;
+}
+.guide-animal.badger {
+  background-position: 100% 100%;
+}
+.guide-rules {
+  padding-left: 22px;
+  margin: 12px 0;
+  font:
+    14px/1.55 system-ui,
+    sans-serif;
+}
+.guide-rules li {
+  padding-left: 3px;
+  margin: 10px 0;
+}
+.guide-rules b {
+  color: #183e2a;
+}
+.guide-note {
+  font-style: italic;
+  font-size: 13px !important;
+}
+#welcome-dialog {
+  max-width: 430px;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+}
+#welcome-dialog h2 {
+  font-size: 29px;
+  line-height: 1.13;
+}
+#welcome-dialog > button {
+  display: block;
+  width: 100%;
+  margin-top: 9px;
+  min-height: 44px;
+}
+#welcome-dialog .eyebrow {
+  margin-top: 0;
+}
+@media (max-width: 559px) {
+  #tour-panel {
+    margin: 6px 0;
+    padding: 10px;
+    width: 100%;
+  }
+  #tour-copy {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  #tour-panel h3 {
+    font-size: 19px;
+  }
+  .touring #game-container {
+    width: min(100%, calc(100dvh - 270px));
+  }
+  .touring .bridge-key {
+    display: none;
+  }
+}
+.touring .actions {
+  display: none !important;
+}
+@media (max-width: 559px) and (max-height: 620px) {
+  .touring #game-container {
+    width: min(100%, calc(100dvh - 300px));
+  }
+  #tour-panel {
+    padding: 9px;
+  }
+  #tour-copy {
+    line-height: 1.35;
+    font-size: 12px;
+  }
+  #tour-title {
+    font-size: 18px;
+  }
+  #tour-step {
+    font-size: 8px !important;
+  }
+  .tour-exit {
+    min-height: 25px;
+    padding: 2px 7px;
+  }
+}
+@media (min-width: 560px) {
+  .play-layout {
+    grid-template-columns: minmax(0, 1fr) clamp(210px, 28vw, 280px);
+    gap: clamp(14px, 2vw, 24px);
+  }
+  #game-container {
+    width: min(100%, calc(100dvh - 150px), 720px);
+  }
+}
+@media (min-width: 560px) and (max-height: 620px) {
+  .play-layout {
+    grid-template-columns: minmax(0, 1fr) 236px;
+    gap: 16px;
+  }
+  #game-container {
+    width: min(100%, calc(100dvh - 92px), 720px);
+  }
+}
+@media (max-width: 559px) {
+  #app {
+    padding: 12px 12px 14px;
+  }
+  header {
+    min-height: 36px;
+    margin-bottom: 10px;
+  }
+  .daily-line {
+    display: none;
+  }
+  .puzzle-heading {
+    min-height: 32px;
+    margin-bottom: 8px;
+  }
+  .puzzle-heading p {
+    display: none;
+  }
+  .rescue {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 7px;
+    min-width: 65px;
+    border-radius: 9px;
+  }
+  .rescue span {
+    font-size: 15px;
+  }
+  .rescue small {
+    font-size: 7px;
+  }
+  .feedback {
+    min-height: 36px;
+    margin: 6px 0;
+  }
+  footer {
+    font-size: 9px;
+    margin-top: 5px;
+  }
+  footer button {
+    font-size: 9px;
+    min-height: 26px;
+  }
+}
+@media (max-width: 559px) and (max-height: 620px) {
+  #app {
+    padding: 8px 10px 12px;
+  }
+  header {
+    margin-bottom: 2px;
+  }
+  .puzzle-heading {
+    margin-bottom: 4px;
+    min-height: 30px;
+  }
+  .feedback {
+    margin: 3px 0;
+  }
+  .touring #game-container {
+    width: min(100%, calc(100dvh - 300px));
+  }
+}
+.touring #preview-picker {
+  display: none !important;
+}
+/* Results keep sharing and comments above optional community detail. */
+.result {
+  padding: 14px;
+  overflow: visible;
+}
+.result-top {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 14px;
+  align-items: center;
+  text-align: left;
+}
+.reunion-illustration {
+  width: 100%;
+  height: 150px;
+  aspect-ratio: auto;
+  object-fit: cover;
+  object-position: center;
+  margin: 0;
+  border: 1px solid #b6965a;
+  border-radius: 11px;
+}
+.result-summary .eyebrow {
+  font-size: 8px !important;
+  letter-spacing: 1.1px;
+  margin: 0 0 5px;
+}
+.result h2 {
+  font-size: 29px;
+  line-height: 1.1;
+  margin: 0 0 8px;
+}
+.result-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+.result-card p {
+  margin: 3px 0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.card-facts {
+  min-width: 0;
+}
+#card-portrait {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  margin: 0;
+}
+#card-day {
+  font-size: 9px;
+  line-height: 1.5;
+}
+.result fieldset {
+  margin: 12px 0 10px;
+}
+.result legend {
+  font:
+    11px system-ui,
+    sans-serif;
+  margin-bottom: 6px;
+}
+#favorites button {
+  font-size: 12px;
+  min-height: 40px;
+}
+.result-actions {
+  margin-top: 8px;
+}
+.result-actions button {
+  min-height: 44px;
+  font-size: 14px;
+}
+.result #save-status {
+  min-height: 0;
+  font:
+    11px/1.4 system-ui,
+    sans-serif;
+  margin: 12px 0 5px;
+}
+.result #favorite-status,
+.result #copy-status {
+  min-height: 0;
+  font:
+    11px/1.4 system-ui,
+    sans-serif;
+  margin: 5px 0;
+}
+.result #favorite-status:empty,
+.result #copy-status:empty {
+  display: none;
+}
+#community-details {
+  margin-top: 12px;
+  border-top: 1px solid #c1a76e;
+  padding-top: 10px;
+  text-align: left;
+}
+#community-details summary {
+  font:
+    12px/1.5 system-ui,
+    sans-serif;
+  color: #315333;
+  cursor: pointer;
+  min-height: 28px;
+}
+#community {
+  margin: 5px 0 0;
+  padding: 6px 0;
+  border: 0;
+}
+#community h3 {
+  display: none;
+}
+.discussion {
+  font-size: 15px !important;
+  line-height: 1.3 !important;
+  margin: 7px 0 0 !important;
+}
+.solved .result {
+  margin-top: 10px;
+}
+.solved .actions {
+  margin-top: 4px;
+}
+.solved .actions button {
+  min-height: 40px;
+}
+@media (max-width: 399px) {
+  .result-top {
+    display: block;
+  }
+  .reunion-illustration {
+    display: none;
+  }
+  .result-summary .eyebrow {
+    font-size: 8px !important;
+  }
+  .result h2 {
+    font-size: 27px;
+  }
+  .result-card {
+    justify-content: center;
+    gap: 12px;
+  }
+  .result-summary {
+    text-align: center;
+  }
+  #card-portrait {
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+  }
+  .card-facts {
+    text-align: left;
+  }
+}
+@media (max-height: 620px) {
+  .result {
+    padding: 11px;
+  }
+  .result-top {
+    display: block;
+  }
+  .reunion-illustration {
+    display: none;
+  }
+  .result-summary {
+    text-align: center;
+  }
+  .result-summary .eyebrow {
+    display: none;
+  }
+  .result h2 {
+    font-size: 26px;
+    line-height: 1.1;
+    margin: 0 0 7px;
+  }
+  .result-card {
+    justify-content: center;
+  }
+  .card-facts {
+    text-align: left;
+  }
+  #card-portrait {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+  }
+  .result fieldset {
+    margin: 8px 0;
+  }
+  .result legend {
+    font-size: 10px;
+    margin-bottom: 5px;
+  }
+  #favorites button {
+    min-height: 36px;
+    font-size: 11px;
+    padding: 5px 2px;
+  }
+  .result-actions {
+    margin-top: 7px;
+  }
+  .result #save-status {
+    margin: 9px 0 4px;
+    font-size: 10px;
+  }
+  #community-details {
+    margin-top: 7px;
+    padding-top: 6px;
+  }
+  #community-details summary {
+    font-size: 11px;
+    min-height: 25px;
+  }
+  .discussion {
+    font-size: 14px !important;
+  }
+  .solved .result {
+    margin-top: 8px;
+  }
+}
+@media (max-height: 620px) {
+  #welcome-dialog {
+    padding: 16px;
+    max-height: calc(100dvh - 16px);
+  }
+  #welcome-dialog h2 {
+    font-size: 24px;
+  }
+  #welcome-dialog .guide-animals {
+    margin: 9px 0;
+  }
+  #welcome-dialog .guide-animal {
+    width: 48px;
+    height: 48px;
+  }
+  #welcome-dialog .guide-rules {
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 8px 0;
+    padding-left: 18px;
+  }
+  #welcome-dialog .guide-rules li {
+    margin: 7px 0;
+  }
+  #welcome-dialog .guide-note {
+    font-size: 11px !important;
+    line-height: 1.4;
+    margin: 9px 0;
+  }
+  #welcome-dialog > button {
+    min-height: 40px;
+    margin-top: 7px;
+    font-size: 13px;
+  }
+}
+h1 {
+  line-height: 1.1;
+  white-space: nowrap;
+}
+@media (max-width: 360px) {
+  h1 {
+    font-size: 19px;
+  }
+  .brand {
+    gap: 5px;
+  }
+  .brand-moon {
+    font-size: 23px;
+  }
+  .brand p {
+    font-size: 6.5px;
+    letter-spacing: 0.8px;
+  }
+  .header-actions {
+    gap: 5px;
+  }
+  .expand-button {
+    font-size: 10px;
+    padding: 6px 7px;
+  }
+  .icon-button {
+    width: 28px;
+    min-height: 28px;
   }
 }

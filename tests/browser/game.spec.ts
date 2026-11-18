@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test';
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('loo-guide-seen:v1', 'yes')
+  );
+});
 async function open(page: import('@playwright/test').Page) {
   await page.goto('/game.html');
   await expect(page.getByText('LOCAL PREVIEW', { exact: true })).toBeVisible();
@@ -106,6 +111,9 @@ test('touch on Phaser pieces previews and commits; rapid taps cannot duplicate a
     hasTouch: true,
     isMobile: true,
   });
+  await context.addInitScript(() =>
+    localStorage.setItem('loo-guide-seen:v1', 'yes')
+  );
   const page = await context.newPage();
   await open(page);
   const canvas = await page.locator('canvas').boundingBox();
@@ -311,6 +319,9 @@ test('production-shaped response hides the preview picker, restores a saved post
   await expect(page.locator('#result')).toBeVisible();
   // This uses a production-shaped server response, not a claim of in-Reddit execution.
   await expect(page.locator('#preview-picker')).toBeHidden();
+  await page.locator('#community-details').evaluate((el) => {
+    el.setAttribute('open', '');
+  });
   await expect(page.locator('#community')).toContainText('aren’t enough');
   await expect(page.locator('#card-animal')).toContainText('Badger');
   await page.locator('#comments').click();
@@ -410,6 +421,9 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
     'validated and saved'
   );
   await expect(page.locator('#card-undos')).toHaveText('1 personal undo');
+  await page.locator('#community-details').evaluate((el) => {
+    el.setAttribute('open', '');
+  });
   await expect(page.locator('#community')).toContainText('aren’t enough');
   expect(completedJourneys).toBe(1);
   expect(events.filter((e) => e === 'start')).toHaveLength(1);
@@ -453,4 +467,228 @@ test('storybook desktop board is large, fully visible, and does not overlap the 
   );
   expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(512);
   await page.screenshot({ path: 'artifacts/storybook-desktop.png' });
+});
+test('first visit teaches the rules, guides a real practice, and never changes daily saves', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 800, height: 720 },
+    reducedMotion: 'reduce',
+  });
+  const page = await context.newPage();
+  let saves = 0;
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname === '/api/complete') saves++;
+  });
+  await page.goto('http://127.0.0.1:5173/game.html');
+  await expect(page.locator('#welcome-dialog')).toBeVisible();
+  await page.screenshot({ path: 'artifacts/guide-welcome.png' });
+  await page.locator('#welcome-practice').click();
+  await expect(page.locator('#tour-title')).toHaveText(
+    'Look before you leave.'
+  );
+  await page.locator('#tour-action').click();
+  await expect(page.locator('#tour-title')).toHaveText(
+    'A clear path. A consequence.'
+  );
+  await page.locator('#tour-action').click();
+  await expect(page.locator('#tour-title')).toHaveText(
+    'Rabbit still needs that bridge.'
+  );
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+  await page.screenshot({ path: 'artifacts/guide-stranded-rabbit.png' });
+  await page.locator('#tour-action').click();
+  await expect(page.locator('#tour-title')).toHaveText('That’s the crossing.');
+  await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
+  await page.locator('#tour-action').click();
+  await expect(page.locator('#tour-panel')).toBeHidden();
+  expect(saves).toBe(0);
+  const data = await (
+    await page.request.get('http://127.0.0.1:5173/api/init')
+  ).json();
+  expect(data.completion).toBeNull();
+  await send(page, 'fox');
+  await page.reload();
+  await expect(page.locator('#welcome-dialog')).toBeHidden();
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+  await page.locator('#help').click();
+  await page.locator('#help-practice').click();
+  await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
+  await page.locator('#exit-tour').click();
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+  expect(saves).toBe(0);
+  await context.close();
+});
+test('inline and expanded layouts use available space without overlaps at common Reddit and laptop sizes', async ({
+  page,
+}) => {
+  for (const [width, height, minBoard] of [
+    [288, 512, 240],
+    [390, 512, 270],
+    [560, 512, 260],
+    [600, 512, 300],
+    [640, 512, 320],
+    [900, 512, 370],
+    [1024, 720, 500],
+    [1366, 768, 580],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await open(page);
+    await expect(page.locator('[data-animal=turtle]')).toBeEnabled();
+    const board = await page.locator('canvas').boundingBox(),
+      controls = await page.locator('.control-column').boundingBox(),
+      sendBox = await page.locator('#send').boundingBox();
+    expect(board?.width).toBeGreaterThanOrEqual(minBoard);
+    expect(board?.y).toBeGreaterThanOrEqual(0);
+    expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(height);
+    expect((sendBox?.y ?? 0) + (sendBox?.height ?? 0)).toBeLessThanOrEqual(
+      height
+    );
+    if (width >= 560)
+      expect((board?.x ?? 0) + (board?.width ?? 0)).toBeLessThanOrEqual(
+        controls?.x ?? 0
+      );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth
+      )
+    ).toBe(true);
+    await page.screenshot({ path: `artifacts/layout-${width}x${height}.png` });
+  }
+});
+test('Play larger emits the registered Reddit expanded-view effect and keeps a partial rescue', async ({
+  page,
+}) => {
+  const edition = {
+    id: 'loo-2026-11-18',
+    number: 1,
+    date: '2026-11-18',
+    puzzleId: 'moonroot-v1',
+    boardVersion: 1,
+  };
+  await page.addInitScript(() => {
+    Object.defineProperty(globalThis, 'devvit', {
+      value: {
+        entrypoints: { game: 'http://127.0.0.1:5175/game.html' },
+        webViewMode: 1,
+      },
+      configurable: true,
+    });
+    window.addEventListener('message', (event) => {
+      if (event.data?.immersiveMode)
+        document.documentElement.dataset.expand = JSON.stringify(
+          event.data.immersiveMode
+        );
+    });
+  });
+  await page.route('**/api/init*', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'ready',
+        mode: 'reddit',
+        edition,
+        completion: null,
+        community: null,
+        commentsUrl: 'https://www.reddit.com/comments/judgepost/',
+      }),
+    })
+  );
+  await page.route('**/api/telemetry/**', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: '{"error":"Local test only"}',
+    })
+  );
+  await page.goto('http://127.0.0.1:5175/game.html');
+  await expect(page.locator('[data-animal=fox]')).toBeEnabled();
+  await send(page, 'fox');
+  await page.locator('#expand').click();
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-expand',
+    /game.html/
+  );
+  await page.reload();
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+  await expect(page.locator('#undo')).toBeEnabled();
+  await page.locator('#undo').click();
+  await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
+});
+test('the compact saved result keeps copy and comments inside one short frame', async ({
+  page,
+}) => {
+  const edition = {
+    id: 'loo-2026-11-18',
+    number: 1,
+    date: '2026-11-18',
+    puzzleId: 'moonroot-v1',
+    boardVersion: 1,
+  };
+  const completion = {
+    editionId: edition.id,
+    puzzleId: edition.puzzleId,
+    boardVersion: 1,
+    sequence: ['fox', 'rabbit', 'turtle', 'badger'],
+    opening: 'fox',
+    personalUndos: 1,
+    favorite: 'rabbit',
+    completedAt: '2026-11-18T10:00:00Z',
+  };
+  await page.route('**/api/init*', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'ready',
+        mode: 'reddit',
+        edition,
+        completion,
+        community: { total: 1, openings: { fox: 1 } },
+        commentsUrl: 'https://www.reddit.com/comments/judgepost/',
+      }),
+    })
+  );
+  await page.route('**/api/telemetry/**', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: '{"error":"Local test only"}',
+    })
+  );
+  for (const width of [288, 390, 640, 900]) {
+    await page.setViewportSize({ width, height: 512 });
+    await page.goto('http://127.0.0.1:5175/game.html');
+    await expect(page.locator('#result')).toBeVisible();
+    for (const id of ['copy-result', 'comments']) {
+      const box = await page.locator(`#${id}`).boundingBox();
+      expect(box?.y).toBeGreaterThanOrEqual(0);
+      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(512);
+    }
+    await expect(page.locator('#community-details')).not.toHaveAttribute(
+      'open'
+    );
+    expect(
+      await page
+        .locator('#result')
+        .evaluate((el) => el.getBoundingClientRect().bottom)
+    ).toBeLessThanOrEqual(512);
+  }
+  await page.screenshot({ path: 'artifacts/compact-result-desktop.png' });
+});
+test('first-visit guide starts at the title and offers practice without a long scroll', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+      viewport: { width: 320, height: 512 },
+    }),
+    page = await context.newPage();
+  await page.goto('http://127.0.0.1:5173/game.html');
+  await expect(page.locator('#welcome-dialog')).toBeVisible();
+  const dialog = await page.locator('#welcome-dialog').boundingBox(),
+    title = await page.locator('#welcome-title').boundingBox(),
+    practice = await page.locator('#welcome-practice').boundingBox();
+  expect(title?.y).toBeGreaterThanOrEqual(dialog?.y ?? 0);
+  expect((practice?.y ?? 0) + (practice?.height ?? 0)).toBeLessThanOrEqual(512);
+  await page.screenshot({ path: 'artifacts/guide-compact-phone.png' });
+  await context.close();
 });

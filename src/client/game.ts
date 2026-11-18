@@ -1,3 +1,5 @@
+import { getWebViewMode, requestExpandedMode } from '@devvit/web/client';
+import { serializeDraft, restoreDraft } from './draft';
 import * as Phaser from 'phaser';
 import { MOONROOT, boardById } from '../shared/boards';
 import { DailyApi } from './daily-api';
@@ -40,24 +42,43 @@ const results = new Results(
 let selected: AnimalId | undefined;
 let reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let busy = true;
+type TourPhase = 'preview' | 'send' | 'undo' | 'finish';
+let tourActive = false;
+let tourPhase: TourPhase = 'preview';
+let dailyRun: Session | undefined;
+let dailyResultVisible = false;
 const scene = new Crossing(session, choose);
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: 420,
-  height: 420,
+  width: 840,
+  height: 840,
   backgroundColor: '#102f35',
   render: { antialias: true, roundPixels: false },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [scene],
   input: { activePointers: 2 },
   audio: { noAudio: true },
+  fps: { target: 30, limit: 30 },
 });
 function say(text: string, warning = false): void {
   feedback.textContent = text;
   feedback.classList.toggle('warning', warning);
 }
+function rememberRun(): void {
+  if (!edition || busy || tourActive || session.board.id !== edition.puzzleId)
+    return;
+  try {
+    localStorage.setItem(
+      `loo-run:${edition.id}`,
+      serializeDraft(edition, session)
+    );
+  } catch {
+    /* storage is optional */
+  }
+}
 function refresh(): void {
+  element('app', HTMLElement).classList.toggle('touring', tourActive);
   element('app', HTMLElement).classList.toggle(
     'solved',
     won(session.board, session.state) && !result.hidden
@@ -101,6 +122,9 @@ function refresh(): void {
   button('undo').disabled = busy || !session.history.length;
   button('restart').disabled = busy;
   button('motion').disabled = busy;
+  button('motion-dialog').disabled = busy;
+  button('expand').disabled = busy;
+  button('tour-action').disabled = busy;
   button('send').disabled =
     busy || !selected || !trace(session.board, session.state, selected).legal;
   button('send').textContent = busy
@@ -110,17 +134,28 @@ function refresh(): void {
       : 'Send home →';
   button('motion').setAttribute('aria-pressed', String(reduced));
   button('motion').textContent = reduced ? 'Motion reduced' : 'Reduce motion';
+  button('motion-dialog').setAttribute('aria-pressed', String(reduced));
+  button('motion-dialog').textContent = reduced
+    ? 'Motion reduced'
+    : 'Reduce motion';
+  rememberRun();
   element('personal-stats', HTMLSpanElement).textContent = session.undos
     ? `${session.undos} personal undo${session.undos === 1 ? '' : 's'} · no penalty`
     : 'No timer. Take your time.';
 }
 function choose(id: AnimalId): void {
+  if (
+    tourActive &&
+    (id !== 'turtle' || tourPhase === 'undo' || tourPhase === 'finish')
+  )
+    return;
   if (busy || isHome(session.state, id)) return;
   if (selected === id && trace(session.board, session.state, id).legal) {
     void send();
     return;
   }
   selected = id;
+  if (tourActive) tourPhase = 'send';
   scene.blocked = [];
   refresh();
   const route = trace(session.board, session.state, id);
@@ -131,6 +166,7 @@ function choose(id: AnimalId): void {
       : `${titleCase(id)} is blocked: ${route.obstacle?.reason ?? 'no route'}.`,
     !route.legal
   );
+  if (tourActive) renderTour();
   // The DOM is rebuilt after every state change; preserve keyboard focus on selection.
   element('animal-controls', HTMLDivElement)
     .querySelector<HTMLButtonElement>(`[data-animal="${id}"]`)
@@ -140,7 +176,7 @@ async function send(): Promise<void> {
   if (busy || !selected || !trace(session.board, session.state, selected).legal)
     return;
   const id = selected;
-  flow.commit();
+  if (!tourActive) flow.commit();
   busy = true;
   scene.busy = true;
   const previouslyClear = session.board.animals
@@ -150,7 +186,7 @@ async function send(): Promise<void> {
   say(`${titleCase(id)} is on the way home…`);
   await scene.animateHome(id, reduced);
   session.send(id);
-  flow.rescue(session.state.home.length);
+  if (!tourActive) flow.rescue(session.state.home.length);
   selected = undefined;
   scene.selected = undefined;
   const blocked = previouslyClear.filter(
@@ -165,6 +201,7 @@ async function send(): Promise<void> {
     reduced
   );
   scene.blocked = blocked;
+  if (tourActive) tourPhase = 'undo';
   busy = false;
   scene.busy = false;
   refresh();
@@ -177,6 +214,10 @@ async function send(): Promise<void> {
     say(
       `${titleCase(id)} is home.${closed.length ? ` The ${closed.map((b) => b.symbol).join(' ')} bridge folded.` : ' One step closer.'}`
     );
+  if (tourActive) {
+    renderTour();
+    return;
+  }
   if (won(session.board, session.state)) {
     scene.celebrate(reduced);
     say('Everyone home. The forest can rest.');
@@ -199,6 +240,14 @@ button('send').addEventListener('click', () => {
 });
 button('undo').addEventListener('click', () => {
   if (busy || !session.undo()) return;
+  if (tourActive) {
+    tourPhase = 'finish';
+    selected = undefined;
+    scene.blocked = [];
+    refresh();
+    renderTour();
+    return;
+  }
   epoch++;
   submission = undefined;
   selected = undefined;
@@ -208,7 +257,7 @@ button('undo').addEventListener('click', () => {
   say('One step back. Every bridge is exactly as it was.');
 });
 button('restart').addEventListener('click', () => {
-  if (busy) return;
+  if (busy || tourActive) return;
   flow.abandon();
   flow = new JourneyFlow(journeyClient(edition?.id ?? 'loading'), !localDemo);
   session.restart();
@@ -219,6 +268,11 @@ button('restart').addEventListener('click', () => {
   result.hidden = true;
   refresh();
   say('A fresh look. Everyone is back at the crossing.');
+});
+button('motion-dialog').addEventListener('click', () => {
+  if (busy) return;
+  reduced = !reduced;
+  refresh();
 });
 button('motion').addEventListener('click', () => {
   if (busy) return;
@@ -236,7 +290,7 @@ async function persistFavorite(): Promise<void> {
     await api.request('favorite', { favorite });
     if (current === epoch)
       element('favorite-status', HTMLParagraphElement).textContent =
-        'Card art saved. Your rescue order is unchanged.';
+        'Card art saved.';
   } catch (error) {
     if (current !== epoch) return;
     element('favorite-status', HTMLParagraphElement).textContent =
@@ -281,7 +335,7 @@ function playable(show: boolean): void {
   element('empty-state', HTMLElement).hidden = show;
 }
 async function load(previewId?: string): Promise<void> {
-  if (scene.busy) return;
+  if (scene.busy || tourActive) return;
   const current = ++epoch;
   flow.abandon();
   flow = new JourneyFlow(journeyClient(edition?.id ?? 'loading'), !localDemo);
@@ -311,7 +365,16 @@ async function load(previewId?: string): Promise<void> {
     edition = data.edition;
     commentsUrl = data.commentsUrl;
     flow = new JourneyFlow(journeyClient(edition.id), !localDemo);
-    session = new Session(boardById(edition.puzzleId, edition.boardVersion));
+    const board = boardById(edition.puzzleId, edition.boardVersion);
+    let draft: string | null = null;
+    try {
+      draft = localStorage.getItem(`loo-run:${edition.id}`);
+    } catch {
+      /* optional */
+    }
+    session = data.completion
+      ? new Session(board)
+      : (restoreDraft(edition, board, draft) ?? new Session(board));
     selected = undefined;
     scene.blocked = [];
     element('daily-label', HTMLSpanElement).textContent =
@@ -333,6 +396,19 @@ async function load(previewId?: string): Promise<void> {
     }
     busy = false;
     refresh();
+    if (!data.completion && won(session.board, session.state)) {
+      results.show(edition, session.undos, commentsUrl, null);
+      submission = {
+        editionId: edition.id,
+        puzzleId: edition.puzzleId,
+        boardVersion: edition.boardVersion,
+        sequence: [...session.state.home],
+        personalUndos: session.undos,
+        favorite: results.favorite,
+      };
+      refresh();
+      void saveResult();
+    }
     if (data.completion) {
       scene.celebrate(reduced);
       say('Your saved rescue. Everyone is still home.');
@@ -383,7 +459,244 @@ async function initialize(): Promise<void> {
     }
   }
   await load(api.previewId);
+  if (!busy) {
+    let resumed: string | null = null;
+    try {
+      resumed = localStorage.getItem('loo-tour-resume:v1');
+      localStorage.removeItem('loo-tour-resume:v1');
+    } catch {
+      /* optional */
+    }
+    if (
+      resumed === 'preview' ||
+      resumed === 'send' ||
+      resumed === 'undo' ||
+      resumed === 'finish'
+    ) {
+      startTour();
+      if (resumed === 'send') choose('turtle');
+      if (resumed === 'undo' || resumed === 'finish') {
+        session.send('turtle');
+        scene.blocked = ['rabbit'];
+        if (resumed === 'finish') {
+          session.undo();
+          scene.blocked = [];
+        }
+        tourPhase = resumed;
+        refresh();
+        renderTour();
+      }
+    } else maybeShowGuide();
+  }
 }
+const welcome = element('welcome-dialog', HTMLDialogElement);
+function markGuideSeen(): void {
+  try {
+    localStorage.setItem('loo-guide-seen:v1', 'yes');
+  } catch {
+    /* optional */
+  }
+}
+function startTour(): void {
+  if (busy || tourActive) return;
+  if (saving.has(epoch)) {
+    welcome.close();
+    help.close();
+    say('Your rescue is still saving. Try the practice once it finishes.');
+    return;
+  }
+  markGuideSeen();
+  welcome.close();
+  help.close();
+  rememberRun();
+  dailyRun = session;
+  dailyResultVisible = !result.hidden;
+  tourActive = true;
+  tourPhase = 'preview';
+  session = new Session(MOONROOT);
+  selected = undefined;
+  scene.blocked = [];
+  result.hidden = true;
+  refresh();
+  renderTour();
+}
+function renderTour(): void {
+  const panel = element('tour-panel', HTMLElement);
+  panel.hidden = !tourActive;
+  if (!tourActive) return;
+  const steps = {
+    preview: [
+      '1 / 4 · PRACTICE',
+      'Look before you leave.',
+      'Turtle has a clear exit. Tap Turtle to preview its path and the ☾ bridge it is holding open.',
+      'Show Turtle’s path',
+    ],
+    send: [
+      '2 / 4 · PRACTICE',
+      'A clear path. A consequence.',
+      'The ☾ symbol connects Turtle to Rabbit’s bridge. Send Turtle and watch what happens after it reaches home.',
+      'Send Turtle home',
+    ],
+    undo: [
+      '3 / 4 · PRACTICE',
+      'Rabbit still needs that bridge.',
+      'Turtle is safe, but the ☾ bridge folded. Rabbit’s highlighted route stops at the gap. Bring Turtle and its bridge back together.',
+      'Undo the move',
+    ],
+    finish: [
+      '4 / 4 · PRACTICE',
+      'That’s the crossing.',
+      'Undo restored everyone and the bridge. In the daily, look for who needs a friend to stay. You can preview freely and Undo any move.',
+      'Play my daily crossing',
+    ],
+  };
+  const step = steps[tourPhase];
+  element('tour-step', HTMLParagraphElement).textContent = step[0] ?? '';
+  element('tour-title', HTMLHeadingElement).textContent = step[1] ?? '';
+  element('tour-copy', HTMLParagraphElement).textContent = step[2] ?? '';
+  button('tour-action').textContent = step[3] ?? '';
+  button('tour-action').disabled = busy;
+}
+function finishTour(): void {
+  if (busy || !dailyRun) return;
+  tourActive = false;
+  let latest: Session | null = null;
+  if (!dailyResultVisible && edition) {
+    try {
+      latest = restoreDraft(
+        edition,
+        dailyRun.board,
+        localStorage.getItem(`loo-run:${edition.id}`)
+      );
+    } catch {
+      /* optional */
+    }
+  }
+  session = latest ?? dailyRun;
+  dailyRun = undefined;
+  selected = undefined;
+  scene.blocked = [];
+  result.hidden = !dailyResultVisible;
+  element('tour-panel', HTMLElement).hidden = true;
+  refresh();
+  if (won(session.board, session.state)) scene.celebrate(reduced);
+  say('Your daily crossing. Practice did not change your result.');
+}
+function beginPractice(event: MouseEvent): void {
+  startTour();
+  if (!localDemo && tourActive) {
+    try {
+      if (getWebViewMode() !== 'expanded') {
+        persistTour();
+        requestExpandedMode(event, 'game', {
+          title: 'Learn the crossing · guided practice',
+        });
+      }
+    } catch {
+      /* practice still works inline */
+    }
+  }
+}
+button('welcome-practice').addEventListener('click', beginPractice);
+button('welcome-skip').addEventListener('click', () => {
+  markGuideSeen();
+  welcome.close();
+});
+button('help-practice').addEventListener('click', beginPractice);
+button('exit-tour').addEventListener('click', finishTour);
+button('tour-action').addEventListener('click', () => {
+  if (busy) return;
+  if (tourPhase === 'preview') choose('turtle');
+  else if (tourPhase === 'send') void send();
+  else if (tourPhase === 'undo') button('undo').click();
+  else finishTour();
+});
+function maybeShowGuide(): void {
+  try {
+    if (localStorage.getItem('loo-guide-seen:v1') === 'yes') return;
+  } catch {
+    /* first visit */
+  }
+  welcome.showModal();
+  welcome.scrollTop = 0;
+  const title = element('welcome-title', HTMLHeadingElement);
+  title.tabIndex = -1;
+  title.focus({ preventScroll: true });
+}
+function persistTour(): void {
+  if (tourActive) {
+    try {
+      localStorage.setItem('loo-tour-resume:v1', tourPhase);
+    } catch {
+      /* optional */
+    }
+  }
+}
+function syncPresentation(): void {
+  let expanded = false;
+  if (!localDemo) {
+    try {
+      expanded = getWebViewMode() === 'expanded';
+    } catch {
+      /* local production test lacks host globals */
+    }
+  }
+  button('expand').hidden = expanded;
+  button('expand').textContent = localDemo
+    ? document.fullscreenElement
+      ? 'Exit full screen'
+      : 'Play larger'
+    : 'Play larger';
+}
+button('expand').addEventListener('click', (event) => {
+  rememberRun();
+  persistTour();
+  if (localDemo) {
+    const operation = document.fullscreenElement
+      ? document.exitFullscreen()
+      : document.documentElement.requestFullscreen();
+    void operation
+      .then(syncPresentation)
+      .catch(() =>
+        say(
+          'Full screen is unavailable here. You can enlarge the browser window.',
+          true
+        )
+      );
+  } else {
+    try {
+      requestExpandedMode(event, 'game', {
+        title: edition
+          ? `${session.board.title} · Last One Out`
+          : 'Last One Out',
+      });
+    } catch {
+      say('Use Reddit’s expand control to open a larger play view.', true);
+    }
+  }
+});
+window.addEventListener('focus', () => {
+  syncPresentation();
+  if (busy || tourActive || !edition || !result.hidden) return;
+  try {
+    const latest = restoreDraft(
+      edition,
+      session.board,
+      localStorage.getItem(`loo-run:${edition.id}`)
+    );
+    if (
+      latest &&
+      (JSON.stringify(latest.state.home) !==
+        JSON.stringify(session.state.home) ||
+        latest.undos !== session.undos)
+    )
+      void load(api.previewId);
+  } catch {
+    /* optional draft storage */
+  }
+});
+document.addEventListener('fullscreenchange', syncPresentation);
+syncPresentation();
 game.events.once('board-ready', () => {
   void initialize();
 });

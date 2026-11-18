@@ -45,3 +45,11 @@ Actual Journeys ingestion is also **unverified**. See `JOURNEYS.md` for the SDK/
 5. Change the favorite portrait, copy the result, and use Back to comments. Check that it returns to this exact post.
 6. Repeat the core flow on an actual phone in Reddit's iOS/Android app. Record the post URL, app/browser/device, build version, and any issue.
 7. Check Journeys receipt status/dashboard only after Reddit approves the map and app allowlisting. A denied playtest receipt is not a gameplay failure.
+
+## Guided and expanded-view update
+
+The next UX update replaces fixed board positioning with a fluid layout, adds the official Reddit expanded `game` entrypoint and a **Play larger** control, and preserves legal partial runs across view reloads. First visits offer a rules explanation and isolated guided practice (Turtle preview → departure → stranded Rabbit → Undo). Practice is not submitted, does not affect community counts, and restores the player's daily run on exit. Help can replay it.
+
+The result card is compact, with Copy and Comments above collapsed optional community detail. Tests check those controls and the entire saved result inside a 512px-high frame at widths 288, 390, 640, and 900. Layout coverage includes common inline widths and 1024×720 / 1366×768 larger views. The first-visit practice button is also checked in a 320×512 frame.
+
+The matching SDK's `requestExpandedMode` is exercised with a trusted browser click against a registered `game` entrypoint in local production-bundle tests. This verifies the effect payload and retained partial state, not the host's actual modal presentation. A fresh in-Reddit desktop/laptop review is still required after private installation. Public publishing remains out of scope.
