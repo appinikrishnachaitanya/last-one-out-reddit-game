@@ -1708,3 +1708,14 @@ h2,
     width: min(100%, 224px, max(204px, calc(100dvh - 286px)));
   }
 }
+
+#bridge-recap {
+  margin: 8px 0;
+  padding-inline-start: 20px;
+  font:
+    13px/1.45 system-ui,
+    sans-serif;
+}
+#bridge-recap li + li {
+  margin-top: 5px;
+}

@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BOARDS, LANTERN, MOONROOT, WILLOW } from '../src/shared/boards.ts';
+import {
+  BOARDS,
+  CONFLUENCE,
+  LAST_LIGHT,
+  HUSHWATER,
+  LANTERN,
+  MOONROOT,
+  WILLOW,
+} from '../src/shared/boards.ts';
 import { initialState, move, solve, trace } from '../src/shared/engine.ts';
 import {
   editionAt,
@@ -56,15 +64,15 @@ test('explicit UTC schedule has an empty date; old and legacy posts never rebind
   assert.equal(new Set(EDITIONS.map((e) => e.date)).size, EDITIONS.length);
   assert.equal(new Set(EDITIONS.map((e) => e.id)).size, EDITIONS.length);
 });
-test('the curated week has seven immutable, distinct boards and expected solver counts', () => {
-  assert.equal(EDITIONS.length, 7);
-  assert.equal(BOARDS.length, 7);
+test('the opening run has ten immutable, distinct boards and expected solver counts', () => {
+  assert.equal(EDITIONS.length, 10);
+  assert.equal(BOARDS.length, 10);
   assert.deepEqual(
     BOARDS.map((b) => solve(b).length),
-    [3, 4, 3, 1, 3, 1, 6]
+    [3, 4, 3, 1, 3, 1, 6, 2, 5, 3]
   );
   const layouts = BOARDS.map((b) => JSON.stringify([b.animals, b.bridges]));
-  assert.equal(new Set(layouts).size, 7);
+  assert.equal(new Set(layouts).size, 10);
   for (const edition of EDITIONS) {
     assert.ok(
       BOARDS.some(
@@ -76,5 +84,26 @@ test('the curated week has seven immutable, distinct boards and expected solver 
       edition.id
     );
   }
-  assert.equal(editionAt(new Date('2026-11-25T00:00:00Z')), undefined);
+  assert.equal(editionAt(new Date('2026-11-28T00:00:00Z')), undefined);
+});
+
+test('days 8–10 teach a shared bridge, a keeper crossing its own bridge, and a mid-rescue trap', () => {
+  const state = initialState();
+  const foxEarly = move(CONFLUENCE, state, 'fox');
+  assert.equal(trace(CONFLUENCE, foxEarly, 'rabbit').obstacle?.kind, 'bridge');
+  assert.equal(trace(CONFLUENCE, foxEarly, 'turtle').obstacle?.kind, 'bridge');
+  const turtleReady = move(
+    LAST_LIGHT,
+    move(LAST_LIGHT, state, 'rabbit'),
+    'fox'
+  );
+  assert.ok(
+    trace(LAST_LIGHT, turtleReady, 'turtle').path.some(
+      (p) => p.x === 3 && p.y === 3
+    )
+  );
+  const afterFox = move(HUSHWATER, state, 'fox');
+  assert.ok(solve(HUSHWATER, afterFox).length);
+  assert.ok(trace(HUSHWATER, afterFox, 'turtle').legal);
+  assert.equal(solve(HUSHWATER, move(HUSHWATER, afterFox, 'turtle')).length, 0);
 });

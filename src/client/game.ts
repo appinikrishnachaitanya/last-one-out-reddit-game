@@ -238,7 +238,13 @@ async function send(): Promise<void> {
     scene.celebrate(reduced);
     say('Everyone home. The forest can rest.');
     if (edition) {
-      results.show(edition, session.undos, commentsUrl, null);
+      results.show(
+        edition,
+        session.undos,
+        commentsUrl,
+        null,
+        session.state.home
+      );
       submission = {
         editionId: edition.id,
         puzzleId: edition.puzzleId,
@@ -434,14 +440,26 @@ async function load(previewId?: string): Promise<void> {
       for (const id of data.completion.sequence) session.send(id);
       session.undos = data.completion.personalUndos;
       submission = { ...data.completion };
-      results.show(edition, session.undos, commentsUrl, data.completion);
+      results.show(
+        edition,
+        session.undos,
+        commentsUrl,
+        data.completion,
+        session.state.home
+      );
       if (data.community)
         results.community(data.community, data.completion.opening);
     }
     busy = false;
     refresh();
     if (!data.completion && won(session.board, session.state)) {
-      results.show(edition, session.undos, commentsUrl, null);
+      results.show(
+        edition,
+        session.undos,
+        commentsUrl,
+        null,
+        session.state.home
+      );
       submission = {
         editionId: edition.id,
         puzzleId: edition.puzzleId,

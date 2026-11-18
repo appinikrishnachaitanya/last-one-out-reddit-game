@@ -21,7 +21,7 @@ npm ci
 npm run demo
 ```
 
-Open `http://localhost:5173/game.html`. The local-only picker offers all seven editions. Phaser renders the board and animations; HTML controls support keyboard play. Tap once to preview, again to send, or use Send home. Reduced motion respects the OS setting and can be toggled. All four animal choices, the board, Undo, and Send home fit a simulated 512px-high Reddit frame.
+Open `http://localhost:5173/game.html`. The local-only picker offers all ten editions. Phaser renders the board and animations; HTML controls support keyboard play. Tap once to preview, again to send, or use Send home. Reduced motion respects the OS setting and can be toggled. All four animal choices, the board, Undo, and Send home fit a simulated 512px-high Reddit frame.
 
 The preview uses the **same Hono API, canonical boards, validator, and completion service**, with an explicitly labeled mock identity and local storage adapter. Its cookie identifies a local mock player, and ignored `.local/demo-store.json` keeps results across reloads/server restarts. Community participation and Reddit telemetry are not simulated. Preview results are not Reddit completions. Use a new browser profile/context for a fresh mock player. The API runs on loopback port 5174, proxied by Vite on 5173.
 
@@ -49,7 +49,7 @@ Use **`npm run login`**, not `npm login`. Complete the printed Reddit OAuth URL,
 In that community's moderator menu:
 
 1. **Open today’s daily** creates or retrieves the UTC edition's post.
-2. **Choose playtest edition** opens any of the seven dated editions, including future ones for testing.
+2. **Choose playtest edition** opens any of the ten dated editions, including future ones for testing.
 3. **Recover edition post** registers an existing app post after an interrupted creation or to adopt a legacy Moonroot post. Enter its `t3_...` ID.
 
 Server checks enforce authenticated moderator post permissions and a **private** community. The one-post registry atomically reserves each edition. Concurrent attempts reuse its registered post or show a recoverable pending/recovery error. Ambiguous Reddit timeouts are never retried blindly: a durable reservation prevents a second submission. If a post exists, use Recover with its ID. If no post exists after a failed ambiguous submission, an administrator must audit the failed reservation before clearing it; do not delete reservations merely because a request timed out.
@@ -58,7 +58,7 @@ These commands do **not** publicly publish the app or submit it to Devpost. See 
 
 ## Daily bindings and saved results
 
-The server-only schedule is `src/server/core/schedule.ts`, with explicit UTC dates **2026-11-18 through 2026-11-24**, immutable edition IDs, puzzle IDs, and board versions. Outside these dates, today's action shows a clear no-edition message. Existing posts always resolve their stored binding; midnight never substitutes another board. Legacy Milestone 1 Moonroot bindings remain Day 1. There is no modulo rotation and no client-controlled production picker.
+The server-only schedule is `src/server/core/schedule.ts`, with explicit UTC dates **2026-11-18 through 2026-11-27**, immutable edition IDs, puzzle IDs, and board versions. Outside these dates, today's action shows a clear no-edition message. Existing posts always resolve their stored binding; midnight never substitutes another board. Legacy Milestone 1 Moonroot bindings remain Day 1. There is no modulo rotation and no client-controlled production picker.
 
 A signed-in player's final sequence is replayed on the server against the post's canonical version. Illegal, incomplete, malformed, mismatched-edition and wrong-version submissions are rejected. Identity comes exclusively from Devvit context. One atomic Redis `HSETNX` stores the first valid record, including its first move. Community aggregates are derived from those unique records, without a separate counter that could double-increment on retries. Reloading restores the recorded rescue, personal undo count, card art preference, and saved result without submitting again. Undo counts are **personal, unverified stats**.
 
@@ -72,7 +72,7 @@ npm run test:browser   # builds the production bundle, then runs real Chromium a
 npm run solver:report  # regenerates developer-only spoilers/report
 ```
 
-The browser suite checks the actual Phaser canvas, mouse/touch, rapid-tap protection, keyboard, reduced motion, all seven solves, save failure/retry, favorite art, reload, clipboard, compact layout, and the production bundle's comments navigation SDK effect. Production-bundle API responses in local browser tests are fixtures; they are not evidence of in-Reddit execution.
+The browser suite checks the actual Phaser canvas, mouse/touch, rapid-tap protection, keyboard, reduced motion, all ten solves, save failure/retry, favorite art, reload, clipboard, compact layout, and the production bundle's comments navigation SDK effect. Production-bundle API responses in local browser tests are fixtures; they are not evidence of in-Reddit execution.
 
 Browser tests use `/usr/bin/chromium` by default. Set `CHROMIUM_PATH`, or install Playwright Chromium and set `PLAYWRIGHT_BUNDLED_CHROMIUM=1`. Tests run the local preview on 5173/5174 and serve the production client on 5175. Screenshots are under ignored `artifacts/`. Widths 288, 320, 390, and 640 are checked at height 512, alongside narrow phone viewports.
 
@@ -88,6 +88,6 @@ Browser tests use `/usr/bin/chromium` by default. Set `CHROMIUM_PATH`, or instal
 
 ## Scope and provenance
 
-Implemented: seven editions, stable private posts, validated Redis completions, restored results, favorite art, spoiler-free copying/comments, real aggregates after completion, and isolated Journeys calls. Journeys ingestion requires Reddit approval and is not assumed from local tests. Streaks, leaderboards, editor, campaign, payments, public publishing, and submissions remain out of scope.
+Implemented: ten editions, stable private posts, validated Redis completions, restored results, favorite art, spoiler-free copying/comments, real aggregates after completion, and isolated Journeys calls. Journeys ingestion requires Reddit approval and is not assumed from local tests. Streaks, leaderboards, editor, campaign, payments, public publishing, and submissions remain out of scope.
 
 Starter: [reddit/devvit-template-phaser](https://github.com/reddit/devvit-template-phaser), commit `537cb84534dde85ae21b26912141cd525c20d86e`. Existing Git history and Moonroot board/version are preserved. The starter's license is `LICENSE`; the repository's original license is retained in `docs/ORIGINAL-LICENSE`.

@@ -772,3 +772,44 @@ for (const width of [288, 390, 640, 1024]) {
     await context.close();
   });
 }
+
+for (const puzzle of [
+  {
+    day: 25,
+    title: 'Foxglove Confluence',
+    order: ['badger', 'rabbit', 'turtle', 'fox'],
+    recap: 'Fox kept the ☾ bridge open for Rabbit and Turtle.',
+  },
+  {
+    day: 26,
+    title: 'Last Light',
+    order: ['rabbit', 'fox', 'turtle', 'badger'],
+    recap: 'Turtle kept the ☾ bridge open for Rabbit.',
+  },
+  {
+    day: 27,
+    title: 'Hushwater Turn',
+    order: ['fox', 'badger', 'rabbit', 'turtle'],
+    recap: 'Turtle kept the ☾ bridge open for Rabbit.',
+  },
+]) {
+  test(`solves ${puzzle.title} and explains the rescue on a narrow screen`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 512 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await open(page);
+    await page
+      .locator('#edition-picker')
+      .selectOption(`loo-2026-11-${puzzle.day}`);
+    await expect(page.locator('#board-title')).toHaveText(puzzle.title);
+    await expect(page.locator('#bridge-recap')).toBeHidden();
+    for (const animal of puzzle.order) await send(page, animal);
+    await expect(page.locator('#save-status')).toContainText(
+      'validated and saved'
+    );
+    await page.reload();
+    await page.getByText('Who stayed for whom?', { exact: true }).click();
+    await expect(page.locator('#bridge-recap')).toContainText(puzzle.recap);
+  });
+}

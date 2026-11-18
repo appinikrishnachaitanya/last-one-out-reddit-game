@@ -136,6 +136,54 @@ export const FIREFLY = crossing(
     { id: 'star', symbol: '✦', x: 5, y: 3, holder: 'fox' },
   ]
 );
+export const CONFLUENCE = crossing(
+  'confluence-v1',
+  'Foxglove Confluence',
+  'Two paths meet at one bridge.',
+  [
+    { id: 'turtle', x: 1, y: 3, direction: 'E' },
+    { id: 'rabbit', x: 3, y: 1, direction: 'S' },
+    { id: 'fox', x: 1, y: 5, direction: 'W' },
+    { id: 'badger', x: 5, y: 3, direction: 'N' },
+  ],
+  [
+    { id: 'moon', symbol: '☾', x: 3, y: 3, holder: 'fox' },
+    { id: 'leaf', symbol: '◆', x: 5, y: 2, holder: 'rabbit' },
+  ]
+);
+
+export const LAST_LIGHT = crossing(
+  'last-light-v1',
+  'Last Light',
+  'A keeper might need its own bridge.',
+  [
+    { id: 'turtle', x: 1, y: 3, direction: 'E' },
+    { id: 'rabbit', x: 3, y: 1, direction: 'S' },
+    { id: 'fox', x: 5, y: 3, direction: 'N' },
+    { id: 'badger', x: 1, y: 5, direction: 'W' },
+  ],
+  [
+    { id: 'moon', symbol: '☾', x: 3, y: 3, holder: 'turtle' },
+    { id: 'star', symbol: '✦', x: 3, y: 4, holder: 'badger' },
+  ]
+);
+
+export const HUSHWATER = crossing(
+  'hushwater-v1',
+  'Hushwater Turn',
+  'The first move can change what looks safe.',
+  [
+    { id: 'turtle', x: 1, y: 3, direction: 'E' },
+    { id: 'rabbit', x: 3, y: 1, direction: 'S' },
+    { id: 'fox', x: 4, y: 3, direction: 'N' },
+    { id: 'badger', x: 4, y: 5, direction: 'E' },
+  ],
+  [
+    { id: 'moon', symbol: '☾', x: 3, y: 4, holder: 'turtle' },
+    { id: 'star', symbol: '✦', x: 5, y: 5, holder: 'rabbit' },
+  ]
+);
+
 export const BOARDS: readonly Board[] = [
   MOONROOT,
   WILLOW,
@@ -144,6 +192,9 @@ export const BOARDS: readonly Board[] = [
   TWINBANK,
   ALDER,
   FIREFLY,
+  CONFLUENCE,
+  LAST_LIGHT,
+  HUSHWATER,
 ];
 export function boardById(id: string, version: number): Board {
   const board = BOARDS.find((b) => b.id === id && b.version === version);

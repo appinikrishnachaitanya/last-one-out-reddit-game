@@ -1,3 +1,5 @@
+import { boardById } from '../shared/boards';
+import { initialState, samePoint, trace } from '../shared/engine';
 import { isObject } from '../shared/daily';
 import { navigateTo, showShareSheet } from '@devvit/web/client';
 import type { Edition, Completion, Community } from '../shared/daily';
@@ -61,7 +63,8 @@ export class Results {
     edition: Edition,
     undos: number,
     url: string | null,
-    saved: Completion | null
+    saved: Completion | null,
+    sequence: readonly AnimalId[]
   ): void {
     this.edition = edition;
     this.undos = saved?.personalUndos ?? undos;
@@ -80,7 +83,8 @@ export class Results {
     el('favorite-status').textContent = '';
     el('comments').hidden = !url;
     el('community').hidden = true;
-    el('community-details').hidden = true;
+    el('community-details').removeAttribute('open');
+    this.renderRecap(saved?.sequence ?? sequence);
     el('retry-save').hidden = true;
     this.status(
       saved
@@ -126,7 +130,40 @@ export class Results {
         ? 'Rescue validated and saved.'
         : 'Your first saved rescue is restored.'
     );
+    this.renderRecap(record.sequence);
     this.community(stats, record.opening);
+  }
+  renderRecap(sequence: readonly AnimalId[]): void {
+    if (!this.edition) return;
+    const board = boardById(this.edition.puzzleId, this.edition.boardVersion);
+    const crossings = new Map<string, AnimalId[]>();
+    let state = initialState();
+    for (const id of sequence) {
+      const route = trace(board, state, id);
+      if (!route.legal) return;
+      for (const bridge of board.bridges) {
+        if (
+          bridge.holder === id ||
+          !route.path.some((point) => samePoint(point, bridge))
+        )
+          continue;
+        const animals = crossings.get(bridge.id) ?? [];
+        animals.push(id);
+        crossings.set(bridge.id, animals);
+      }
+      state = { home: [...state.home, id] };
+    }
+    const list = el('bridge-recap');
+    list.replaceChildren();
+    for (const bridge of board.bridges) {
+      const guests = crossings.get(bridge.id);
+      if (!guests?.length) continue;
+      const item = document.createElement('li');
+      const names = new Intl.ListFormat('en').format(guests.map(titleCase));
+      item.textContent = `${titleCase(bridge.holder)} kept the ${bridge.symbol} bridge open for ${names}.`;
+      list.append(item);
+    }
+    el('community-details').hidden = list.childElementCount === 0;
   }
   community(stats: Community, ownOpening: AnimalId): void {
     const box = el('community');

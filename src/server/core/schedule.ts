@@ -51,6 +51,27 @@ export const EDITIONS: readonly Edition[] = [
     puzzleId: 'firefly-v1',
     boardVersion: 1,
   },
+  {
+    id: 'loo-2026-11-25',
+    number: 8,
+    date: '2026-11-25',
+    puzzleId: 'confluence-v1',
+    boardVersion: 1,
+  },
+  {
+    id: 'loo-2026-11-26',
+    number: 9,
+    date: '2026-11-26',
+    puzzleId: 'last-light-v1',
+    boardVersion: 1,
+  },
+  {
+    id: 'loo-2026-11-27',
+    number: 10,
+    date: '2026-11-27',
+    puzzleId: 'hushwater-v1',
+    boardVersion: 1,
+  },
 ];
 export const editionAt = (date: Date): Edition | undefined =>
   EDITIONS.find((e) => e.date === date.toISOString().slice(0, 10));
