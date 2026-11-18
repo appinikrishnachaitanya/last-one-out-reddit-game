@@ -1689,3 +1689,16 @@ h2,
 #past-crossings a {
   color: #214d3b;
 }
+
+@media (max-height: 620px) {
+  #next-crossing {
+    margin-block: 4px;
+  }
+  .result .discussion {
+    display: none;
+  }
+  .result #card-undos,
+  .result #clean-badge {
+    margin-block: 2px;
+  }
+}
