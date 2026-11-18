@@ -20,9 +20,9 @@ export class Crossing extends Phaser.Scene {
   blocked: AnimalId[] = [];
   busy = false;
   ready = false;
-  folding = 1;
-  recentlyFolded: string[] = [];
+  bridgeDecks = new Map<string, Phaser.GameObjects.Graphics>();
   art: Phaser.GameObjects.Graphics;
+  routeArt: Phaser.GameObjects.Graphics;
   labels: Phaser.GameObjects.Text[] = [];
   reunionArt: Phaser.GameObjects.Image | undefined;
   tokens = new Map<AnimalId, Phaser.GameObjects.Container>();
@@ -47,6 +47,7 @@ export class Crossing extends Phaser.Scene {
         .setDisplaySize(420, 420)
         .setDepth(-2);
     this.art = this.add.graphics();
+    this.routeArt = this.add.graphics().setDepth(2);
     this.ready = true;
     this.refresh();
     this.game.events.emit('board-ready');
@@ -74,10 +75,14 @@ export class Crossing extends Phaser.Scene {
     for (const animal of this.session.board.animals) {
       if (isHome(this.session.state, animal.id)) continue;
       const p = pixel(animal);
-      const token = this.animal(animal.id, p.x, p.y);
+      const token = this.animal(animal.id, p.x, p.y).setDepth(3);
       token
-        .setSize(46, 46)
-        .setInteractive({ useHandCursor: true })
+        .setSize(48, 48)
+        .setInteractive({
+          hitArea: new Phaser.Geom.Rectangle(0, 0, 48, 48),
+          hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+          useHandCursor: true,
+        })
         .on('pointerup', () => {
           if (!this.busy) this.onSelect(animal.id);
         });
@@ -104,6 +109,9 @@ export class Crossing extends Phaser.Scene {
   drawBoard(): void {
     const g = this.art;
     g.clear();
+    this.routeArt.clear();
+    for (const deck of this.bridgeDecks.values()) deck.destroy();
+    this.bridgeDecks.clear();
     this.labels.forEach((l) => l.destroy());
     this.labels = [];
     if (!this.textures.exists('forest-art')) {
@@ -143,14 +151,10 @@ export class Crossing extends Phaser.Scene {
         b.id === 'star' ? 0xacc6e8 : b.id === 'leaf' ? 0xaad8a0 : 0xf3cd86;
       const bridgeText =
         b.id === 'star' ? '#234f69' : b.id === 'leaf' ? '#38582c' : '#75501d';
-      const scale = open
-        ? 1
-        : this.recentlyFolded.includes(b.id)
-          ? 1 - this.folding * 0.84
-          : 0.16;
       g.fillStyle(0x091d26);
       g.fillRoundedRect(p.x - 23, p.y - 23, 46, 46, 6);
-      g.fillStyle(
+      const deck = this.add.graphics().setPosition(p.x, p.y).setDepth(1);
+      deck.fillStyle(
         open
           ? b.id === 'star'
             ? 0x829aab
@@ -160,13 +164,9 @@ export class Crossing extends Phaser.Scene {
           : 0x806b59
       );
       for (let i = 0; i < 4; i++)
-        g.fillRoundedRect(
-          p.x - 20,
-          p.y - 20 * scale + i * 11 * scale,
-          40,
-          8 * scale,
-          2
-        );
+        deck.fillRoundedRect(-20, -20 + i * 11, 40, 8, 2);
+      deck.setScale(1, open ? 1 : 0.16);
+      this.bridgeDecks.set(b.id, deck);
       g.lineStyle(2, bridgeColor, open ? 0.85 : 0.25);
       g.lineBetween(p.x - 22, p.y - 22, p.x - 22, p.y + 22);
       g.lineBetween(p.x + 22, p.y - 22, p.x + 22, p.y + 22);
@@ -212,6 +212,7 @@ export class Crossing extends Phaser.Scene {
     }
     const routes = this.selected ? [this.selected] : this.blocked;
     for (const id of routes) {
+      const g = this.routeArt;
       const a = this.session.board.animals.find((a) => a.id === id);
       if (!a || isHome(this.session.state, id)) continue;
       const route = trace(this.session.board, this.session.state, id),
@@ -361,15 +362,15 @@ export class Crossing extends Phaser.Scene {
       token.setAlpha(0);
       return;
     }
-    for (const p of route.path) {
-      const q = pixel(p);
+    const last = route.path.at(-1);
+    if (last) {
+      const destination = pixel(last);
       await new Promise<void>((resolve) => {
         this.tweens.add({
           targets: token,
-          x: q.x,
-          y: q.y,
-          duration: 95,
-          ease: 'Sine.easeInOut',
+          ...destination,
+          duration: 75 + route.path.length * 48,
+          ease: 'Linear',
           onComplete: () => resolve(),
         });
       });
@@ -382,30 +383,27 @@ export class Crossing extends Phaser.Scene {
         y: token.y + (v[1] ?? 0) * 22,
         alpha: 0,
         scale: 0.6,
-        duration: 180,
+        duration: 105,
         onComplete: () => resolve(),
       });
     });
   }
   async fold(ids: string[], reduced: boolean): Promise<void> {
-    this.recentlyFolded = ids;
-    this.folding = 0;
-    if (reduced || !ids.length) {
-      this.folding = 1;
-      this.refresh();
-      return;
-    }
+    if (reduced || !ids.length) return;
+    const decks = ids.flatMap((id) => {
+      const deck = this.bridgeDecks.get(id);
+      return deck ? [deck] : [];
+    });
+    if (!decks.length) return;
     await new Promise<void>((resolve) => {
       this.tweens.add({
-        targets: this,
-        folding: 1,
-        duration: 330,
+        targets: decks,
+        scaleY: 0.16,
+        duration: 155,
         ease: 'Sine.easeIn',
-        onUpdate: () => this.drawBoard(),
         onComplete: () => resolve(),
       });
     });
-    this.refresh();
   }
   celebrate(reduced: boolean): void {
     if (!reduced)

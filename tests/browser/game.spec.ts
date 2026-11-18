@@ -118,8 +118,8 @@ test('touch on Phaser pieces previews and commits; rapid taps cannot duplicate a
   await open(page);
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing canvas');
-  const x = canvas.x + (canvas.width * 114) / 420,
-    y = canvas.y + (canvas.height * 114) / 420;
+  const x = canvas.x + (canvas.width * 106) / 420,
+    y = canvas.y + (canvas.height * 104) / 420;
   await page.touchscreen.tap(x, y);
   await expect(page.locator('#feedback')).toContainText(
     'Turtle has a clear path'
@@ -556,7 +556,7 @@ test('inline and expanded layouts use available space without overlaps at common
     await page.screenshot({ path: `artifacts/layout-${width}x${height}.png` });
   }
 });
-test('Play larger emits the registered Reddit expanded-view effect and keeps a partial rescue', async ({
+test('Full screen emits the registered Reddit expanded-view effect and keeps a partial rescue', async ({
   page,
 }) => {
   const edition = {

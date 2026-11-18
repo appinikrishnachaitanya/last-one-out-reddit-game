@@ -59,7 +59,6 @@ const game = new Phaser.Game({
   scene: [scene],
   input: { activePointers: 2 },
   audio: { noAudio: true },
-  fps: { target: 30, limit: 30 },
 });
 function say(text: string, warning = false): void {
   feedback.textContent = text;
@@ -154,6 +153,9 @@ function choose(id: AnimalId): void {
     void send();
     return;
   }
+  const restoreButtonFocus = document.activeElement?.matches(
+    '#animal-controls button'
+  );
   selected = id;
   if (tourActive) tourPhase = 'send';
   scene.blocked = [];
@@ -162,15 +164,16 @@ function choose(id: AnimalId): void {
   const bridges = session.board.bridges.filter((b) => b.holder === id);
   say(
     route.legal
-      ? `${titleCase(id)} has a clear path.${bridges.length ? ` Leaving folds the ${bridges.map((b) => b.symbol).join(' ')} bridge.` : ' Tap again to send home.'}`
+      ? `${titleCase(id)} has a clear path.${bridges.length ? ` Leaving folds the ${bridges.map((b) => b.symbol).join(' ')} bridge. Tap again to send.` : ' Tap again to send home.'}`
       : `${titleCase(id)} is blocked: ${route.obstacle?.reason ?? 'no route'}.`,
     !route.legal
   );
   if (tourActive) renderTour();
   // The DOM is rebuilt after every state change; preserve keyboard focus on selection.
-  element('animal-controls', HTMLDivElement)
-    .querySelector<HTMLButtonElement>(`[data-animal="${id}"]`)
-    ?.focus({ preventScroll: true });
+  if (restoreButtonFocus)
+    element('animal-controls', HTMLDivElement)
+      .querySelector<HTMLButtonElement>(`[data-animal="${id}"]`)
+      ?.focus({ preventScroll: true });
 }
 async function send(): Promise<void> {
   if (busy || !selected || !trace(session.board, session.state, selected).legal)
@@ -645,8 +648,8 @@ function syncPresentation(): void {
   button('expand').textContent = localDemo
     ? document.fullscreenElement
       ? 'Exit full screen'
-      : 'Play larger'
-    : 'Play larger';
+      : 'Full screen'
+    : 'Full screen';
 }
 button('expand').addEventListener('click', (event) => {
   rememberRun();

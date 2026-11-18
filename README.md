@@ -8,7 +8,7 @@ The visual design follows the supplied storybook reference: painted animal sprit
 
 First-time players see a short rules guide, then can try a separate guided practice: preview Turtle, send it, see Rabbit stranded, and Undo. Practice never submits a rescue, changes the daily run, or contributes to community totals. Help can reopen it later.
 
-**Play larger** uses Reddit's official expanded-view SDK and the registered `game` entrypoint. The current legal move prefix and personal undo count are saved locally before switching views and restored if the view reloads. The local demo uses browser full screen instead. The board and controls use normal document flow with side-by-side layouts where space allows; there are no absolute-positioned board/controls.
+**Full screen** uses Reddit's official expanded-view SDK and the registered `game` entrypoint. The current legal move prefix and personal undo count are saved locally before switching views and restored if the view reloads. The local demo uses browser full screen instead. The board and controls use normal document flow with side-by-side layouts where space allows; there are no absolute-positioned board/controls.
 
 The result screen is compact: favorite portrait, day, personal undo count, Copy and Comments come first. Community openings are collapsed until requested. Large reunion art is omitted in short frames so the useful controls remain within one post view. No public publishing is part of these commands.
 
