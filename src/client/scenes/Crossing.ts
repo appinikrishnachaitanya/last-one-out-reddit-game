@@ -254,8 +254,6 @@ export class Crossing extends Phaser.Scene {
         g.lineBetween(q.x - 5, q.y - 5, q.x + 5, q.y + 5);
         g.lineBetween(q.x - 5, q.y + 5, q.x + 5, q.y - 5);
       }
-      g.lineStyle(2, color);
-      g.strokeCircle(start.x, start.y, 25);
     }
     // Latch plaques sit beside their holder, with the matching bridge symbol.
     for (const b of this.session.board.bridges) {
