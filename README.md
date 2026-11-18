@@ -21,7 +21,7 @@ In this cloud workspace, use `npm ci --cache /workspace/.npm-cache` if the defau
 
 ## Current private build
 
-The existing [Day 1 Reddit post](https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/) is installed as v0.0.1.4, and the user confirmed it loads on desktop. **The storybook redesign in this source is not installed yet:** Reddit's S3 upload endpoint repeatedly returned HTTP 503 from the cloud, including serial uploads. Local checks passed (20 unit/API tests, 10 browser tests). Upload from a working local network using the commands below, or retry once the storage connection is restored. See [playtest evidence](docs/PLAYTEST.md).
+The [Day 1 Reddit post](https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/) now uses the storybook redesign installed privately as **v0.0.2**, from source commit `22181c2`. GitHub push and Reddit upload succeeded after the earlier HTTP 503 connection failures cleared. Local checks passed (20 unit/API tests, 10 browser tests). A fresh in-Reddit solve/reload and physical-phone check remain to be confirmed. See [playtest evidence](docs/PLAYTEST.md).
 
 ## Private Reddit playtest
 

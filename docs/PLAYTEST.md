@@ -2,17 +2,17 @@
 
 Private playtest URL: https://www.reddit.com/r/last_one_out_app_dev/?playtest=last-one-out-app
 
-Current private installation: **last-one-out-app v0.0.1.4**, confirmed by `devvit list installs`. The initial owner-visible upload was **0.0.1**. The playtest watcher was stopped after installation to freeze this version; stopping it does not uninstall the private build. The source revision is recorded in the implementation commit and final task report. Restarting `npm run dev` will create a newer playtest build.
+Current private installation: **last-one-out-app v0.0.2**, installed successfully after upload. Tested application source: **`22181c28bb7b26307877e4a158c000d48c273b11`** (storybook redesign). The code is pushed to GitHub `master`. No public publishing was performed.
 
 Private Day 1 post: https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/
 
 ## Storybook redesign status
 
-The latest source replaces flat pieces and dark panels with generated painted animal sprites, a leafy turquoise-water board, parchment panels, gold controls, a larger desktop board, and a dedicated campfire reunion/result view. It preserves the rule engine, canonical boards, post bindings, Redis records, and spoiler-free results. See `ART.md`.
+The current build replaces flat pieces and dark panels with painted animal sprites, a leafy turquoise-water board, parchment panels, gold controls, a larger desktop board, and a dedicated campfire reunion/result view. It preserves the rule engine, canonical boards, post bindings, Redis records, and spoiler-free results. See `ART.md`.
 
-The **redesign is verified locally but is not installed on Reddit yet**. Multiple CLI uploads failed with HTTP 503 connection timeouts at `reddit-service-devvit-webview-assets.s3.us-east-1.amazonaws.com`. The supported serial-upload mode failed too. Read-only HEAD checks of that host and `s3.us-east-1.amazonaws.com` also returned 503; the upload host failed outside the command sandbox as well. Network policy was confirmed unrestricted/enforced. TLS verification remained enabled. This is an external upload blocker, not a rule/build failure. Do not claim the private post has the new visuals until upload and installation succeed.
+The earlier GitHub and Reddit asset-storage HTTP 503 failures **cleared on retry**. All seven new WebView assets uploaded successfully; `devvit install last_one_out_app_dev last-one-out-app@latest` then confirmed installation of **0.0.2**, replacing 0.0.1.4. Existing posts and data were retained. Refresh the same post to load the redesign; if the saved result opens, Restart returns to the board.
 
-To upload from a working local network: pull this repository, use Node 24+, run `npm ci`, `npm run login -- --copy-paste` if needed, `npm run deploy`, and `npm run dev`. These use the same private app/community. A successful new build can reuse the existing post and saved results. No public publishing is needed.
+Installation success is not a claim of a newly verified in-Reddit solve. The user previously confirmed desktop loading of the old build; a fresh solve/reload and actual-phone run on 0.0.2 remain unconfirmed.
 
 ## Verified locally
 
