@@ -2,7 +2,7 @@
 
 Private playtest URL: https://www.reddit.com/r/last_one_out_app_dev/?playtest=last-one-out-app
 
-Current private installation: **last-one-out-app v0.0.2**, installed successfully after upload. Tested application source: **`22181c28bb7b26307877e4a158c000d48c273b11`** (storybook redesign). The code is pushed to GitHub `master`. No public publishing was performed.
+Current private installation: **last-one-out-app v0.0.3**, installed successfully after upload. Tested application source: **`1fe5f69`** (guided practice, expanded play, responsive layout and compact results). The code is pushed to GitHub `master`. No public publishing was performed.
 
 Private Day 1 post: https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/
 
@@ -10,15 +10,15 @@ Private Day 1 post: https://www.reddit.com/r/last_one_out_app_dev/comments/1xzaz
 
 The current build replaces flat pieces and dark panels with painted animal sprites, a leafy turquoise-water board, parchment panels, gold controls, a larger desktop board, and a dedicated campfire reunion/result view. It preserves the rule engine, canonical boards, post bindings, Redis records, and spoiler-free results. See `ART.md`.
 
-The earlier GitHub and Reddit asset-storage HTTP 503 failures **cleared on retry**. All seven new WebView assets uploaded successfully; `devvit install last_one_out_app_dev last-one-out-app@latest` then confirmed installation of **0.0.2**, replacing 0.0.1.4. Existing posts and data were retained. Refresh the same post to load the redesign; if the saved result opens, Restart returns to the board.
+The earlier GitHub and Reddit asset-storage HTTP 503 failures **cleared on retry**. All seven new WebView assets uploaded successfully; `devvit install last_one_out_app_dev last-one-out-app@latest` then confirmed installation of **0.0.2**, replacing 0.0.1.4. A subsequent private upload/install confirmed **0.0.3**, replacing 0.0.2. Existing posts and data were retained. Refresh the same post to load the redesign; if the saved result opens, Restart returns to the board.
 
-Installation success is not a claim of a newly verified in-Reddit solve. The user previously confirmed desktop loading of the old build; a fresh solve/reload and actual-phone run on 0.0.2 remain unconfirmed.
+Installation success is not a claim of a newly verified in-Reddit solve. The user previously confirmed desktop loading of the old build; a fresh solve/reload and actual-phone run on 0.0.3 remain unconfirmed.
 
 ## Verified locally
 
-- 20 unit/API tests passed, including all seven boards, exact solver counts, wrong-edition/version rejection, malformed/illegal/incomplete sequences, concurrent duplicate submissions, preserved original openings, lost-response retry, independent favorite art, UTC rollover, old/legacy post reopening, and post publication reservations/recovery.
+- 22 unit/API tests passed, including all seven boards, exact solver counts, wrong-edition/version rejection, malformed/illegal/incomplete sequences, concurrent duplicate submissions, preserved original openings, lost-response retry, independent favorite art, UTC rollover, old/legacy post reopening, and post publication reservations/recovery.
 - TypeScript, ESLint, production Devvit build, and configuration schema validation passed.
-- 10 Chromium acceptance tests passed. All seven editions were completed through the UI, with results restored after reload. Tests cover mouse and emulated touch, keyboard, reduced motion, rapid taps, the early-Turtle consequence, Undo, Restart, favorite portraits, clipboard, failure/retry, and honest community empty states.
+- 15 Chromium acceptance tests passed. All seven editions were completed through the UI, with results restored after reload. Tests cover mouse and emulated touch, keyboard, reduced motion, rapid taps, the early-Turtle consequence, Undo, Restart, favorite portraits, clipboard, failure/retry, and honest community empty states.
 - Layout checked at 288, 320, 390, and 640px widths in a 512px-high frame, plus narrow full-height phone viewports.
 - The production bundle completed the exact judge sequence against the actual Hono validator/completion service with local adapters: open Day 1 → Turtle early → Rabbit stranded → Undo → complete → persist → reload → copy spoiler-free text → emit Reddit SDK navigation to the same post's comments.
 - That production-bundle check also verified actual client SDK request ordering and server-side completion correlation using local telemetry fixtures. It does not establish Reddit ingestion.
@@ -48,8 +48,10 @@ Actual Journeys ingestion is also **unverified**. See `JOURNEYS.md` for the SDK/
 
 ## Guided and expanded-view update
 
-The next UX update replaces fixed board positioning with a fluid layout, adds the official Reddit expanded `game` entrypoint and a **Play larger** control, and preserves legal partial runs across view reloads. First visits offer a rules explanation and isolated guided practice (Turtle preview → departure → stranded Rabbit → Undo). Practice is not submitted, does not affect community counts, and restores the player's daily run on exit. Help can replay it.
+The installed v0.0.3 UX update replaces fixed board positioning with a fluid layout, adds the official Reddit expanded `game` entrypoint and a **Play larger** control, and preserves legal partial runs across view reloads. First visits offer a rules explanation and isolated guided practice (Turtle preview → departure → stranded Rabbit → Undo). Practice is not submitted, does not affect community counts, and restores the player's daily run on exit. Help can replay it.
 
 The result card is compact, with Copy and Comments above collapsed optional community detail. Tests check those controls and the entire saved result inside a 512px-high frame at widths 288, 390, 640, and 900. Layout coverage includes common inline widths and 1024×720 / 1366×768 larger views. The first-visit practice button is also checked in a 320×512 frame.
 
 The matching SDK's `requestExpandedMode` is exercised with a trusted browser click against a registered `game` entrypoint in local production-bundle tests. This verifies the effect payload and retained partial state, not the host's actual modal presentation. A fresh in-Reddit desktop/laptop review is still required after private installation. Public publishing remains out of scope.
+
+Private deployment confirmation: all five changed WebView assets uploaded successfully; the install command confirmed “Successfully installed version 0.0.3!” No `devvit publish` or Devpost submission was run.

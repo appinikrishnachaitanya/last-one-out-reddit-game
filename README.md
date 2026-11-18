@@ -29,7 +29,7 @@ In this cloud workspace, use `npm ci --cache /workspace/.npm-cache` if the defau
 
 ## Current private build
 
-The [Day 1 Reddit post](https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/) now uses the storybook redesign installed privately as **v0.0.2**, from source commit `22181c2`. GitHub push and Reddit upload succeeded after the earlier HTTP 503 connection failures cleared. Local checks passed (22 unit/API tests, 15 browser tests). A fresh in-Reddit solve/reload and physical-phone check remain to be confirmed. See [playtest evidence](docs/PLAYTEST.md).
+The [Day 1 Reddit post](https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/) now uses the storybook redesign installed privately as **v0.0.3**, from source commit `1fe5f69`. GitHub push and Reddit upload succeeded after the earlier HTTP 503 connection failures cleared. Local checks passed (22 unit/API tests, 15 browser tests). The latest update adds a first-visit guide, isolated practice, expanded play view, fluid alignment and compact results. A fresh in-Reddit review and physical-phone check remain to be confirmed. See [playtest evidence](docs/PLAYTEST.md).
 
 ## Private Reddit playtest
 
