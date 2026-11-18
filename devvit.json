@@ -6,10 +6,8 @@
     "entrypoints": {
       "default": {
         "inline": true,
-        "entry": "splash.html"
-      },
-      "game": {
-        "entry": "game.html"
+        "entry": "game.html",
+        "height": "tall"
       }
     }
   },
@@ -20,26 +18,13 @@
   "menu": {
     "items": [
       {
-        "label": "Create a new post",
-        "description": "last-one-out-app",
+        "label": "Create Moonroot Crossing",
+        "description": "Create a Last One Out puzzle post",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
-      },
-      {
-        "label": "Example form",
-        "description": "Show a simple form",
-        "location": "subreddit",
-        "forUserType": "moderator",
-        "endpoint": "/internal/menu/example-form"
       }
     ]
-  },
-  "forms": {
-    "exampleForm": "/internal/form/example-submit"
-  },
-  "triggers": {
-    "onAppInstall": "/internal/triggers/on-app-install"
   },
   "scripts": {
     "build": "vite build",

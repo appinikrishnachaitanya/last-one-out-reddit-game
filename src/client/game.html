@@ -2,15 +2,108 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0c252b" />
     <link rel="stylesheet" href="game.css" />
-    <title>Phaser - Template</title>
+    <title>Last One Out · Moonroot Crossing</title>
   </head>
-
   <body>
-    <div id="app">
-      <div id="game-container"></div>
-    </div>
+    <main id="app">
+      <header>
+        <div class="brand">
+          <span class="brand-moon" aria-hidden="true">☾</span>
+          <div>
+            <h1>Last One Out</h1>
+            <p>A LITTLE FOREST LOGIC</p>
+          </div>
+        </div>
+        <button id="help" class="icon-button" aria-label="How to play">
+          ?
+        </button>
+      </header>
+      <div class="daily-line">
+        <span id="daily-label">MOONROOT · 01</span
+        ><span id="mode-label">Connecting to the forest…</span>
+      </div>
+      <section class="puzzle-heading">
+        <div>
+          <h2 id="board-title">Moonroot Crossing</h2>
+          <p>Send everyone home.</p>
+        </div>
+        <div class="rescue">
+          <span id="rescue-count">0 / 4</span><small>HOME</small>
+        </div>
+      </section>
+      <div
+        id="game-container"
+        role="img"
+        aria-label="Moonlit forest crossing. Select animals using the buttons below to preview their routes."
+      ></div>
+      <div class="bridge-key">
+        <span>☾ <b>✦</b></span> Match the symbol. An animal holds its bridge
+        open.
+      </div>
+      <div
+        id="animal-controls"
+        class="animal-controls"
+        role="group"
+        aria-label="Choose an animal"
+      ></div>
+      <p id="feedback" class="feedback" role="status" aria-live="polite">
+        Tap an animal to see its path.
+      </p>
+      <div class="actions">
+        <button id="undo" class="secondary" disabled>↶ Undo</button
+        ><button id="send" class="primary" disabled>
+          Send home <span>→</span></button
+        ><button id="restart" class="secondary">↻ Restart</button>
+      </div>
+      <footer>
+        <span id="personal-stats">No timer. Take your time.</span
+        ><button id="motion" aria-pressed="false">Reduce motion</button>
+      </footer>
+      <section id="result" class="result" hidden aria-labelledby="result-title">
+        <div class="reunion" aria-hidden="true">✦ <span>☾</span> ✦</div>
+        <p class="eyebrow">THE LANTERNS ARE LIT</p>
+        <h2 id="result-title">Everyone home.</h2>
+        <p>A little patience brought them all together.</p>
+        <p>
+          All four friends are safe. Stay a moment, or try a different rescue
+          order.
+        </p>
+      </section>
+      <dialog id="help-dialog">
+        <button
+          id="close-help"
+          class="icon-button"
+          aria-label="Close instructions"
+        >
+          ×
+        </button>
+        <p class="eyebrow">A QUIET WAY HOME</p>
+        <h2>Look before you leave.</h2>
+        <p>
+          Each animal follows its arrow straight to a lantern exit. Tap once to
+          preview; tap again or choose <b>Send home</b> to move.
+        </p>
+        <p>
+          The <b>☾ moon</b>, <b>✦ star</b>, and <b>◆ diamond</b> symbols match
+          animals to bridges. When a holder leaves, its bridge folds. Someone
+          else may still need it.
+        </p>
+        <p>
+          Blocked paths end at a coral cross. Undo restores the animal and its
+          bridge. There’s no timer or penalty.
+        </p>
+        <p>
+          Keyboard: Tab to an animal and press Enter or Space. Then use Send
+          home. Undo and Restart are always in reach.
+        </p>
+      </dialog>
+    </main>
     <script type="module" src="game.ts"></script>
   </body>
 </html>

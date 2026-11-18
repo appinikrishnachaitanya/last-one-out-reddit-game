@@ -9,3 +9,8 @@ dist
 *.key
 .playwright/
 artifacts/
+
+test-results/
+playwright-report/
+
+.local/

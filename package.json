@@ -6,14 +6,17 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "deploy": "npm run test:types && npm run lint && devvit upload",
-    "dev": "devvit playtest",
-    "launch": "npm run deploy && devvit publish",
+    "deploy": "npm run check && node scripts/devvit.mjs upload",
+    "dev": "node scripts/devvit.mjs playtest",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "login": "devvit login",
+    "login": "node scripts/devvit.mjs login",
     "prettier": "prettier --write .",
     "test:types": "tsc --build",
-    "test:unit": "node --experimental-strip-types --no-warnings=ExperimentalWarning --test \"src/**/*.test.ts\""
+    "test:unit": "node --experimental-strip-types --test tests/*.test.ts",
+    "demo": "vite --config vite.demo.config.ts --host 0.0.0.0",
+    "check": "npm run test:unit && npm run test:types && npm run lint && npm run build",
+    "test:browser": "playwright test",
+    "devvit": "node scripts/devvit.mjs"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -28,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.65.1",
     "@types/node": "^24.13.3",
     "eslint": "10.14.0",
     "globals": "17.14.0",
