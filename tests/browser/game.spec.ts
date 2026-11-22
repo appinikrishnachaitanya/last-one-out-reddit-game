@@ -9,6 +9,32 @@ async function toggleMotion(page: import('@playwright/test').Page) {
   await page.locator('#motion-dialog').click();
   await page.locator('#close-help').click();
 }
+async function expectNoHorizontalOverflow(
+  page: import('@playwright/test').Page
+) {
+  const layout = await page.evaluate(() => {
+    const width = window.innerWidth;
+    const overflow = document.documentElement.scrollWidth - width;
+    const elements =
+      overflow > 0
+        ? Array.from(document.querySelectorAll('body *'))
+            .flatMap((el) => {
+              const box = el.getBoundingClientRect();
+              return box.right > width + 0.5
+                ? [
+                    {
+                      element: el.id || el.className || el.tagName,
+                      right: Math.round(box.right),
+                    },
+                  ]
+                : [];
+            })
+            .slice(0, 12)
+        : [];
+    return { width, overflow, elements };
+  });
+  expect(layout.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(0);
+}
 async function send(page: import('@playwright/test').Page, name: string) {
   await page
     .locator('.animal-picker')
@@ -114,11 +140,7 @@ test('all animals and primary controls fit Reddit’s 512px inline frame', async
     expect((send?.y ?? 1000) + (send?.height ?? 1000)).toBeLessThanOrEqual(512);
     const board = await page.locator('canvas').boundingBox();
     expect(board?.width).toBeGreaterThanOrEqual(240);
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth
-      )
-    ).toBe(true);
+    await expectNoHorizontalOverflow(page);
   }
   await page.setViewportSize({ width: 390, height: 512 });
   await page.screenshot({ path: 'artifacts/reddit-inline-512.png' });
@@ -586,11 +608,7 @@ test('inline and expanded layouts use available space without overlaps at common
       expect((board?.x ?? 0) + (board?.width ?? 0)).toBeLessThanOrEqual(
         controls?.x ?? 0
       );
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth
-      )
-    ).toBe(true);
+    await expectNoHorizontalOverflow(page);
     await page.screenshot({ path: `artifacts/layout-${width}x${height}.png` });
   }
 });
