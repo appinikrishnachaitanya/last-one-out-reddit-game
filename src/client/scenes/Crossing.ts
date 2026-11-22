@@ -405,46 +405,81 @@ export class Crossing extends Phaser.Scene {
     const endY = last.y + (v[1] ?? 0) * 25;
     const origin = { x: token.x, y: token.y };
     const gait = {
-      turtle: { beat: 115, lift: 1.8, squash: 0.025, pace: 81 },
-      rabbit: { beat: 143, lift: 12, squash: 0.11, pace: 69 },
-      fox: { beat: 92, lift: 4.5, squash: 0.06, pace: 52 },
-      badger: { beat: 128, lift: 2.7, squash: 0.045, pace: 75 },
+      turtle: { cadence: 2, lift: 3, squash: 0.08, lean: 0.07, pace: 100 },
+      rabbit: { cadence: 1, lift: 19, squash: 0.2, lean: 0.12, pace: 130 },
+      fox: { cadence: 1.6, lift: 8, squash: 0.13, lean: 0.17, pace: 91 },
+      badger: { cadence: 1.8, lift: 5, squash: 0.13, lean: 0.19, pace: 117 },
     }[id];
-    const duration = 140 + route.path.length * gait.pace;
-    const clock = { progress: 0 };
-    const sprite = token.list[1];
+    const steps = Math.max(
+      1,
+      Math.round((route.path.length + 0.5) * gait.cadence)
+    );
+    const travel = 260 + route.path.length * gait.pace;
+    const arrival = 150;
+    const clock = { elapsed: 0 };
+    // The feet and shadow follow the route. Only the portrait lifts off it.
+    const image = token.list[1];
+    const sprite = image instanceof Phaser.GameObjects.Image ? image : token;
+    const shadow = token.list[0];
+    const separateShadow =
+      sprite !== token && shadow instanceof Phaser.GameObjects.Graphics;
+    const base = {
+      y: sprite === token ? 0 : sprite.y,
+      xScale: sprite.scaleX,
+      yScale: sprite.scaleY,
+    };
     if (
       sprite instanceof Phaser.GameObjects.Image &&
-      a.direction !== 'S' &&
-      a.direction !== 'N'
+      (a.direction === 'W' || a.direction === 'E')
     )
       sprite.setFlipX(
         id === 'turtle' ? a.direction === 'E' : a.direction === 'W'
       );
+    const facing = a.direction === 'W' ? -1 : 1;
+    const lantern = this.add.circle(endX, endY, 10, 0xffcf76, 0).setDepth(2);
     await new Promise<void>((resolve) => {
       this.tweens.add({
         targets: clock,
-        progress: 1,
-        duration,
+        elapsed: travel + arrival,
+        duration: travel + arrival,
         ease: 'Linear',
         onUpdate: () => {
-          const t = clock.progress;
-          const phase = ((t * duration) / gait.beat) % 1;
-          const stride = Math.sin(Math.PI * phase);
-          const finish = Math.min(1, (1 - t) * 6);
-          const sway =
-            id === 'badger' ? Math.sin(phase * Math.PI * 2) * 0.035 : 0;
-          token.setPosition(
-            Phaser.Math.Linear(origin.x, endX, t),
-            Phaser.Math.Linear(origin.y, endY, t) - stride * gait.lift * finish
+          const t = Math.min(1, clock.elapsed / travel);
+          const cycle = t * steps;
+          const phase = cycle % 1;
+          const easedStep = phase * phase * (3 - 2 * phase);
+          const blend = id === 'fox' ? 0.3 : 0.85;
+          const along =
+            (Math.floor(cycle) + phase * (1 - blend) + easedStep * blend) /
+            steps;
+          const air = Math.pow(
+            Math.sin(Math.PI * phase),
+            id === 'rabbit' ? 0.75 : 1.8
           );
-          token.setScale(
-            1 + stride * gait.squash * finish,
-            1 - stride * gait.squash * finish
+          const settle = Math.max(0, (clock.elapsed - travel) / arrival);
+          const impact = Math.pow(Math.max(0, 1 - phase * 5), 2) * (1 - settle);
+          const groundY = Phaser.Math.Linear(origin.y, endY, along);
+          token.setPosition(Phaser.Math.Linear(origin.x, endX, along), groundY);
+          const lift = gait.lift * air;
+          sprite.setY(sprite === token ? groundY - lift : base.y - lift);
+          sprite.setScale(
+            base.xScale * (1 + gait.squash * (impact - air * 0.45)),
+            base.yScale * (1 - gait.squash * (impact - air))
           );
-          token.setRotation(sway * finish).setAlpha(finish);
+          sprite.setRotation(
+            gait.lean * Math.sin(phase * Math.PI * 2) * facing
+          );
+          if (separateShadow)
+            shadow.setScale(1 - air * 0.24).setAlpha(1 - air * 0.6);
+          token.setAlpha(1 - settle);
+          lantern
+            .setScale(1 + settle * 1.4)
+            .setAlpha(Math.sin(Math.PI * settle) * 0.65);
         },
-        onComplete: () => resolve(),
+        onComplete: () => {
+          lantern.destroy();
+          resolve();
+        },
       });
     });
   }

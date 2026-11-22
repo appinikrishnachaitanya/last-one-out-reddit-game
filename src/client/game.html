@@ -15,13 +15,24 @@
     <main id="app">
       <header>
         <div class="brand">
-          <span class="brand-moon" aria-hidden="true">☾</span>
           <div>
             <h1>Last One Out</h1>
             <p>A LITTLE FOREST LOGIC</p>
           </div>
         </div>
         <div class="header-actions">
+          <div
+            class="play-clock"
+            id="play-clock"
+            role="timer"
+            aria-label="Elapsed time"
+          >
+            <span aria-hidden="true">Time</span
+            ><strong id="run-clock">0:00</strong>
+          </div>
+          <button type="button" id="forest-sound" aria-pressed="false">
+            Sound
+          </button>
           <button
             id="help"
             class="secondary"
@@ -31,6 +42,15 @@
           </button>
         </div>
       </header>
+      <p id="sound-status" role="status"></p>
+      <div id="rescue-modes" role="group" aria-label="Rescue mode" hidden>
+        <button id="solo-tab" type="button" aria-pressed="true">
+          Solo Rescue
+        </button>
+        <button id="community-tab" type="button" aria-pressed="false">
+          Community Rescue
+        </button>
+      </div>
       <div class="daily-line">
         <span id="daily-label">MOONROOT · 01</span
         ><span id="mode-label">Connecting to the forest…</span>
@@ -55,11 +75,9 @@
           <section class="puzzle-heading" data-play>
             <div>
               <h2 id="board-title">Moonroot Crossing</h2>
-              <p>Send everyone home.</p>
             </div>
             <div class="rescue">
-              <span id="rescue-count">0 / 4</span><small>home</small
-              ><small id="run-clock" hidden></small>
+              <span id="rescue-count">0 / 4</span><small>home</small>
             </div>
           </section>
           <section id="tour-panel" hidden aria-labelledby="tour-title">
@@ -100,6 +118,17 @@
           </footer>
         </aside>
       </div>
+      <section id="shared-rescue" aria-label="Community rescue activity" hidden>
+        <div class="shared-status">
+          <p id="shared-status" role="status">Loading the shared crossing…</p>
+          <button id="shared-refresh" type="button">Refresh</button>
+        </div>
+        <p id="shared-celebration" role="status" hidden></p>
+        <details id="shared-history">
+          <summary id="shared-summary">Move log</summary>
+          <ol id="shared-log"></ol>
+        </details>
+      </section>
       <section id="result" class="result" hidden aria-labelledby="result-title">
         <div class="result-top">
           <img
@@ -134,6 +163,12 @@
           ><button id="copy-result" class="secondary">Copy result</button
           ><button id="comments" class="secondary">Back to comments</button>
         </div>
+        <section
+          id="comparison"
+          aria-label="Community opening moves"
+          aria-live="polite"
+          hidden
+        ></section>
         <p id="post-status" role="status" hidden></p>
         <p id="save-status" role="status"></p>
         <button id="retry-save" hidden>Retry saving · no replay needed</button>
@@ -143,8 +178,10 @@
         <details id="community-details" hidden>
           <summary>Who stayed for whom?</summary>
           <ul id="bridge-recap"></ul>
-          <section id="community" hidden></section>
-          <p>Which move fooled you? Use Back to comments to share your take.</p>
+          <p>
+            Which move fooled you? Start a short, spoiler-free tip with [hint]
+            in the comments. A top-voted tip can appear in the next daily.
+          </p>
         </details>
         <p id="next-crossing" hidden></p>
         <details id="past-crossings">
@@ -152,7 +189,7 @@
           <div id="card-collection"></div>
           <div id="archive-result"></div>
           <button id="apply-flair" class="secondary" hidden>
-            Use Crossing Keeper flair
+            Wear Rescue Streak Flair
           </button>
           <p id="flair-status" role="status" hidden></p>
         </details>
@@ -179,7 +216,7 @@
         >
           ×
         </button>
-        <p class="eyebrow">A QUIET WAY HOME</p>
+
         <h2>Settings</h2>
         <fieldset class="atmosphere">
           <legend>Scenery and sound</legend>
@@ -194,49 +231,45 @@
             <option value="nature">Forest ambience</option>
             <option value="music">Woodland music</option>
           </select>
-          <button type="button" id="forest-sound" aria-pressed="false">
-            Forest sound off
-          </button>
-          <p id="sound-status" role="status"></p>
         </fieldset>
-        <button id="help-practice" class="primary">Try guided practice</button>
-        <div class="settings-actions">
-          <button id="expand" class="expand-button">Full screen</button>
-          <button id="restart" class="secondary">↻ Restart</button>
-          <button id="archive-open" class="secondary">Archive</button>
-        </div>
-        <label class="timer-setting"
-          ><input id="show-timer" type="checkbox" /> Show live timer</label
-        >
-        <div id="settings-archive" hidden></div>
-        <p>
-          Each animal follows its arrow straight to a lantern exit. Tap once to
-          preview; tap again or choose <b>Send home</b> to move.
-        </p>
-        <p>
-          The <b>☾ moon</b>, <b>✦ star</b>, and <b>◆ diamond</b> symbols match
-          animals to bridges. When a holder leaves, its bridge folds. Someone
-          else may still need it.
-        </p>
-        <p>
-          Blocked paths end at a coral cross. Undo restores the animal and its
-          bridge. The timer tracks your personal run. Undo has no penalty.
-        </p>
-        <fieldset class="motion-setting">
-          <legend>Animations</legend>
-          <p>
-            Skip animal movement and bridge-fold animations. Moves still work
-            the same way. Your device preference applies by default.
-          </p>
+        <section aria-labelledby="play-settings">
+          <h3 id="play-settings">Game</h3>
+          <button id="help-practice" class="primary">
+            Try guided practice
+          </button>
+          <div class="settings-actions">
+            <button id="expand" class="expand-button">Full screen</button>
+            <button id="restart" class="secondary">↻ Restart</button>
+            <button id="archive-open" class="secondary">Archive</button>
+          </div>
+          <label class="timer-setting"
+            ><input id="show-timer" type="checkbox" /> Show live timer</label
+          >
+          <div id="settings-archive" hidden></div>
           <button id="motion-dialog" aria-pressed="false">
             Skip animations
           </button>
-        </fieldset>
-        <p>
-          Keyboard: Open Animal buttons, then Tab to an animal. Press Enter or
-          Space to preview, then again to send. Undo takes back one move.
-          Restart resets the puzzle.
-        </p>
+        </section>
+        <details class="how-to-play">
+          <summary>How to play</summary>
+          <p>
+            Each animal follows its arrow straight to a lantern exit. Tap once
+            to preview; tap again or choose <b>Send home</b> to move.
+          </p>
+          <p>
+            The <b>☾ moon</b>, <b>✦ star</b>, and <b>◆ diamond</b> symbols match
+            animals to bridges. When a holder leaves, its bridge folds. Someone
+            else may still need it.
+          </p>
+          <p>
+            Blocked paths end at a coral cross. Undo restores the animal and its
+            bridge. The timer tracks your personal run. Undo has no penalty.
+          </p>
+          <p>
+            Keyboard: open Animal buttons, then use Tab to select an animal.
+            Press Enter or Space to preview and again to send.
+          </p>
+        </details>
       </dialog>
     </main>
     <script type="module" src="game.ts"></script>

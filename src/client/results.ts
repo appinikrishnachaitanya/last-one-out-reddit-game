@@ -1,8 +1,14 @@
 import { boardById } from '../shared/boards';
 import { initialState, samePoint, trace } from '../shared/engine';
-import { formatElapsed, isObject } from '../shared/daily';
+import {
+  formatElapsed,
+  highestCount,
+  isObject,
+  openingPercent,
+  rescueShare,
+} from '../shared/daily';
 import { navigateTo, showShareSheet } from '@devvit/web/client';
-import type { Edition, Completion, Community } from '../shared/daily';
+import type { Edition, Completion, AttemptStats } from '../shared/daily';
 import { isAnimalId, titleCase } from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
 import { DailyApi } from './daily-api';
@@ -13,16 +19,6 @@ function el(id: string): HTMLElement {
   if (!e) throw new Error(`Missing ${id}`);
   return e;
 }
-export function shareText(
-  edition: Edition,
-  undos: number,
-  favorite: AnimalId,
-  url: string | null,
-  demo: boolean,
-  elapsedSeconds?: number
-): string {
-  return `Last One Out · Day ${edition.number}\n${boardById(edition.puzzleId, edition.boardVersion).title}\nEveryone home\n${elapsedSeconds === undefined ? '' : `Time ${formatElapsed(elapsedSeconds)}\n`}${undos} personal undo${undos === 1 ? '' : 's'}\n${undos === 0 ? 'Clean crossing\n' : ''}Cheering for ${titleCase(favorite)}${url ? `\n${url}` : ''}${demo ? '\nLocal preview · not a Reddit completion' : ''}`;
-}
 export class Results {
   edition: Edition | undefined;
   favorite: AnimalId = 'fox';
@@ -32,6 +28,8 @@ export class Results {
   url: string | null = null;
   demo: boolean;
   validated = false;
+  opening: AnimalId | undefined;
+  stats: AttemptStats | undefined;
   countdown?: number;
   api = new DailyApi();
   shareState: 'ready' | 'busy' | 'done' | 'pending' = 'ready';
@@ -80,6 +78,8 @@ export class Results {
     this.elapsedSeconds = saved ? saved.elapsedSeconds : elapsedSeconds;
     this.url = url;
     this.validated = !!saved;
+    this.opening = saved?.firstMove ?? saved?.opening ?? sequence[0];
+    this.stats = undefined;
     this.favorite = saved?.favorite ?? 'fox';
     try {
       const local = localStorage.getItem(`loo-card:${edition.id}`);
@@ -97,8 +97,8 @@ export class Results {
     this.sharing();
     el('favorite-status').textContent = '';
     el('comments').hidden = !url;
-    el('community').hidden = true;
     el('community-details').removeAttribute('open');
+    el('comparison').hidden = true;
     this.renderRecap(saved?.sequence ?? sequence);
     el('retry-save').hidden = true;
     this.status(
@@ -142,7 +142,11 @@ export class Results {
     el('save-status').textContent = this.demo ? `${text} Preview only.` : text;
     el('retry-save').hidden = !retry;
   }
-  saved(record: Completion, stats: Community, first: boolean): void {
+  saved(
+    record: Completion,
+    stats: AttemptStats | undefined,
+    first: boolean
+  ): void {
     this.validated = true;
     this.sharing();
     this.undos = record.personalUndos;
@@ -154,7 +158,7 @@ export class Results {
         : 'Your first saved rescue is restored.'
     );
     this.renderRecap(record.sequence);
-    this.community(stats, record.opening);
+    this.community(stats, record.firstMove ?? record.opening);
     void this.loadCrossings();
   }
   sharing(status?: string): void {
@@ -233,59 +237,43 @@ export class Results {
     }
     el('community-details').hidden = list.childElementCount === 0;
   }
-  community(stats: Community, ownOpening: AnimalId): void {
-    const box = el('community');
+  community(stats: AttemptStats | undefined, ownOpening: AnimalId): void {
+    this.opening = ownOpening;
+    this.stats = stats;
+    if (this.demo) return;
+    const box = el('comparison');
     box.replaceChildren();
     box.hidden = false;
-    el('community-details').hidden = false;
-    const heading = document.createElement('h3');
-    heading.textContent = 'How others started their successful rescue';
-    box.append(heading);
-    const description = document.createElement('p');
-    description.textContent =
-      'First move of each player’s recorded successful run.';
-    box.append(description);
-    if (this.demo) {
-      const p = document.createElement('p');
-      p.textContent =
-        'Community data is available in Reddit after a validated rescue. No community participation is simulated here.';
-      box.append(p);
+    const intro = document.createElement('p');
+    intro.textContent = `You started with ${titleCase(ownOpening)}.`;
+    box.append(intro);
+    if (!stats || stats.players < 10) {
+      const early = document.createElement('p');
+      early.textContent = "You're among the first rescuers today";
+      box.append(early);
       return;
     }
-    const total = Math.max(0, stats.total - 1);
-    if (total < 1) {
-      const p = document.createElement('p');
-      p.textContent =
-        'The forest is quiet. There aren’t enough completed rescues to compare yet.';
-      box.append(p);
-      return;
-    }
-    const commonTrap = Object.entries(stats.traps ?? {}).sort(
-      (a, b) => b[1] - a[1]
-    )[0];
-    if (commonTrap && commonTrap[1] >= 2) {
-      const trap = document.createElement('p');
-      trap.textContent = `${Math.round((commonTrap[1] / stats.total) * 100)}% of finishers reported sending ${titleCase(commonTrap[0])} first and stranding a friend.`;
-      box.append(trap);
-    }
-    for (const id of animals) {
-      const count = Math.max(
-        0,
-        (stats.openings[id] ?? 0) - Number(id === ownOpening)
-      );
+    for (const [animal] of highestCount(stats.firstMoves).slice(0, 3)) {
+      if (!isAnimalId(animal)) continue;
+      const percent = openingPercent(stats, animal) ?? 0;
       const row = document.createElement('div');
       row.className = 'opening-row';
       const name = document.createElement('span');
-      name.textContent = titleCase(id);
+      name.textContent = titleCase(animal);
       const bar = document.createElement('meter');
-      bar.min = 0;
-      bar.max = total;
-      bar.value = count;
-      bar.setAttribute('aria-label', `${titleCase(id)}: ${count} of ${total}`);
+      bar.max = 100;
+      bar.value = percent;
+      bar.setAttribute('aria-label', `${name.textContent}: ${percent}%`);
       const label = document.createElement('span');
-      label.textContent = `${count} / ${total}`;
+      label.textContent = `${percent}%`;
       row.append(name, bar, label);
       box.append(row);
+    }
+    const common = highestCount(stats.firstMistakes)[0];
+    if (common) {
+      const note = document.createElement('p');
+      note.textContent = `Most common first mistake: sending ${titleCase(common[0])}.`;
+      box.append(note);
     }
   }
   async loadCrossings(): Promise<void> {
@@ -393,13 +381,11 @@ export class Results {
   }
   async copy(): Promise<void> {
     if (!this.edition) return;
-    const text = shareText(
+    const text = rescueShare(
       this.edition,
       this.undos,
-      this.favorite,
-      this.url,
-      this.demo,
-      this.elapsedSeconds
+      this.opening,
+      this.stats
     );
     try {
       await navigator.clipboard.writeText(text);

@@ -7,6 +7,7 @@ import {
   validateSolution,
 } from '../../shared/engine.ts';
 import { isObject, parseCompletion } from '../../shared/daily.ts';
+import type { AnimalId } from '../../shared/engine.ts';
 import type { Completion, Community, Edition } from '../../shared/daily.ts';
 export type CompletionStore = {
   hSetNX(key: string, field: string, value: string): Promise<number>;
@@ -45,7 +46,8 @@ export async function complete(
   edition: Edition,
   userId: string,
   input: unknown,
-  now: Date
+  now: Date,
+  firstMove?: AnimalId
 ): Promise<{
   validated: true;
   firstCompletion: boolean;
@@ -97,6 +99,7 @@ export async function complete(
     boardVersion: edition.boardVersion,
     sequence: [...input.sequence],
     opening,
+    ...(firstMove ? { firstMove } : {}),
     ...(verifiedTrap ? { openingTrap: trap } : {}),
     personalUndos: input.personalUndos,
     ...(validElapsed(input.elapsedSeconds)

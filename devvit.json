@@ -52,6 +52,7 @@
   "permissions": {
     "reddit": true,
     "redis": true,
+    "realtime": true,
     "journeys": true
   },
   "forms": {

@@ -6,6 +6,7 @@ import {
   context,
   redis,
   reddit,
+  realtime,
 } from '@devvit/web/server';
 import { telemetry } from '@devvit/analytics/server/reddit';
 import { createApi } from './app';
@@ -13,6 +14,7 @@ import { createPost, readBoundPost } from './platform';
 import { menu } from './routes/menu';
 import { telemetryRoutes } from './routes/telemetry';
 import { isT3 } from '@devvit/web/shared';
+import { parseCommentHint } from '../shared/daily';
 import { editionAt } from './core/schedule';
 const app = new Hono();
 app.route(
@@ -24,8 +26,33 @@ app.route(
     getContext: async () => ({
       userId: context.userId,
       postId: context.postId,
+      username: context.username,
     }),
     readPost: readBoundPost,
+    communityStorage: {
+      get: (key) => redis.get(key),
+      commit: async (key, expected, value) => {
+        const tx = await redis.watch(key);
+        let started = false;
+        try {
+          if ((await redis.get(key)) !== expected) {
+            await tx.unwatch();
+            return false;
+          }
+          await tx.multi();
+          started = true;
+          await tx.set(key, value);
+          const replies = await tx.exec();
+          return replies.length === 1 && replies[0] != null;
+        } catch (error) {
+          if (started) await tx.discard().catch(() => undefined);
+          else await tx.unwatch().catch(() => undefined);
+          throw error;
+        }
+      },
+    },
+    notifyCommunity: (channel, revision) =>
+      realtime.send(channel, { revision }),
     hintRefill: async (userId, consume) => {
       const key = `hint-refill:v1:${userId}`;
       const refillAt = Date.now() + 60_000;
@@ -40,6 +67,32 @@ app.route(
         refillAt: Number(current?.split(':')[0]) || 0,
         granted: consume && current === claim,
       };
+    },
+    readCommentHint: async (postId) => {
+      if (!isT3(postId)) return undefined;
+      const comments = await reddit
+        .getComments({ postId, sort: 'top', limit: 25, depth: 1 })
+        .all();
+      for (const comment of comments) {
+        if (
+          comment.parentId !== postId ||
+          comment.removed ||
+          comment.spam ||
+          comment.score < 2 ||
+          comment.authorName === context.appSlug
+        )
+          continue;
+        const match = /^\[hint\]\s+([^\r\n<>]{12,130})$/i.exec(
+          comment.body.trim()
+        );
+        if (!match || /https?:|\bwww\./i.test(match[1]!)) continue;
+        const hint = parseCommentHint({
+          text: match[1],
+          url: `https://www.reddit.com${comment.permalink}`,
+        });
+        if (hint) return hint;
+      }
+      return undefined;
     },
     share: async (postId, text) => {
       if (!isT3(postId)) throw new Error('Invalid post');

@@ -40,7 +40,8 @@ export function setupAtmosphere(onScenery: (id: Scenery) => void): void {
   function updateButton(): void {
     sound!.setAttribute('aria-pressed', String(enabled));
     const label = soundtrack!.value === 'music' ? 'Music' : 'Forest sound';
-    sound!.textContent = `${label} ${enabled ? 'on' : 'off'}`;
+    sound!.textContent = enabled ? 'Sound on' : 'Sound off';
+    sound!.title = `${label} ${enabled ? 'on' : 'off'}`;
   }
   function play(): void {
     if (!enabled || document.hidden || !audio.paused) return;

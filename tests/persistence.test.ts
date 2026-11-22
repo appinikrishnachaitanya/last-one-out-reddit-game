@@ -10,7 +10,11 @@ import {
   loadCompletion,
   completionKey,
 } from '../src/server/core/completions.ts';
-import { createOrRetrievePost, recoverPost } from '../src/server/core/posts.ts';
+import {
+  createOrRetrievePost,
+  postRegistryKey,
+  recoverPost,
+} from '../src/server/core/posts.ts';
 import {
   EDITIONS,
   bindingFor,
@@ -88,7 +92,10 @@ test('illegal, malformed, partial, wrong edition/version and anonymous submissio
   assert.equal(store.hashes.size, 0);
 });
 function fixture(
-  options: Pick<Dependencies, 'share' | 'setFlair' | 'hintRefill'> & {
+  options: Pick<
+    Dependencies,
+    'share' | 'setFlair' | 'hintRefill' | 'readCommentHint'
+  > & {
     telemetry?: () => Promise<void>;
     store?: MemoryStore;
   } = {}
@@ -112,6 +119,7 @@ function fixture(
       share: options.share,
       setFlair: options.setFlair,
       hintRefill: options.hintRefill,
+      readCommentHint: options.readCommentHint,
     })
   );
   return {
@@ -329,10 +337,10 @@ test('shares only saved rescues, posts once per account and edition, and persist
     )
   );
   assert.equal(messages.length, 1);
-  assert.match(messages[0]!, /Day #1/);
-  assert.match(messages[0]!, /Clean Crossing/);
-  assert.match(messages[0]!, /Card: Turtle · Time 1:05/);
-  assert.doesNotMatch(messages[0]!, /Fox|Rabbit|Badger/);
+  assert.match(messages[0]!, /Last One Out - 2026-11-18/);
+  assert.match(messages[0]!, /Rescued: 4\/4 \| Undos: 0 \| First move: Fox/);
+  assert.match(messages[0]!, /Can Reddit rescue today's Community Crossing/);
+  assert.doesNotMatch(messages[0]!, /Turtle|Rabbit|Badger|% club/);
   assert.equal(
     (await (await request(f.app, 'init')).json()).shareStatus,
     't1_shared'
@@ -431,5 +439,42 @@ test('hint state uses the authenticated account and can be read in another post'
   assert.equal(
     (await (await request(f.app, 'hint', {})).json()).granted,
     false
+  );
+});
+
+test('pre-play participation and the granted hint use the preceding daily post', async () => {
+  const day2 = EDITIONS[1]!;
+  const hint = {
+    text: 'Check who still needs a bridge.',
+    url: 'https://www.reddit.com/r/example/comments/moonroot/day_one/testhint/',
+  };
+  const f = fixture({
+    hintRefill: async (_, consume) => ({ refillAt: 1, granted: consume }),
+    readCommentHint: async (postId) => {
+      assert.equal(postId, 't3_moonroot');
+      return hint;
+    },
+  });
+  await complete(
+    f.store,
+    day1,
+    't2_yesterday',
+    { ...payload(), openingTrap: 'turtle' },
+    now
+  );
+  await f.store.hSet(postRegistryKey(day1), { post: 't3_moonroot' });
+  f.setEdition(day2);
+  f.setClock(new Date('2026-12-15T10:00:00Z'));
+  const init = await (await request(f.app, 'init')).json();
+  assert.equal(init.community, null);
+  assert.deepEqual(init.previousRescues, {
+    yesterday: true,
+    totalSolves: 1,
+    perfectRuns: 0,
+    stranded: {},
+  });
+  assert.deepEqual(
+    (await (await request(f.app, 'hint', {})).json()).hint,
+    hint
   );
 });

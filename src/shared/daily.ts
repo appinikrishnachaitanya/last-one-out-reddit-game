@@ -1,5 +1,5 @@
 import { boardById } from './boards.ts';
-import { isAnimalId, validateSolution } from './engine.ts';
+import { isAnimalId, titleCase, validateSolution } from './engine.ts';
 import type { AnimalId } from './engine.ts';
 export type Edition = Readonly<{
   id: string;
@@ -14,6 +14,7 @@ export type Completion = Readonly<{
   boardVersion: number;
   sequence: readonly AnimalId[];
   opening: AnimalId;
+  firstMove?: AnimalId;
   personalUndos: number;
   elapsedSeconds?: number;
   openingTrap?: AnimalId;
@@ -25,12 +26,69 @@ export type Community = Readonly<{
   openings: Partial<Record<AnimalId, number>>;
   traps?: Partial<Record<AnimalId, number>>;
 }>;
+export type AttemptStats = {
+  players: number;
+  firstMoves: Partial<Record<AnimalId, number>>;
+  firstMistakes: Partial<Record<AnimalId, number>>;
+  stranded: Partial<Record<AnimalId, number>>;
+  totalSolves: number;
+  perfectRuns: number;
+};
+export function rescueShare(
+  edition: Edition,
+  undos: number,
+  opening?: AnimalId,
+  stats?: AttemptStats
+): string {
+  const total = boardById(edition.puzzleId, edition.boardVersion).animals
+    .length;
+  const percent = opening && openingPercent(stats, opening);
+  const club =
+    typeof percent === 'number' && percent > 0 ? ` (${percent}% club)` : '';
+  return `Last One Out - ${edition.date}\nRescued: ${total}/${total} | Undos: ${undos} | First move: ${opening ? titleCase(opening) : '—'}${club}\nCan Reddit rescue today's Community Crossing?`;
+}
+export type PreviousRescues = Pick<
+  AttemptStats,
+  'totalSolves' | 'perfectRuns' | 'stranded'
+> & { yesterday: boolean };
+export function highestCount(counts: Partial<Record<AnimalId, number>>) {
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+}
+export function openingPercent(
+  stats: AttemptStats | undefined,
+  animal: AnimalId
+): number | undefined {
+  if (!stats || stats.players < 10) return undefined;
+  const total = Object.values(stats.firstMoves).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+  return total
+    ? Math.round(((stats.firstMoves[animal] ?? 0) / total) * 100)
+    : undefined;
+}
+export type CommentHint = { text: string; url: string };
+export function parseCommentHint(value: unknown): CommentHint | undefined {
+  if (
+    isObject(value) &&
+    typeof value.text === 'string' &&
+    value.text.length <= 160 &&
+    typeof value.url === 'string' &&
+    /^https:\/\/www\.reddit\.com\/r\/[a-z0-9_]+\/comments\/[a-z0-9]+\/[a-z0-9_]+\/[a-z0-9]+\/?$/i.test(
+      value.url
+    )
+  )
+    return { text: value.text, url: value.url };
+}
 export type Init =
   | {
       status: 'ready';
       edition: Edition;
       completion: Completion | null;
       community: Community | null;
+      previousRescues?: PreviousRescues;
+      attemptStats?: AttemptStats | undefined;
+      communityEnabled?: boolean;
       shareStatus?: string;
       refillAt?: number;
       commentsUrl: string | null;
@@ -42,6 +100,7 @@ export type SaveResult = {
   firstCompletion: boolean;
   completion: Completion;
   community: Community;
+  attemptStats?: AttemptStats | undefined;
   telemetry: 'not-requested' | 'attempted' | 'unavailable';
 };
 export const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -103,6 +162,7 @@ export function parseCompletion(value: unknown, edition: Edition): Completion {
     boardVersion: edition.boardVersion,
     sequence: [...value.sequence],
     opening: value.opening,
+    ...(isAnimalId(value.firstMove) ? { firstMove: value.firstMove } : {}),
     personalUndos: value.personalUndos,
     ...(validElapsed(value.elapsedSeconds)
       ? { elapsedSeconds: value.elapsedSeconds }
@@ -150,6 +210,33 @@ export function parseCommunity(value: unknown): Community {
         traps[id] = count;
   return { total, openings, ...(Object.keys(traps).length ? { traps } : {}) };
 }
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+function counts(value: unknown): Partial<Record<AnimalId, number>> {
+  const out: Partial<Record<AnimalId, number>> = {};
+  if (isObject(value))
+    for (const [id, count] of Object.entries(value))
+      if (isAnimalId(id) && isCount(count) && count > 0) out[id] = count;
+  return out;
+}
+function parseAttemptStats(value: unknown): AttemptStats | undefined {
+  if (
+    !isObject(value) ||
+    !isCount(value.players) ||
+    !isCount(value.totalSolves) ||
+    !isCount(value.perfectRuns)
+  )
+    return undefined;
+  return {
+    players: value.players,
+    totalSolves: value.totalSolves,
+    perfectRuns: value.perfectRuns,
+    firstMoves: counts(value.firstMoves),
+    firstMistakes: counts(value.firstMistakes),
+    stranded: counts(value.stranded),
+  };
+}
 export function parseInit(value: unknown): Init {
   if (!isObject(value) || (value.mode !== 'reddit' && value.mode !== 'demo'))
     throw new Error('Invalid response');
@@ -157,9 +244,26 @@ export function parseInit(value: unknown): Init {
     return { status: 'empty', message: value.message, mode: value.mode };
   if (value.status !== 'ready') throw new Error('Missing daily');
   const edition = parseEdition(value.edition);
+  const previous = value.previousRescues;
+  const previousRescues =
+    isObject(previous) &&
+    typeof previous.yesterday === 'boolean' &&
+    isCount(previous.totalSolves) &&
+    isCount(previous.perfectRuns) &&
+    previous.perfectRuns <= previous.totalSolves
+      ? {
+          yesterday: previous.yesterday,
+          totalSolves: previous.totalSolves,
+          perfectRuns: previous.perfectRuns,
+          stranded: counts(previous.stranded),
+        }
+      : undefined;
   return {
     status: 'ready',
     edition,
+    ...(previousRescues ? { previousRescues } : {}),
+    communityEnabled: value.communityEnabled === true,
+    attemptStats: parseAttemptStats(value.attemptStats),
     mode: value.mode,
     completion: value.completion
       ? parseCompletion(value.completion, edition)
@@ -185,6 +289,7 @@ export function parseSave(value: unknown, edition: Edition): SaveResult {
     firstCompletion: value.firstCompletion,
     completion: parseCompletion(value.completion, edition),
     community: parseCommunity(value.community),
+    attemptStats: parseAttemptStats(value.attemptStats),
     telemetry:
       value.telemetry === 'attempted'
         ? 'attempted'

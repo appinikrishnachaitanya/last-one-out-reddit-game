@@ -1,5 +1,13 @@
+import { CommunityRescue, describeMove } from './community-rescue';
+import type { CommunityBoard } from '../shared/community-board';
 import { setupAtmosphere } from './atmosphere';
-import { formatElapsed, isObject, validElapsed } from '../shared/daily';
+import {
+  formatElapsed,
+  isObject,
+  highestCount,
+  parseCommentHint,
+  validElapsed,
+} from '../shared/daily';
 import {
   getWebViewMode,
   navigateTo,
@@ -44,11 +52,49 @@ let submission: unknown;
 let startedAt = 0;
 let openingTrap: AnimalId | undefined;
 let firstAttempt = false;
+let attemptId: string | undefined;
+let firstMistakeSeen = false;
+const attemptWrites = new Set<Promise<unknown>>();
+function startAttempt(restore: boolean): void {
+  if (localDemo || !edition) return;
+  attemptId = crypto.randomUUID();
+  firstMistakeSeen = false;
+  const key = `loo-attempt:${edition.id}`;
+  try {
+    if (restore) attemptId = localStorage.getItem(key) ?? attemptId;
+    localStorage.setItem(key, attemptId);
+    firstMistakeSeen =
+      localStorage.getItem(`loo-mistake:${edition.id}`) === attemptId;
+  } catch {
+    /* This session can still report its attempt. */
+  }
+}
+function recordAttempt(
+  event: 'firstMove' | 'firstMistake',
+  animal: AnimalId,
+  before: readonly AnimalId[]
+): void {
+  if (!attemptId || localDemo || tourActive) return;
+  if (event === 'firstMistake') {
+    if (firstMistakeSeen) return;
+    firstMistakeSeen = true;
+    try {
+      if (edition) localStorage.setItem(`loo-mistake:${edition.id}`, attemptId);
+    } catch {
+      /* optional */
+    }
+  }
+  const write = api
+    .request('attempt', { event, animal, before, attemptId })
+    .catch(() => undefined);
+  attemptWrites.add(write);
+  void write.finally(() => attemptWrites.delete(write));
+}
 let hintSyncEnabled = false;
 let hintRequest = false;
-let showTimer = false;
+let showTimer = true;
 try {
-  showTimer = localStorage.getItem('loo-live-timer') === 'true';
+  showTimer = localStorage.getItem('loo-live-timer') !== 'false';
 } catch {
   /* use default */
 }
@@ -83,9 +129,13 @@ function storeTimestamp(key: string, value: number): void {
 }
 function updateRunIndicators(): void {
   const clock = element('run-clock', HTMLElement);
-  clock.hidden = !showTimer || tourActive || !startedAt || !result.hidden;
-  const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-  if (!clock.hidden) clock.textContent = formatElapsed(elapsed);
+  const clockGroup = element('play-clock', HTMLElement);
+  clockGroup.hidden =
+    !showTimer || tourActive || shared.active || !result.hidden;
+  if (!clockGroup.hidden)
+    clock.textContent = formatElapsed(
+      startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0
+    );
   const left = Math.max(0, Math.ceil((refillAt - Date.now()) / 1000));
   button('hint').disabled =
     !!left || hintRequest || busy || tourActive || !result.hidden;
@@ -144,7 +194,13 @@ function say(text: string, warning = false): void {
   );
 }
 function rememberRun(): void {
-  if (!edition || busy || tourActive || session.board.id !== edition.puzzleId)
+  if (
+    !edition ||
+    busy ||
+    tourActive ||
+    shared.active ||
+    session.board.id !== edition.puzzleId
+  )
     return;
   try {
     localStorage.setItem(
@@ -155,7 +211,103 @@ function rememberRun(): void {
     /* storage is optional */
   }
 }
+let savedSolo:
+  | {
+      session: Session;
+      selected: AnimalId | undefined;
+      showResult: boolean;
+      showCue: boolean;
+      pickerOpen: boolean;
+      feedback: string;
+      warning: boolean;
+      blocked: AnimalId[];
+    }
+  | undefined;
+
+function applyShared(state: CommunityBoard): void {
+  session = new Session(session.board);
+  for (const animal of state.home) session.send(animal);
+  selected = undefined;
+  scene.blocked = [];
+  const latest = state.log.at(-1);
+  say(latest ? describeMove(latest) : 'Nobody has moved yet.');
+  element('shared-summary', HTMLElement).textContent =
+    `Attempt ${state.attempts + 1} · ${state.successfulRescues} shared wins · Move log`;
+  const log = element('shared-log', HTMLOListElement);
+  log.replaceChildren(
+    ...state.log
+      .slice()
+      .reverse()
+      .map((move) => {
+        const row = document.createElement('li');
+        row.textContent = describeMove(move);
+        return row;
+      })
+  );
+  const celebration = element('shared-celebration', HTMLElement);
+  celebration.hidden = latest?.outcome !== 'rescued';
+  celebration.textContent = celebration.hidden
+    ? ''
+    : `Rescued together by ${state.lastRescue.map((name) => `u/${name}`).join(', ')}.`;
+  refresh();
+}
+const shared = new CommunityRescue(api, applyShared, (message) => {
+  element('shared-status', HTMLElement).textContent = message;
+});
+button('community-tab').addEventListener('click', () => {
+  if (busy || tourActive || shared.active || saving.has(epoch) || !edition)
+    return;
+  savedSolo = {
+    session,
+    selected,
+    showResult: !result.hidden,
+    showCue: !element('first-move', HTMLElement).hidden,
+    pickerOpen:
+      document.querySelector<HTMLDetailsElement>('.animal-picker')?.open ??
+      false,
+    feedback: feedback.textContent ?? '',
+    warning: feedback.classList.contains('warning'),
+    blocked: [...scene.blocked],
+  };
+  result.hidden = true;
+  element('first-move', HTMLElement).hidden = true;
+  session = new Session(session.board);
+  selected = undefined;
+  scene.blocked = [];
+  document.querySelector('.animal-picker')?.removeAttribute('open');
+  element('shared-rescue', HTMLElement).hidden = false;
+  shared.open();
+  say('');
+  refresh();
+});
+button('solo-tab').addEventListener('click', () => {
+  if (!savedSolo || busy || shared.moving) return;
+  shared.close();
+  session = savedSolo.session;
+  selected = savedSolo.selected;
+  result.hidden = !savedSolo.showResult;
+  scene.blocked = savedSolo.blocked;
+  element('first-move', HTMLElement).hidden = !savedSolo.showCue;
+  document
+    .querySelector('.animal-picker')
+    ?.toggleAttribute('open', savedSolo.pickerOpen);
+  element('shared-rescue', HTMLElement).hidden = true;
+  say(savedSolo.feedback, savedSolo.warning);
+  savedSolo = undefined;
+  refresh();
+});
+button('shared-refresh').addEventListener('click', () => {
+  void shared.refresh();
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) void shared.refresh();
+});
 function refresh(): void {
+  element('app', HTMLElement).classList.toggle('community-mode', shared.active);
+  button('solo-tab').setAttribute('aria-pressed', String(!shared.active));
+  button('community-tab').setAttribute('aria-pressed', String(shared.active));
+  button('community-tab').disabled = busy || tourActive;
+  button('solo-tab').disabled = busy;
   element('app', HTMLElement).classList.toggle('touring', tourActive);
   element('app', HTMLElement).classList.toggle(
     'solved',
@@ -203,12 +355,16 @@ function refresh(): void {
   }
   button('undo').disabled = busy || !session.history.length;
   updateRunIndicators();
-  button('restart').disabled = busy;
+  button('restart').disabled = busy || shared.active;
+  button('help-practice').disabled = shared.active;
   button('motion-dialog').disabled = busy;
   button('expand').disabled = busy;
   button('tour-action').disabled = busy;
   button('send').disabled =
-    busy || !selected || !trace(session.board, session.state, selected).legal;
+    busy ||
+    (shared.active && !shared.state?.canMove) ||
+    !selected ||
+    !trace(session.board, session.state, selected).legal;
   button('send').textContent = busy
     ? 'On the way…'
     : selected
@@ -259,7 +415,20 @@ async function send(): Promise<void> {
   if (busy || !selected || !trace(session.board, session.state, selected).legal)
     return;
   const id = selected;
+  if (shared.active) {
+    if (!shared.state?.canMove) return;
+    busy = true;
+    scene.busy = true;
+    refresh();
+    await shared.move(id, () => scene.animateHome(id, reduced));
+    busy = false;
+    scene.busy = false;
+    refresh();
+    return;
+  }
   const openingMove = !firstAttempt && !tourActive;
+  const before = session.state.home;
+  if (openingMove) recordAttempt('firstMove', id, before);
   if (!tourActive) {
     firstAttempt = true;
     element('first-move', HTMLElement).hidden = true;
@@ -280,6 +449,16 @@ async function send(): Promise<void> {
   say(`${titleCase(id)} is on the way home…`);
   await scene.animateHome(id, reduced);
   session.send(id);
+  if (
+    session.board.animals.some(
+      ({ id: friend }) =>
+        !isHome(session.state, friend) &&
+        trace(session.board, { home: before }, friend).obstacle?.kind !==
+          'bridge' &&
+        trace(session.board, session.state, friend).obstacle?.kind === 'bridge'
+    )
+  )
+    recordAttempt('firstMistake', id, before);
   if (!tourActive) flow.rescue(session.state.home.length);
   selected = undefined;
   scene.selected = undefined;
@@ -341,6 +520,7 @@ async function send(): Promise<void> {
         boardVersion: edition.boardVersion,
         sequence: [...session.state.home],
         personalUndos: session.undos,
+        attemptId,
         ...(openingTrap ? { openingTrap } : {}),
         elapsedSeconds: finishedSeconds,
         favorite: results.favorite,
@@ -353,7 +533,7 @@ button('send').addEventListener('click', () => {
   void send();
 });
 button('undo').addEventListener('click', () => {
-  if (busy || !session.undo()) return;
+  if (busy || shared.active || !session.undo()) return;
   if (tourActive) {
     tourPhase = 'finish';
     selected = undefined;
@@ -371,7 +551,7 @@ button('undo').addEventListener('click', () => {
   say('One step back. Every bridge is exactly as it was.');
 });
 button('restart').addEventListener('click', () => {
-  if (busy || tourActive) return;
+  if (busy || tourActive || shared.active) return;
   flow.abandon();
   flow = new JourneyFlow(journeyClient(edition?.id ?? 'loading'), !localDemo);
   session.restart();
@@ -383,6 +563,7 @@ button('restart').addEventListener('click', () => {
     /* optional */
   }
   firstAttempt = false;
+  startAttempt(false);
   startedAt = 0;
   finishedSeconds = undefined;
   if (edition) storeTimestamp(`loo-start:${edition.id}`, 0);
@@ -435,6 +616,7 @@ button('hint').addEventListener('click', async () => {
   )
     return;
   const currentEpoch = epoch;
+  let commentHint: ReturnType<typeof parseCommentHint>;
   if (hintSyncEnabled) {
     hintRequest = true;
     updateRunIndicators();
@@ -444,6 +626,7 @@ button('hint').addEventListener('click', async () => {
         refillAt = Math.max(refillAt, data.refillAt);
         storeTimestamp('loo-hint-refill', refillAt);
         if (data.granted !== true && refillAt > Date.now()) return;
+        if (data.granted === true) commentHint = parseCommentHint(data.hint);
       }
     } catch {
       /* fall back to a local hint */
@@ -457,6 +640,18 @@ button('hint').addEventListener('click', async () => {
   updateRunIndicators();
   if (currentEpoch !== epoch || busy || tourActive || !result.hidden) return;
   const tip = element('hint-text', HTMLParagraphElement);
+  if (commentHint) {
+    const link = document.createElement('a');
+    link.href = commentHint.url;
+    link.textContent = 'Read the comment';
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      navigateTo(link.href);
+    });
+    tip.replaceChildren(`Community hint: ${commentHint.text} `, link);
+    tip.hidden = false;
+    return;
+  }
   const safe = new Set(
     solve(session.board, session.state).map(([first]) => first)
   );
@@ -503,6 +698,7 @@ async function saveResult(): Promise<void> {
   saving.add(current);
   results.status('Everyone is home. Saving your rescue…');
   try {
+    await Promise.all(attemptWrites);
     const saved = await api.save(
       savingEdition,
       payload,
@@ -510,7 +706,7 @@ async function saveResult(): Promise<void> {
     );
     savingFlow.validated();
     if (current !== epoch) return;
-    results.saved(saved.completion, saved.community, saved.firstCompletion);
+    results.saved(saved.completion, saved.attemptStats, saved.firstCompletion);
     if (results.favorite !== saved.completion.favorite) await persistFavorite();
   } catch (error) {
     if (current === epoch)
@@ -531,7 +727,7 @@ function playable(show: boolean): void {
   element('empty-state', HTMLElement).hidden = show;
 }
 async function load(previewId?: string): Promise<void> {
-  if (scene.busy || tourActive) return;
+  if (scene.busy || tourActive || shared.active) return;
   const current = ++epoch;
   flow.abandon();
   flow = new JourneyFlow(journeyClient(edition?.id ?? 'loading'), !localDemo);
@@ -554,11 +750,14 @@ async function load(previewId?: string): Promise<void> {
     const data = await api.init();
     if (current !== epoch) return;
     if (data.status === 'empty') {
+      element('rescue-modes', HTMLElement).hidden = true;
       playable(false);
       element('empty-message', HTMLParagraphElement).textContent = data.message;
       return;
     }
     edition = data.edition;
+    element('rescue-modes', HTMLElement).hidden = !data.communityEnabled;
+    startAttempt(true);
     openingTrap = undefined;
     try {
       const trap = localStorage.getItem(`loo-trap:${edition.id}`);
@@ -584,8 +783,16 @@ async function load(previewId?: string): Promise<void> {
       ? new Session(board)
       : (restoreDraft(edition, board, draft) ?? new Session(board));
     firstAttempt = session.state.home.length > 0 || session.undos > 0;
-    element('first-move', HTMLElement).hidden =
-      firstAttempt || !!data.completion;
+    const firstCue = element('first-move', HTMLElement);
+    const stats = data.previousRescues;
+    const mostStranded = stats && highestCount(stats.stranded)[0];
+    firstCue.textContent =
+      stats && !localDemo && (stats.totalSolves > 0 || stats.yesterday)
+        ? stats.yesterday
+          ? `Yesterday: ${stats.totalSolves.toLocaleString()} rescues • Most stranded: ${mostStranded ? titleCase(mostStranded[0]) : '—'} • Perfect runs: ${stats.totalSolves ? `${Math.round((stats.perfectRuns / stats.totalSolves) * 100)}%` : '—'}`
+          : `Today: ${stats.totalSolves.toLocaleString()} rescues`
+        : 'Tap to preview a path. Watch who holds the bridges.';
+    firstCue.hidden = firstAttempt || !!data.completion;
     selected = undefined;
     scene.blocked = [];
     element('daily-label', HTMLSpanElement).textContent =
@@ -612,7 +819,10 @@ async function load(previewId?: string): Promise<void> {
       );
       results.sharing(data.shareStatus);
       if (data.community)
-        results.community(data.community, data.completion.opening);
+        results.community(
+          data.attemptStats,
+          data.completion.firstMove ?? data.completion.opening
+        );
     }
     busy = false;
     refresh();
@@ -631,6 +841,7 @@ async function load(previewId?: string): Promise<void> {
         boardVersion: edition.boardVersion,
         sequence: [...session.state.home],
         personalUndos: session.undos,
+        attemptId,
         ...(openingTrap ? { openingTrap } : {}),
         elapsedSeconds: finishedSeconds,
         favorite: results.favorite,
@@ -719,7 +930,7 @@ async function initialize(): Promise<void> {
   }
 }
 function startTour(): void {
-  if (busy || tourActive) return;
+  if (busy || tourActive || shared.active) return;
   if (saving.has(epoch)) {
     help.close();
     say('Your rescue is still saving. Try the practice once it finishes.');
@@ -865,7 +1076,7 @@ button('expand').addEventListener('click', (event) => {
 });
 window.addEventListener('focus', () => {
   syncPresentation();
-  if (busy || tourActive || !edition || !result.hidden) return;
+  if (busy || tourActive || shared.active || !edition || !result.hidden) return;
   try {
     const latest = restoreDraft(
       edition,

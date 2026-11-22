@@ -1,10 +1,21 @@
+import {
+  CommunityMoveError,
+  readCommunity,
+  submitCommunity,
+} from './core/community-board.ts';
+import type { CommunityStorage } from './core/community-board.ts';
+import {
+  readAttemptStats,
+  readFirstMove,
+  recordAttempt,
+} from './core/attempts.ts';
 import { postRegistryKey } from './core/posts.ts';
 import { boardById } from '../shared/boards.ts';
 import { Hono } from 'hono';
 import type { Context as HonoContext } from 'hono';
 import { isAnimalId, titleCase } from '../shared/engine.ts';
-import { formatElapsed, isObject } from '../shared/daily.ts';
-import type { Edition } from '../shared/daily.ts';
+import { isObject, rescueShare } from '../shared/daily.ts';
+import type { CommentHint, Edition } from '../shared/daily.ts';
 import { community, complete, loadCompletion } from './core/completions.ts';
 import type { CompletionStore } from './core/completions.ts';
 import {
@@ -14,7 +25,11 @@ import {
   recentEditions,
   EDITIONS,
 } from './core/schedule.ts';
-export type GameContext = { userId?: string; postId?: string };
+export type GameContext = {
+  userId?: string;
+  postId?: string;
+  username?: string;
+};
 export type Store = CompletionStore & {
   hSet(key: string, values: Record<string, string>): Promise<number>;
 };
@@ -24,6 +39,9 @@ export type Dependencies = {
   now: () => Date;
   getContext: (c: HonoContext) => Promise<GameContext>;
   readPost: (postId: string) => Promise<unknown>;
+  communityStorage?: CommunityStorage;
+  notifyCommunity?: (channel: string, revision: number) => Promise<void>;
+  readCommentHint?: (postId: string) => Promise<CommentHint | undefined>;
   share?: (postId: string, text: string) => Promise<string>;
   setFlair?: (text: string) => Promise<void>;
   hintRefill?: (
@@ -34,6 +52,11 @@ export type Dependencies = {
 };
 export const favoriteKey = (edition: Edition) => `card:v1:${edition.id}`;
 const shareKey = (edition: Edition) => `rescue-share:v1:${edition.id}`;
+function precedingEdition(edition: Edition): Edition | undefined {
+  return editionAt(
+    new Date(Date.parse(`${edition.date}T00:00:00Z`) - 86_400_000)
+  );
+}
 export function createApi(deps: Dependencies) {
   const api = new Hono();
   async function requestEdition(c: HonoContext) {
@@ -148,11 +171,42 @@ export function createApi(deps: Dependencies) {
         await deps.store
           .hSetNX(`rescue-cards:v1:${ctx.userId}`, edition.id, 'earned')
           .catch(() => undefined);
+      const previous =
+        deps.mode === 'reddit' && !completion
+          ? precedingEdition(edition)
+          : undefined;
+      const todayStats =
+        deps.mode === 'reddit'
+          ? await readAttemptStats(deps.store, edition).catch(() => undefined)
+          : undefined;
+      const priorStats = previous
+        ? await readAttemptStats(deps.store, previous).catch(() => undefined)
+        : undefined;
+      const hasPrevious = Boolean(
+        priorStats &&
+        (priorStats.totalSolves ||
+          priorStats.players ||
+          Object.keys(priorStats.stranded).length)
+      );
+      const banner = hasPrevious ? priorStats : todayStats;
       return c.json({
         status: 'ready',
         mode: deps.mode,
         edition,
         completion,
+        attemptStats: completion ? todayStats : undefined,
+        communityEnabled:
+          deps.mode === 'reddit' && Boolean(deps.communityStorage),
+        ...(banner && !completion
+          ? {
+              previousRescues: {
+                yesterday: hasPrevious,
+                totalSolves: banner.totalSolves,
+                perfectRuns: banner.perfectRuns,
+                stranded: banner.stranded,
+              },
+            }
+          : {}),
         shareStatus:
           completion && ctx.userId && deps.share
             ? await deps.store
@@ -182,6 +236,17 @@ export function createApi(deps: Dependencies) {
       );
     }
   });
+  api.post('/attempt', async (c) => {
+    try {
+      const { ctx, edition } = await requestEdition(c);
+      if (deps.mode !== 'reddit' || !ctx.userId || !edition)
+        return c.json({ error: 'Reddit sign-in required.' }, 403);
+      await recordAttempt(deps.store, edition, ctx.userId, await c.req.json());
+      return c.json({ recorded: true });
+    } catch {
+      return c.json({ error: 'Could not record this attempt event.' }, 400);
+    }
+  });
   api.post('/complete', async (c) => {
     try {
       const { ctx, edition } = await requestEdition(c);
@@ -201,7 +266,15 @@ export function createApi(deps: Dependencies) {
         edition,
         ctx.userId,
         input,
-        deps.now()
+        deps.now(),
+        deps.mode === 'reddit' && isObject(input)
+          ? await readFirstMove(
+              deps.store,
+              edition,
+              ctx.userId,
+              input.attemptId
+            ).catch(() => undefined)
+          : undefined
       );
       if (edition.number > EDITIONS.length)
         await deps.store.hSetNX(
@@ -240,7 +313,11 @@ export function createApi(deps: Dependencies) {
       }
       const completion =
         (await withFavorite(edition, ctx.userId)) ?? result.completion;
-      return c.json({ ...result, completion, telemetry });
+      const attemptStats =
+        deps.mode === 'reddit'
+          ? await readAttemptStats(deps.store, edition).catch(() => undefined)
+          : undefined;
+      return c.json({ ...result, completion, telemetry, attemptStats });
     } catch (error) {
       return c.json(
         {
@@ -284,9 +361,93 @@ export function createApi(deps: Dependencies) {
       const { ctx, edition } = await requestEdition(c);
       if (!ctx.userId || !edition || !deps.hintRefill)
         return c.json({ error: 'Hint sync unavailable' }, 403);
-      return c.json(await deps.hintRefill(ctx.userId, true));
+      const charge = await deps.hintRefill(ctx.userId, true);
+      const previous =
+        deps.mode === 'reddit' && charge.granted
+          ? precedingEdition(edition)
+          : undefined;
+      const reader = deps.readCommentHint;
+      const hint =
+        previous && reader
+          ? await (async () => {
+              try {
+                const postId = await deps.store.hGet(
+                  postRegistryKey(previous),
+                  'post'
+                );
+                return postId ? await reader(postId) : undefined;
+              } catch {
+                return undefined;
+              }
+            })()
+          : undefined;
+      return c.json({ ...charge, ...(hint ? { hint } : {}) });
     } catch {
       return c.json({ error: 'Hint sync unavailable' }, 503);
+    }
+  });
+  api.get('/community', async (c) => {
+    try {
+      const { ctx, edition } = await requestEdition(c);
+      if (
+        deps.mode !== 'reddit' ||
+        !deps.communityStorage ||
+        !ctx.postId ||
+        !edition
+      )
+        return c.json(
+          { error: 'Open the Reddit daily to join the community crossing.' },
+          404
+        );
+      c.header('Cache-Control', 'private, no-store');
+      return c.json(
+        await readCommunity(
+          deps.communityStorage,
+          ctx.postId,
+          edition,
+          ctx.userId
+        )
+      );
+    } catch {
+      return c.json(
+        { error: 'The shared board could not load. Try refreshing.' },
+        503
+      );
+    }
+  });
+  api.post('/community', async (c) => {
+    try {
+      const { ctx, edition } = await requestEdition(c);
+      if (
+        deps.mode !== 'reddit' ||
+        !deps.communityStorage ||
+        !ctx.postId ||
+        !edition
+      )
+        return c.json(
+          { error: 'Open the Reddit daily to join the community crossing.' },
+          404
+        );
+      if (!ctx.userId || !ctx.username)
+        return c.json({ error: 'Sign in to Reddit to move an animal.' }, 403);
+      const state = await submitCommunity(
+        deps.communityStorage,
+        ctx.postId,
+        edition,
+        { id: ctx.userId, username: ctx.username },
+        await c.req.json()
+      );
+      await deps
+        .notifyCommunity?.(state.channel, state.moveNumber)
+        .catch(() => undefined);
+      return c.json(state);
+    } catch (error) {
+      if (error instanceof CommunityMoveError)
+        return c.json({ error: error.message }, error.status);
+      return c.json(
+        { error: 'Could not confirm the move. Refresh the shared board.' },
+        503
+      );
     }
   });
   api.post('/share', async (c) => {
@@ -297,26 +458,15 @@ export function createApi(deps: Dependencies) {
       const saved = await withFavorite(edition, ctx.userId);
       if (!saved) return c.json({ error: 'Save your rescue first.' }, 403);
       const key = shareKey(edition);
-      const stats = await community(deps.store, edition);
-      const body: unknown = await c.req.json();
-      const favorite =
-        isObject(body) && isAnimalId(body.favorite)
-          ? body.favorite
-          : saved.favorite;
-      const hook =
-        saved.openingTrap && (stats.traps?.[saved.openingTrap] ?? 0) >= 2
-          ? 'That tempting first move fooled me too. Which move fooled you?'
-          : 'Which move fooled you?';
-      const text = [
-        `**Last One Out — Day #${edition.number}**`,
-        boardById(edition.puzzleId, edition.boardVersion).title,
-        '✦ ✦ ✦ ✦ · Everyone home',
-        saved.personalUndos === 0
-          ? '✨ Clean Crossing (personal)'
-          : `${saved.personalUndos} personal undos`,
-        `Card: ${titleCase(favorite)}${saved.elapsedSeconds === undefined ? '' : ` · Time ${formatElapsed(saved.elapsedSeconds)}`}`,
-        hook,
-      ].join('\n\n');
+      const stats = await readAttemptStats(deps.store, edition).catch(
+        () => undefined
+      );
+      const text = rescueShare(
+        edition,
+        saved.personalUndos,
+        saved.firstMove ?? saved.opening,
+        stats
+      );
       if ((await deps.store.hSetNX(key, ctx.userId, 'pending')) !== 1) {
         const status = await deps.store.hGet(key, ctx.userId);
         if (status && status !== 'pending') return c.json({ shared: true });
@@ -356,7 +506,7 @@ export function createApi(deps: Dependencies) {
         streak++;
       }
       await deps.setFlair(
-        `🐾 Crossing Keeper · ${streak === 30 ? '30+' : streak}d`
+        `🐾 ${titleCase(saved.favorite)} Keeper · ${streak === 30 ? '30+' : streak}d rescue streak`
       );
       return c.json({ updated: true });
     } catch {

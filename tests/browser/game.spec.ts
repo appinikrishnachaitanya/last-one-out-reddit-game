@@ -186,7 +186,7 @@ test('all first three editions solve, favorite art changes, saved result survive
       throw new Error('Invalid fixture');
     await page.locator('#edition-picker').selectOption(id);
     await expect(page.locator('#board-title')).toHaveText(title);
-    await expect(page.locator('#community')).toBeHidden();
+    await expect(page.locator('#comparison')).toBeHidden();
     for (const animal of order) await send(page, animal);
     await expect(page.locator('#save-status')).toContainText(
       'validated and saved'
@@ -207,9 +207,9 @@ test('all first three editions solve, favorite art changes, saved result survive
     await page.locator('#copy-result').click();
     await expect(page.locator('#copy-status')).toContainText('Copied');
     const copied = await page.evaluate(() => navigator.clipboard.readText());
-    expect(copied).toContain('Everyone home');
+    expect(copied).toContain('Rescued: 4/4');
     expect(copied).not.toContain('→');
-    expect(copied).not.toContain('Fox');
+    expect(copied).toMatch(/First move: (Fox|Rabbit)/);
     await page.screenshot({
       path: `artifacts/${id}-saved.png`,
       fullPage: true,
@@ -356,7 +356,9 @@ test('production-shaped response hides the preview picker, restores a saved post
   await page.locator('#community-details').evaluate((el) => {
     el.setAttribute('open', '');
   });
-  await expect(page.locator('#community')).toContainText('aren’t enough');
+  await expect(page.locator('#comparison')).toContainText(
+    "You're among the first rescuers today"
+  );
   await expect(page.locator('#card-animal')).toContainText('Badger');
   expect(posts).toBe(0);
   await page.locator('#post-rescue').click();
@@ -447,7 +449,7 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   await expect(page.locator('#board-title')).toHaveText('Moonroot Crossing');
   await expect(page.locator('[data-animal=turtle]')).toBeEnabled();
   await expect(page.locator('#preview-picker')).toBeHidden();
-  await expect(page.locator('#community')).toBeHidden();
+  await expect(page.locator('#comparison')).toBeHidden();
   await send(page, 'turtle');
   await expect(page.locator('#feedback')).toContainText(
     'Rabbit’s bridge just folded'
@@ -463,7 +465,9 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   await page.locator('#community-details').evaluate((el) => {
     el.setAttribute('open', '');
   });
-  await expect(page.locator('#community')).toContainText('aren’t enough');
+  await expect(page.locator('#comparison')).toContainText(
+    "You're among the first rescuers today"
+  );
   expect(completedJourneys).toBe(1);
   expect(events.filter((e) => e === 'start')).toHaveLength(1);
   expect(events.filter((e) => e === 'progress')).toHaveLength(3);
@@ -478,8 +482,8 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   await page.locator('#copy-result').click();
   await expect(page.locator('#copy-status')).toContainText('Copied');
   const text = await page.evaluate(() => navigator.clipboard.readText());
-  expect(text).toContain('Day 1');
-  expect(text).toContain('1 personal undo');
+  expect(text).toContain('Last One Out - 2026-11-18');
+  expect(text).toContain('Undos: 1');
   expect(text).not.toContain('→');
   expect(text).not.toContain('Rabbit');
   await page.locator('#comments').click();
@@ -730,10 +734,12 @@ test('the compact saved result keeps copy and comments inside one short frame', 
     page.getByRole('link', { name: 'Earlier crossing · Completed' })
   ).toBeVisible();
   await page.locator('#community-details summary').click();
-  await expect(page.getByLabel('Fox: 1 of 2')).toBeVisible();
+  await expect(page.locator('#comparison')).toContainText(
+    "You're among the first rescuers today"
+  );
   await page.screenshot({ path: 'artifacts/compact-result-desktop.png' });
 });
-test('first visit opens on a playable board with a contextual cue and a quiet timer', async ({
+test('first visit opens on a playable board with a contextual cue and a visible timer', async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -745,11 +751,12 @@ test('first visit opens on a playable board with a contextual cue and a quiet ti
   await expect(page.locator('#help-dialog')).toBeHidden();
   await send(page, 'fox');
   await expect(page.locator('#first-move')).toBeHidden();
-  await expect(page.locator('#run-clock')).toBeHidden();
-  await page.locator('#help').click();
-  await page.locator('#show-timer').check();
-  await page.locator('#close-help').click();
   await expect(page.locator('#run-clock')).toBeVisible();
+  await expect(page.locator('#run-clock')).toHaveText(/^0:[0-9]{2}$/);
+  await page.locator('#help').click();
+  await page.locator('#show-timer').uncheck();
+  await page.locator('#close-help').click();
+  await expect(page.locator('#run-clock')).toBeHidden();
   await context.close();
 });
 
@@ -866,13 +873,12 @@ test('Version 4 captures the playable screens and keeps scenery and sound prefer
   await page.locator('#help').click();
   await page.locator('#scenery').selectOption('dawn');
   await expect(page.locator('html')).toHaveAttribute('data-scenery', 'dawn');
+  await page.locator('#close-help').click();
   await page.locator('#forest-sound').click();
   await expect(page.locator('html')).toHaveAttribute(
     'data-sound-playing',
     /dawn\.mp3/
   );
-  await page.screenshot({ path: 'artifacts/version4/04-settings.png' });
-  await page.locator('#close-help').click();
   await page.screenshot({ path: 'artifacts/version4/05-silver-dawn.png' });
   await page.locator('#help').click();
   await page.locator('#scenery').selectOption('autumn');
@@ -886,8 +892,8 @@ test('Version 4 captures the playable screens and keeps scenery and sound prefer
     /woodland-music\.mp3/
   );
   await page.screenshot({ path: 'artifacts/version4/04-settings.png' });
-  await page.locator('#forest-sound').click();
   await page.locator('#close-help').click();
+  await page.locator('#forest-sound').click();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-scenery', 'autumn');
   await expect(page.locator('#forest-sound')).toHaveAttribute(
@@ -938,4 +944,101 @@ test('Version 4 captures the playable screens and keeps scenery and sound prefer
   await desktop.locator('#restart').click();
   await expect(desktop.locator('#result')).toBeHidden();
   await desktop.screenshot({ path: 'artifacts/version4/09-desktop-board.png' });
+});
+
+test('Community Rescue shows yesterday, prevents a repeat turn, and preserves the solo board', async ({
+  page,
+}) => {
+  const { createApi } = await import('../../src/server/app.ts');
+  const { MemoryStore } = await import('../../src/server/core/memory-store.ts');
+  const { bindingFor, EDITIONS } =
+    await import('../../src/server/core/schedule.ts');
+  const { Hono } = await import('hono');
+  const edition = EDITIONS[0]!;
+  const sharedRows = new Map<string, string>();
+  const app = new Hono().route(
+    '/api',
+    createApi({
+      mode: 'reddit',
+      store: new MemoryStore(),
+      communityStorage: {
+        get: async (key) => sharedRows.get(key),
+        commit: async (key, previous, next) => {
+          if (sharedRows.get(key) !== previous) return false;
+          sharedRows.set(key, next);
+          return true;
+        },
+      },
+      getContext: async (c) => ({
+        userId: c.req.header('x-test-player') ?? 't2_alder',
+        username: c.req.header('x-test-player') ?? 'Alder',
+        postId: 't3_sharedpost',
+      }),
+      readPost: async () => bindingFor(edition),
+      now: () => new Date('2026-11-18'),
+    })
+  );
+  await page.setViewportSize({ width: 390, height: 512 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.route('**/api/**', async (route) => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname;
+    if (path.startsWith('/api/telemetry/')) {
+      await route.fulfill({
+        status: 503,
+        json: { error: 'Telemetry is disabled for this test' },
+      });
+      return;
+    }
+    const response = await app.request(path, {
+      method: req.method(),
+      body: req.postData() ?? undefined,
+    });
+    const json = await response.json();
+    if (path === '/api/init')
+      json.previousRescues = {
+        yesterday: true,
+        totalSolves: 12,
+        perfectRuns: 3,
+        stranded: { rabbit: 6 },
+      };
+    await route.fulfill({ status: response.status, json });
+  });
+  await page.goto('http://127.0.0.1:5175/game.html');
+  await expect(page.locator('#first-move')).toHaveText(
+    'Yesterday: 12 rescues • Most stranded: Rabbit • Perfect runs: 25%'
+  );
+  await send(page, 'fox');
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+  await page.getByRole('button', { name: 'Community Rescue' }).click();
+  await expect(page.locator('#shared-status')).toHaveText(
+    'Take one move this attempt.'
+  );
+  await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
+  const panel = await page.locator('#shared-summary').boundingBox();
+  expect((panel?.y ?? 512) + (panel?.height ?? 0)).toBeLessThanOrEqual(512);
+  await page
+    .locator('.animal-picker')
+    .evaluate((el) => el.setAttribute('open', ''));
+  await page.locator('[data-animal=turtle]').click();
+  await page.locator('#send').click();
+  await expect(page.locator('#feedback')).toContainText(
+    'Rabbit needs a rethink'
+  );
+  await expect(page.locator('#shared-status')).toContainText('Waiting');
+  await page.locator('#shared-history summary').click();
+  await expect(page.locator('#shared-log')).toContainText('u/Alder');
+  await app.request('/api/community', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-test-player': 'Birch' },
+    body: JSON.stringify({ animal: 'fox', moveNumber: 1 }),
+  });
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(page.locator('#feedback')).toContainText(
+    'u/Birch brought Fox home'
+  );
+  await page.getByRole('button', { name: 'Solo Rescue' }).click();
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+  await expect(page.locator('#undo')).toBeEnabled();
+  await expect(page.locator('#shared-rescue')).toBeHidden();
 });

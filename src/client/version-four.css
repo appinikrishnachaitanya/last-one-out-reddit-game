@@ -172,3 +172,181 @@ body {
   border-color: #7f9a826b;
   box-shadow: none;
 }
+
+#app header {
+  gap: 6px;
+}
+
+#app .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#app .header-actions button {
+  min-height: 44px;
+  padding: 4px 7px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.play-clock {
+  min-width: 40px;
+  text-align: center;
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.play-clock span {
+  display: block;
+  font-size: 9px;
+  color: #c6d6cb;
+}
+
+#run-clock {
+  color: inherit;
+  font-size: 14px;
+}
+
+@media (max-width: 360px) {
+  #app header h1 {
+    font-size: clamp(14px, 5vw, 19px);
+  }
+  #app .brand p {
+    letter-spacing: 0.055em;
+  }
+}
+
+#app #help-dialog h3 {
+  margin: 14px 0 8px;
+  font-size: 16px;
+}
+
+#app #help-dialog .atmosphere {
+  grid-template-columns: 1fr;
+}
+
+#app .how-to-play {
+  margin-top: 14px;
+  border-top: 1px solid #a7a582;
+  padding-top: 8px;
+}
+
+#app .how-to-play summary {
+  padding: 8px 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+#app #comparison {
+  margin: 4px 0;
+  color: #12342f;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+#hint-text a {
+  color: var(--citron);
+}
+
+#rescue-modes:not([hidden]) {
+  display: flex;
+  gap: 4px;
+  margin-block: 2px 6px;
+}
+
+#app #rescue-modes button {
+  min-height: 36px;
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+#app.touring #rescue-modes,
+#app.community-mode :is(#undo, #hint, #hint-text) {
+  display: none;
+}
+
+#app.community-mode .actions {
+  display: block;
+}
+
+#app.community-mode #send {
+  width: 100%;
+}
+
+#shared-rescue {
+  font-size: 12px;
+  margin-block: 6px 0;
+}
+
+.shared-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#app #shared-refresh {
+  min-height: 36px;
+  padding: 3px 8px;
+}
+
+#shared-log {
+  max-height: 7rem;
+  overflow: auto;
+  padding-inline-start: 24px;
+}
+
+#comparison .opening-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 36px;
+  gap: 6px;
+  align-items: center;
+}
+
+#comparison meter {
+  width: 100%;
+}
+
+@media (max-width: 559px) and (max-height: 620px) {
+  #app:has(#rescue-modes:not([hidden])):not(.touring) #game-container {
+    max-width: calc(100dvh - var(--board-gap, 260px));
+  }
+
+  #app.community-mode {
+    --board-gap: 292px;
+  }
+}
+
+#app #comparison p {
+  margin: 2px 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+@media (max-height: 620px) {
+  #result:has(#comparison:not([hidden])):has(#retry-save[hidden]) #save-status {
+    display: none;
+  }
+  #app .result {
+    margin-top: 4px;
+  }
+  #app .result .discussion {
+    display: none;
+  }
+  #app #comparison {
+    margin-block: 2px;
+  }
+}
+
+#shared-celebration {
+  padding: 6px 8px;
+  color: var(--citron);
+  border: 1px solid #a1c274;
+  border-radius: 8px;
+  font-weight: 700;
+}
