@@ -15,12 +15,15 @@ export type Completion = Readonly<{
   sequence: readonly AnimalId[];
   opening: AnimalId;
   personalUndos: number;
+  elapsedSeconds?: number;
+  openingTrap?: AnimalId;
   favorite: AnimalId;
   completedAt: string;
 }>;
 export type Community = Readonly<{
   total: number;
   openings: Partial<Record<AnimalId, number>>;
+  traps?: Partial<Record<AnimalId, number>>;
 }>;
 export type Init =
   | {
@@ -28,6 +31,8 @@ export type Init =
       edition: Edition;
       completion: Completion | null;
       community: Community | null;
+      shareStatus?: string;
+      refillAt?: number;
       commentsUrl: string | null;
       mode: 'reddit' | 'demo';
     }
@@ -62,6 +67,17 @@ export function parseEdition(value: unknown): Edition {
     boardVersion: value.boardVersion,
   };
 }
+export function validElapsed(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= 31_536_000
+  );
+}
+export function formatElapsed(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
 export function parseCompletion(value: unknown, edition: Edition): Completion {
   if (
     !isObject(value) ||
@@ -88,6 +104,12 @@ export function parseCompletion(value: unknown, edition: Edition): Completion {
     sequence: [...value.sequence],
     opening: value.opening,
     personalUndos: value.personalUndos,
+    ...(validElapsed(value.elapsedSeconds)
+      ? { elapsedSeconds: value.elapsedSeconds }
+      : {}),
+    ...(isAnimalId(value.openingTrap)
+      ? { openingTrap: value.openingTrap }
+      : {}),
     favorite: value.favorite,
     completedAt: value.completedAt,
   };
@@ -115,7 +137,18 @@ export function parseCommunity(value: unknown): Community {
     total += n;
   }
   if (total !== value.total) throw new Error('Inconsistent community totals');
-  return { total, openings };
+  const traps: NonNullable<Community['traps']> = {};
+  if (isObject(value.traps))
+    for (const [id, count] of Object.entries(value.traps))
+      if (
+        isAnimalId(id) &&
+        typeof count === 'number' &&
+        Number.isSafeInteger(count) &&
+        count > 0 &&
+        count <= total
+      )
+        traps[id] = count;
+  return { total, openings, ...(Object.keys(traps).length ? { traps } : {}) };
 }
 export function parseInit(value: unknown): Init {
   if (!isObject(value) || (value.mode !== 'reddit' && value.mode !== 'demo'))
@@ -132,6 +165,10 @@ export function parseInit(value: unknown): Init {
       ? parseCompletion(value.completion, edition)
       : null,
     community: value.community ? parseCommunity(value.community) : null,
+    ...(typeof value.shareStatus === 'string'
+      ? { shareStatus: value.shareStatus }
+      : {}),
+    ...(typeof value.refillAt === 'number' ? { refillAt: value.refillAt } : {}),
     commentsUrl:
       typeof value.commentsUrl === 'string' ? value.commentsUrl : null,
   };

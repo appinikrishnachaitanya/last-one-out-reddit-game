@@ -1,4 +1,10 @@
-import { getWebViewMode, requestExpandedMode } from '@devvit/web/client';
+import { setupAtmosphere } from './atmosphere';
+import { formatElapsed, isObject, validElapsed } from '../shared/daily';
+import {
+  getWebViewMode,
+  navigateTo,
+  requestExpandedMode,
+} from '@devvit/web/client';
 import { serializeDraft, restoreDraft } from './draft';
 import * as Phaser from 'phaser';
 import { MOONROOT, boardById } from '../shared/boards';
@@ -10,6 +16,7 @@ import type { Edition } from '../shared/daily';
 import {
   Session,
   isHome,
+  isAnimalId,
   titleCase,
   trace,
   won,
@@ -34,6 +41,60 @@ let commentsUrl: string | null = null;
 let epoch = 0;
 const saving = new Set<number>();
 let submission: unknown;
+let startedAt = 0;
+let openingTrap: AnimalId | undefined;
+let firstAttempt = false;
+let hintSyncEnabled = false;
+let hintRequest = false;
+let showTimer = false;
+try {
+  showTimer = localStorage.getItem('loo-live-timer') === 'true';
+} catch {
+  /* use default */
+}
+const timerSetting = element('show-timer', HTMLInputElement);
+timerSetting.checked = showTimer;
+timerSetting.addEventListener('change', () => {
+  showTimer = timerSetting.checked;
+  try {
+    localStorage.setItem('loo-live-timer', String(showTimer));
+  } catch {
+    /* optional */
+  }
+  updateRunIndicators();
+});
+let finishedSeconds: number | undefined;
+const lifelineCooldown = 60_000;
+let refillAt = readTimestamp('loo-hint-refill');
+function readTimestamp(key: string): number {
+  try {
+    const value = Number(localStorage.getItem(key));
+    return Number.isSafeInteger(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+function storeTimestamp(key: string, value: number): void {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    /* optional */
+  }
+}
+function updateRunIndicators(): void {
+  const clock = element('run-clock', HTMLElement);
+  clock.hidden = !showTimer || tourActive || !startedAt || !result.hidden;
+  const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+  if (!clock.hidden) clock.textContent = formatElapsed(elapsed);
+  const left = Math.max(0, Math.ceil((refillAt - Date.now()) / 1000));
+  button('hint').disabled =
+    !!left || hintRequest || busy || tourActive || !result.hidden;
+  button('hint').title = left ? 'Hint recharging' : 'Use one hint';
+  element('lifeline-status', HTMLElement).textContent = left
+    ? `Hint recharges in ${left}s`
+    : 'One hint ready · recharges after 60 seconds';
+}
+window.setInterval(updateRunIndicators, 1000);
 const journeyClient = (id: string) =>
   createTelemetryClient({ storageKey: `loo-journey:${id}` });
 let flow = new JourneyFlow(journeyClient('loading'), !localDemo);
@@ -77,6 +138,10 @@ const game = new Phaser.Game({
 function say(text: string, warning = false): void {
   feedback.textContent = text;
   feedback.classList.toggle('warning', warning);
+  element('app', HTMLElement).classList.toggle(
+    'stranded',
+    scene.blocked.length > 0 && !busy
+  );
 }
 function rememberRun(): void {
   if (!edition || busy || tourActive || session.board.id !== edition.puzzleId)
@@ -137,6 +202,7 @@ function refresh(): void {
     controls.append(b);
   }
   button('undo').disabled = busy || !session.history.length;
+  updateRunIndicators();
   button('restart').disabled = busy;
   button('motion-dialog').disabled = busy;
   button('expand').disabled = busy;
@@ -153,7 +219,8 @@ function refresh(): void {
   rememberRun();
   element('personal-stats', HTMLSpanElement).textContent = session.undos
     ? `${session.undos} personal undo${session.undos === 1 ? '' : 's'} · no penalty`
-    : 'No timer. Take your time.';
+    : '';
+  updateRunIndicators();
 }
 function choose(id: AnimalId): void {
   if (
@@ -192,7 +259,18 @@ async function send(): Promise<void> {
   if (busy || !selected || !trace(session.board, session.state, selected).legal)
     return;
   const id = selected;
-  if (!tourActive) flow.commit();
+  const openingMove = !firstAttempt && !tourActive;
+  if (!tourActive) {
+    firstAttempt = true;
+    element('first-move', HTMLElement).hidden = true;
+    element('hint-text', HTMLElement).hidden = true;
+    flow.commit();
+    if (!startedAt && edition) {
+      startedAt = Date.now();
+      storeTimestamp(`loo-start:${edition.id}`, startedAt);
+    }
+    updateRunIndicators();
+  }
   busy = true;
   scene.busy = true;
   const previouslyClear = session.board.animals
@@ -217,13 +295,21 @@ async function send(): Promise<void> {
     reduced
   );
   scene.blocked = blocked;
+  if (openingMove && blocked.length) {
+    openingTrap = id;
+    try {
+      if (edition) localStorage.setItem(`loo-trap:${edition.id}`, id);
+    } catch {
+      /* optional */
+    }
+  }
   if (tourActive) tourPhase = 'undo';
   busy = false;
   scene.busy = false;
   refresh();
   if (blocked.length)
     say(
-      `${blocked.map(titleCase).join(' and ')}’s bridge just folded. Undo to reopen it.`,
+      `Stranded! ${blocked.map(titleCase).join(' and ')}’s bridge just folded. Undo to reopen it.`,
       true
     );
   else
@@ -238,12 +324,16 @@ async function send(): Promise<void> {
     scene.celebrate(reduced);
     say('Everyone home. The forest can rest.');
     if (edition) {
+      const seconds = Math.floor((Date.now() - startedAt) / 1000);
+      finishedSeconds =
+        startedAt && validElapsed(seconds) ? seconds : undefined;
       results.show(
         edition,
         session.undos,
         commentsUrl,
         null,
-        session.state.home
+        session.state.home,
+        finishedSeconds
       );
       submission = {
         editionId: edition.id,
@@ -251,6 +341,8 @@ async function send(): Promise<void> {
         boardVersion: edition.boardVersion,
         sequence: [...session.state.home],
         personalUndos: session.undos,
+        ...(openingTrap ? { openingTrap } : {}),
+        elapsedSeconds: finishedSeconds,
         favorite: results.favorite,
       };
       void saveResult();
@@ -283,6 +375,17 @@ button('restart').addEventListener('click', () => {
   flow.abandon();
   flow = new JourneyFlow(journeyClient(edition?.id ?? 'loading'), !localDemo);
   session.restart();
+  help.close();
+  openingTrap = undefined;
+  try {
+    if (edition) localStorage.removeItem(`loo-trap:${edition.id}`);
+  } catch {
+    /* optional */
+  }
+  firstAttempt = false;
+  startedAt = 0;
+  finishedSeconds = undefined;
+  if (edition) storeTimestamp(`loo-start:${edition.id}`, 0);
   epoch++;
   submission = undefined;
   selected = undefined;
@@ -302,13 +405,57 @@ button('motion-dialog').addEventListener('click', () => {
   refresh();
 });
 const help = element('help-dialog', HTMLDialogElement);
-button('help').addEventListener('click', () => {
-  element('hint-text', HTMLParagraphElement).hidden = true;
-  button('hint').hidden =
-    busy || tourActive || won(session.board, session.state);
-  help.showModal();
+button('help').addEventListener('click', () => help.showModal());
+button('archive-open').addEventListener('click', async () => {
+  const archive = element('settings-archive', HTMLElement);
+  archive.hidden = !archive.hidden;
+  if (archive.hidden) return;
+  await results.loadCrossings();
+  archive.replaceChildren();
+  for (const id of ['card-collection', 'archive-result']) {
+    const copy = element(id, HTMLElement).cloneNode(true) as HTMLElement;
+    copy.removeAttribute('id');
+    copy.querySelectorAll('a').forEach((link) =>
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        navigateTo(link.href);
+      })
+    );
+    archive.append(copy);
+  }
 });
-button('hint').addEventListener('click', () => {
+button('hint').addEventListener('click', async () => {
+  refillAt = Math.max(refillAt, readTimestamp('loo-hint-refill'));
+  if (
+    hintRequest ||
+    busy ||
+    tourActive ||
+    won(session.board, session.state) ||
+    Date.now() < refillAt
+  )
+    return;
+  const currentEpoch = epoch;
+  if (hintSyncEnabled) {
+    hintRequest = true;
+    updateRunIndicators();
+    try {
+      const data = await api.request('hint', {});
+      if (isObject(data) && typeof data.refillAt === 'number') {
+        refillAt = Math.max(refillAt, data.refillAt);
+        storeTimestamp('loo-hint-refill', refillAt);
+        if (data.granted !== true && refillAt > Date.now()) return;
+      }
+    } catch {
+      /* fall back to a local hint */
+    } finally {
+      hintRequest = false;
+      updateRunIndicators();
+    }
+  }
+  refillAt = Math.max(refillAt, Date.now() + lifelineCooldown);
+  storeTimestamp('loo-hint-refill', refillAt);
+  updateRunIndicators();
+  if (currentEpoch !== epoch || busy || tourActive || !result.hidden) return;
   const tip = element('hint-text', HTMLParagraphElement);
   const safe = new Set(
     solve(session.board, session.state).map(([first]) => first)
@@ -412,6 +559,18 @@ async function load(previewId?: string): Promise<void> {
       return;
     }
     edition = data.edition;
+    openingTrap = undefined;
+    try {
+      const trap = localStorage.getItem(`loo-trap:${edition.id}`);
+      if (isAnimalId(trap)) openingTrap = trap;
+    } catch {
+      /* optional */
+    }
+    hintSyncEnabled = typeof data.refillAt === 'number';
+    if (data.refillAt) refillAt = Math.max(refillAt, data.refillAt);
+    element('hint-text', HTMLElement).hidden = true;
+    startedAt = readTimestamp(`loo-start:${edition.id}`);
+    finishedSeconds = data.completion?.elapsedSeconds;
     commentsUrl = data.commentsUrl;
     flow = new JourneyFlow(journeyClient(edition.id), !localDemo);
     const board = boardById(edition.puzzleId, edition.boardVersion);
@@ -424,6 +583,9 @@ async function load(previewId?: string): Promise<void> {
     session = data.completion
       ? new Session(board)
       : (restoreDraft(edition, board, draft) ?? new Session(board));
+    firstAttempt = session.state.home.length > 0 || session.undos > 0;
+    element('first-move', HTMLElement).hidden =
+      firstAttempt || !!data.completion;
     selected = undefined;
     scene.blocked = [];
     element('daily-label', HTMLSpanElement).textContent =
@@ -445,8 +607,10 @@ async function load(previewId?: string): Promise<void> {
         session.undos,
         commentsUrl,
         data.completion,
-        session.state.home
+        session.state.home,
+        finishedSeconds
       );
+      results.sharing(data.shareStatus);
       if (data.community)
         results.community(data.community, data.completion.opening);
     }
@@ -458,7 +622,8 @@ async function load(previewId?: string): Promise<void> {
         session.undos,
         commentsUrl,
         null,
-        session.state.home
+        session.state.home,
+        finishedSeconds
       );
       submission = {
         editionId: edition.id,
@@ -466,6 +631,8 @@ async function load(previewId?: string): Promise<void> {
         boardVersion: edition.boardVersion,
         sequence: [...session.state.home],
         personalUndos: session.undos,
+        ...(openingTrap ? { openingTrap } : {}),
+        elapsedSeconds: finishedSeconds,
         favorite: results.favorite,
       };
       refresh();
@@ -474,7 +641,7 @@ async function load(previewId?: string): Promise<void> {
     if (data.completion) {
       scene.celebrate(reduced);
       say('Your saved rescue. Everyone is still home.');
-    } else say('Tap an animal to see its path.');
+    } else say(firstAttempt ? 'Tap an animal to see its path.' : '');
     flow.ready();
   } catch (error) {
     if (current !== epoch) return;
@@ -548,27 +715,16 @@ async function initialize(): Promise<void> {
         refresh();
         renderTour();
       }
-    } else maybeShowGuide();
-  }
-}
-const welcome = element('welcome-dialog', HTMLDialogElement);
-function markGuideSeen(): void {
-  try {
-    localStorage.setItem('loo-guide-seen:v1', 'yes');
-  } catch {
-    /* optional */
+    }
   }
 }
 function startTour(): void {
   if (busy || tourActive) return;
   if (saving.has(epoch)) {
-    welcome.close();
     help.close();
     say('Your rescue is still saving. Try the practice once it finishes.');
     return;
   }
-  markGuideSeen();
-  welcome.close();
   help.close();
   rememberRun();
   dailyRun = session;
@@ -646,11 +802,6 @@ function finishTour(): void {
   say('Your daily crossing. Practice did not change your result.');
   button('help').focus({ preventScroll: true });
 }
-button('welcome-practice').addEventListener('click', startTour);
-button('welcome-skip').addEventListener('click', () => {
-  markGuideSeen();
-  welcome.close();
-});
 button('help-practice').addEventListener('click', startTour);
 button('exit-tour').addEventListener('click', finishTour);
 button('tour-action').addEventListener('click', () => {
@@ -660,18 +811,6 @@ button('tour-action').addEventListener('click', () => {
   else if (tourPhase === 'undo') button('undo').click();
   else finishTour();
 });
-function maybeShowGuide(): void {
-  try {
-    if (localStorage.getItem('loo-guide-seen:v1') === 'yes') return;
-  } catch {
-    /* first visit */
-  }
-  welcome.showModal();
-  welcome.scrollTop = 0;
-  const title = element('welcome-title', HTMLHeadingElement);
-  title.tabIndex = -1;
-  title.focus({ preventScroll: true });
-}
 function persistTour(): void {
   if (tourActive) {
     try {
@@ -747,5 +886,6 @@ window.addEventListener('focus', () => {
 document.addEventListener('fullscreenchange', syncPresentation);
 syncPresentation();
 game.events.once('board-ready', () => {
+  setupAtmosphere((id) => scene.setScenery(id));
   void initialize();
 });

@@ -1,5 +1,11 @@
+import { validElapsed } from '../../shared/daily.ts';
 import { boardById } from '../../shared/boards.ts';
-import { isAnimalId, validateSolution } from '../../shared/engine.ts';
+import {
+  initialState,
+  trace,
+  isAnimalId,
+  validateSolution,
+} from '../../shared/engine.ts';
 import { isObject, parseCompletion } from '../../shared/daily.ts';
 import type { Completion, Community, Edition } from '../../shared/daily.ts';
 export type CompletionStore = {
@@ -23,13 +29,16 @@ export async function community(
 ): Promise<Community> {
   const rows = await store.hGetAll(completionKey(edition));
   const openings: Community['openings'] = {};
+  const traps: NonNullable<Community['traps']> = {};
   let total = 0;
   for (const raw of Object.values(rows)) {
     const record = parseCompletion(JSON.parse(raw), edition);
     total++;
+    if (record.openingTrap)
+      traps[record.openingTrap] = (traps[record.openingTrap] ?? 0) + 1;
     openings[record.opening] = (openings[record.opening] ?? 0) + 1;
   }
-  return { total, openings };
+  return { total, openings, ...(Object.keys(traps).length ? { traps } : {}) };
 }
 export async function complete(
   store: CompletionStore,
@@ -63,18 +72,36 @@ export async function complete(
     !Number.isSafeInteger(input.personalUndos) ||
     input.personalUndos < 0 ||
     input.personalUndos > 1_000_000 ||
+    (input.elapsedSeconds !== undefined &&
+      !validElapsed(input.elapsedSeconds)) ||
     !isAnimalId(input.favorite)
   )
     throw new Error('Invalid personal result');
   const opening = input.sequence[0];
   if (!opening) throw new Error('Missing opening');
+  const board = boardById(edition.puzzleId, edition.boardVersion);
+  const trap = input.openingTrap;
+  const verifiedTrap =
+    input.personalUndos > 0 &&
+    isAnimalId(trap) &&
+    trace(board, initialState(), trap).legal &&
+    board.animals.some(
+      ({ id }) =>
+        id !== trap &&
+        trace(board, initialState(), id).legal &&
+        trace(board, { home: [trap] }, id).obstacle?.kind === 'bridge'
+    );
   const record: Completion = {
     editionId: edition.id,
     puzzleId: edition.puzzleId,
     boardVersion: edition.boardVersion,
     sequence: [...input.sequence],
     opening,
+    ...(verifiedTrap ? { openingTrap: trap } : {}),
     personalUndos: input.personalUndos,
+    ...(validElapsed(input.elapsedSeconds)
+      ? { elapsedSeconds: input.elapsedSeconds }
+      : {}),
     favorite: input.favorite,
     completedAt: now.toISOString(),
   };

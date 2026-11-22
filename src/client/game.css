@@ -755,7 +755,7 @@ canvas {
     grid-row: 2;
     grid-column: 1;
   }
-  .actions #restart {
+  .actions #hint {
     grid-row: 2;
     grid-column: 2;
   }
@@ -1117,68 +1117,6 @@ footer button {
 #tour-copy {
   min-height: 4.1em;
 }
-.guide-animals {
-  display: flex;
-  justify-content: center;
-  gap: 0;
-  margin: 14px 0;
-}
-.guide-animal {
-  display: block;
-  width: 66px;
-  height: 66px;
-  background-image: url('/art/animals.webp');
-  background-size: 200% 200%;
-  background-repeat: no-repeat;
-}
-.guide-animal.turtle {
-  background-position: 0 0;
-}
-.guide-animal.rabbit {
-  background-position: 100% 0;
-}
-.guide-animal.fox {
-  background-position: 0 100%;
-}
-.guide-animal.badger {
-  background-position: 100% 100%;
-}
-.guide-rules {
-  padding-left: 22px;
-  margin: 12px 0;
-  font:
-    14px/1.55 system-ui,
-    sans-serif;
-}
-.guide-rules li {
-  padding-left: 3px;
-  margin: 10px 0;
-}
-.guide-rules b {
-  color: #183e2a;
-}
-.guide-note {
-  font-style: italic;
-  font-size: 13px !important;
-}
-#welcome-dialog {
-  max-width: 430px;
-  max-height: calc(100dvh - 24px);
-  overflow: auto;
-}
-#welcome-dialog h2 {
-  font-size: 29px;
-  line-height: 1.13;
-}
-#welcome-dialog > button {
-  display: block;
-  width: 100%;
-  margin-top: 9px;
-  min-height: 44px;
-}
-#welcome-dialog .eyebrow {
-  margin-top: 0;
-}
 @media (max-width: 559px) {
   #tour-panel {
     margin: 6px 0;
@@ -1529,41 +1467,6 @@ footer button {
     margin-top: 8px;
   }
 }
-@media (max-height: 620px) {
-  #welcome-dialog {
-    padding: 16px;
-    max-height: calc(100dvh - 16px);
-  }
-  #welcome-dialog h2 {
-    font-size: 24px;
-  }
-  #welcome-dialog .guide-animals {
-    margin: 9px 0;
-  }
-  #welcome-dialog .guide-animal {
-    width: 48px;
-    height: 48px;
-  }
-  #welcome-dialog .guide-rules {
-    font-size: 12px;
-    line-height: 1.4;
-    margin: 8px 0;
-    padding-left: 18px;
-  }
-  #welcome-dialog .guide-rules li {
-    margin: 7px 0;
-  }
-  #welcome-dialog .guide-note {
-    font-size: 11px !important;
-    line-height: 1.4;
-    margin: 9px 0;
-  }
-  #welcome-dialog > button {
-    min-height: 40px;
-    margin-top: 7px;
-    font-size: 13px;
-  }
-}
 h1 {
   line-height: 1.1;
   white-space: nowrap;
@@ -1718,4 +1621,125 @@ h2,
 }
 #bridge-recap li + li {
   margin-top: 5px;
+}
+
+#run-clock {
+  font:
+    700 11px system-ui,
+    sans-serif;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+#card-collection {
+  margin-block: 10px;
+}
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+.collection-grid li {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  background: #fff2ce;
+  border: 1px solid #ab8744;
+  border-radius: 9px;
+  padding: 8px;
+  text-align: center;
+}
+.collection-grid svg {
+  width: 58px;
+  height: 58px;
+}
+
+#first-move {
+  margin: 0 0 4px;
+  text-align: center;
+  color: #38543c;
+  font: 600 12px/1.25 system-ui, sans-serif;
+}
+
+.bridge-key {
+  display: none;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.timer-setting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+#help,
+#help-dialog button,
+.actions button,
+.result-actions button,
+#favorites button {
+  min-height: 44px;
+}
+
+
+#hint-text {
+  margin: 3px 0;
+  color: #344d38;
+  font-size: 12px;
+}
+
+.feedback.warning + .actions #undo:not(:disabled) {
+  outline: 2px solid #954823;
+  outline-offset: -2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+#post-status,
+#flair-status {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.solved .play-layout {
+  display: none;
+}
+
+.result-actions button {
+  min-width: 0;
+  padding-inline: 7px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#apply-flair {
+  min-height: 44px;
+  margin: 8px 0 0;
+}
+
+@media (max-width: 400px) {
+  .result-actions button { font-size: 12px; }
+}
+
+.animal-controls button {
+  min-height: 44px;
+}
+
+.touring #first-move {
+  display: none;
 }

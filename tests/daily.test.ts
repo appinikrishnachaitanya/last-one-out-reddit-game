@@ -52,7 +52,7 @@ test('explicit UTC schedule has an empty date; old and legacy posts never rebind
   const day2 = editionAt(new Date('2026-11-19T00:00:00Z'))!;
   assert.equal(day1.number, 1);
   assert.equal(day2.number, 2);
-  assert.equal(editionAt(new Date('2030-01-01T00:00:00Z')), undefined);
+  assert.equal(editionAt(new Date('2026-11-17T00:00:00Z')), undefined);
   assert.deepEqual(editionFromPost(bindingFor(day1)), day1);
   assert.equal(
     editionFromPost({ boardId: MOONROOT.id, boardVersion: 1 }).number,
@@ -84,7 +84,12 @@ test('the opening run has ten immutable, distinct boards and expected solver cou
       edition.id
     );
   }
-  assert.equal(editionAt(new Date('2026-11-28T00:00:00Z')), undefined);
+  const rotation = editionAt(new Date('2026-11-28T00:00:00Z'))!;
+  assert.equal(rotation.number, 11);
+  assert.equal(rotation.puzzleId, EDITIONS[0]!.puzzleId);
+  assert.notEqual(rotation.id, EDITIONS[0]!.id);
+  assert.deepEqual(editionFromPost(bindingFor(rotation)), rotation);
+  assert.equal(editionAt(new Date('2026-12-08T00:00:00Z'))?.number, 21);
 });
 
 test('days 8–10 teach a shared bridge, a keeper crossing its own bridge, and a mid-rescue trap', () => {

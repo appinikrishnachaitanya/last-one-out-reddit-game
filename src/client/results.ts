@@ -1,10 +1,11 @@
 import { boardById } from '../shared/boards';
 import { initialState, samePoint, trace } from '../shared/engine';
-import { isObject } from '../shared/daily';
+import { formatElapsed, isObject } from '../shared/daily';
 import { navigateTo, showShareSheet } from '@devvit/web/client';
 import type { Edition, Completion, Community } from '../shared/daily';
 import { isAnimalId, titleCase } from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
+import { DailyApi } from './daily-api';
 import { portrait } from './portraits';
 const animals: readonly AnimalId[] = ['turtle', 'rabbit', 'fox', 'badger'];
 function el(id: string): HTMLElement {
@@ -17,18 +18,23 @@ export function shareText(
   undos: number,
   favorite: AnimalId,
   url: string | null,
-  demo: boolean
+  demo: boolean,
+  elapsedSeconds?: number
 ): string {
-  return `Last One Out · Day ${edition.number}\nEveryone home\n${undos} personal undo${undos === 1 ? '' : 's'}\n${undos === 0 ? 'Clean crossing\n' : ''}Cheering for ${titleCase(favorite)}${url ? `\n${url}` : ''}${demo ? '\nLocal preview · not a Reddit completion' : ''}`;
+  return `Last One Out · Day ${edition.number}\n${boardById(edition.puzzleId, edition.boardVersion).title}\nEveryone home\n${elapsedSeconds === undefined ? '' : `Time ${formatElapsed(elapsedSeconds)}\n`}${undos} personal undo${undos === 1 ? '' : 's'}\n${undos === 0 ? 'Clean crossing\n' : ''}Cheering for ${titleCase(favorite)}${url ? `\n${url}` : ''}${demo ? '\nLocal preview · not a Reddit completion' : ''}`;
 }
 export class Results {
   edition: Edition | undefined;
   favorite: AnimalId = 'fox';
   undos = 0;
+  elapsedSeconds: number | undefined;
+  collectionRequest = 0;
   url: string | null = null;
   demo: boolean;
   validated = false;
   countdown?: number;
+  api = new DailyApi();
+  shareState: 'ready' | 'busy' | 'done' | 'pending' = 'ready';
   onFavorite: (id: AnimalId) => void;
   onRetry: () => void;
   constructor(
@@ -55,6 +61,8 @@ export class Results {
     el('copy-result').addEventListener('click', () => {
       void this.copy();
     });
+    el('post-rescue').addEventListener('click', () => void this.post());
+    el('apply-flair').addEventListener('click', () => void this.flair());
     el('comments').addEventListener('click', () => {
       if (this.url) navigateTo(this.url);
     });
@@ -64,22 +72,29 @@ export class Results {
     undos: number,
     url: string | null,
     saved: Completion | null,
-    sequence: readonly AnimalId[]
+    sequence: readonly AnimalId[],
+    elapsedSeconds?: number
   ): void {
     this.edition = edition;
     this.undos = saved?.personalUndos ?? undos;
+    this.elapsedSeconds = saved ? saved.elapsedSeconds : elapsedSeconds;
     this.url = url;
     this.validated = !!saved;
     this.favorite = saved?.favorite ?? 'fox';
     try {
       const local = localStorage.getItem(`loo-card:${edition.id}`);
-      if (isAnimalId(local)) this.favorite = local;
+      if (!saved && isAnimalId(local)) this.favorite = local;
     } catch {
       /* storage is optional */
     }
     el('result').hidden = false;
     el('app').classList.add('solved');
     el('copy-status').textContent = '';
+    el('copy-fallback').hidden = true;
+    el('flair-status').hidden = true;
+    const flair = el('apply-flair') as HTMLButtonElement;
+    flair.disabled = false;
+    this.sharing();
     el('favorite-status').textContent = '';
     el('comments').hidden = !url;
     el('community').hidden = true;
@@ -97,6 +112,12 @@ export class Results {
   renderCard(): void {
     const edition = this.edition;
     if (!edition) return;
+    const time = el('card-time');
+    time.hidden = this.elapsedSeconds === undefined;
+    time.textContent =
+      this.elapsedSeconds === undefined
+        ? ''
+        : `Time ${formatElapsed(this.elapsedSeconds)}`;
     el('clean-badge').hidden = this.undos !== 0;
     el('card-portrait').innerHTML = portrait(this.favorite);
     el('card-day').textContent = `DAY ${edition.number} · ${edition.date} UTC`;
@@ -123,7 +144,9 @@ export class Results {
   }
   saved(record: Completion, stats: Community, first: boolean): void {
     this.validated = true;
+    this.sharing();
     this.undos = record.personalUndos;
+    this.elapsedSeconds = record.elapsedSeconds;
     this.renderCard();
     this.status(
       first
@@ -132,6 +155,51 @@ export class Results {
     );
     this.renderRecap(record.sequence);
     this.community(stats, record.opening);
+    void this.loadCrossings();
+  }
+  sharing(status?: string): void {
+    this.shareState =
+      status === 'pending' ? 'pending' : status ? 'done' : 'ready';
+    const button = el('post-rescue') as HTMLButtonElement;
+    button.hidden = !this.validated || this.demo || !this.url;
+    el('apply-flair').hidden = button.hidden;
+    button.disabled = this.shareState !== 'ready';
+    button.textContent =
+      this.shareState === 'done'
+        ? 'Shared to Comments ✓'
+        : this.shareState === 'pending'
+          ? 'Share unconfirmed'
+          : 'Post Rescue to Comments';
+    const note = el('post-status');
+    note.hidden = this.shareState !== 'pending';
+    note.textContent = 'Check the comments or copy your result.';
+  }
+  async post(): Promise<void> {
+    if (this.shareState !== 'ready' || !this.validated || this.demo) return;
+    const button = el('post-rescue') as HTMLButtonElement;
+    this.shareState = 'busy';
+    button.disabled = true;
+    button.textContent = 'Posting…';
+    try {
+      await this.api.request('share', { favorite: this.favorite });
+      this.sharing('sent');
+    } catch {
+      this.sharing('pending');
+    }
+  }
+  async flair(): Promise<void> {
+    if (!this.validated || this.demo) return;
+    const button = el('apply-flair') as HTMLButtonElement;
+    button.disabled = true;
+    const note = el('flair-status');
+    try {
+      await this.api.request('flair', {});
+      note.textContent = 'Subreddit flair updated!';
+    } catch {
+      note.textContent = 'Flair is unavailable right now.';
+      button.disabled = false;
+    }
+    note.hidden = false;
   }
   renderRecap(sequence: readonly AnimalId[]): void {
     if (!this.edition) return;
@@ -185,12 +253,20 @@ export class Results {
       return;
     }
     const total = Math.max(0, stats.total - 1);
-    if (total < 2) {
+    if (total < 1) {
       const p = document.createElement('p');
       p.textContent =
         'The forest is quiet. There aren’t enough completed rescues to compare yet.';
       box.append(p);
       return;
+    }
+    const commonTrap = Object.entries(stats.traps ?? {}).sort(
+      (a, b) => b[1] - a[1]
+    )[0];
+    if (commonTrap && commonTrap[1] >= 2) {
+      const trap = document.createElement('p');
+      trap.textContent = `${Math.round((commonTrap[1] / stats.total) * 100)}% of finishers reported sending ${titleCase(commonTrap[0])} first and stranding a friend.`;
+      box.append(trap);
     }
     for (const id of animals) {
       const count = Math.max(
@@ -213,22 +289,59 @@ export class Results {
     }
   }
   async loadCrossings(): Promise<void> {
+    const requestId = ++this.collectionRequest;
     clearInterval(this.countdown);
     const next = el('next-crossing');
     const archive = el('archive-result');
     const details = el('past-crossings');
+    el('card-streak').hidden = true;
     next.hidden = true;
-    details.hidden = this.demo;
+    details.hidden = false;
     archive.textContent = 'Loading past crossings…';
-    if (this.demo) return;
+    el('card-collection').textContent = 'Loading collection…';
     try {
       const response = await fetch('/api/crossings', {
         signal: AbortSignal.timeout(8000),
       });
       if (!response.ok) throw new Error('Archive unavailable');
       const data: unknown = await response.json();
+      if (requestId !== this.collectionRequest) return;
       if (!isObject(data) || !Array.isArray(data.past))
         throw new Error('Invalid archive');
+      const streak = el('card-streak');
+      if (typeof data.streak === 'number' && data.streak > 1) {
+        streak.textContent = `${data.streak}-day rescue streak`;
+        streak.hidden = false;
+      }
+      const collection = el('card-collection');
+      const grid = document.createElement('ul');
+      grid.className = 'collection-grid';
+      for (const card of Array.isArray(data.cards) ? data.cards : []) {
+        if (
+          !isObject(card) ||
+          typeof card.day !== 'number' ||
+          typeof card.title !== 'string' ||
+          !isAnimalId(card.favorite)
+        )
+          continue;
+        const item = document.createElement('li');
+        const art = document.createElement('div');
+        art.innerHTML = portrait(card.favorite);
+        const name = document.createElement('strong');
+        name.textContent = card.title;
+        const day = document.createElement('small');
+        day.textContent = `Day ${card.day}`;
+        item.append(art, day, name);
+        grid.append(item);
+      }
+      collection.textContent = grid.childElementCount
+        ? `${grid.childElementCount} ${grid.childElementCount === 1 ? 'card' : 'cards'} collected`
+        : 'Finish and save a daily rescue to earn its card.';
+      if (grid.childElementCount) collection.append(grid);
+      if (this.demo) {
+        archive.textContent = '';
+        return;
+      }
       const list = document.createElement('ul');
       for (const entry of data.past) {
         if (
@@ -272,7 +385,10 @@ export class Results {
       this.countdown = window.setInterval(tick, 15000);
       tick();
     } catch {
-      archive.textContent = 'Past crossings are unavailable right now.';
+      if (requestId !== this.collectionRequest) return;
+      archive.textContent =
+        'Collection and past crossings are unavailable right now.';
+      el('card-collection').textContent = '';
     }
   }
   async copy(): Promise<void> {
@@ -282,7 +398,8 @@ export class Results {
       this.undos,
       this.favorite,
       this.url,
-      this.demo
+      this.demo,
+      this.elapsedSeconds
     );
     try {
       await navigator.clipboard.writeText(text);

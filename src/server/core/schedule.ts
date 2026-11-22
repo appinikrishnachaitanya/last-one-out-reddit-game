@@ -73,12 +73,33 @@ export const EDITIONS: readonly Edition[] = [
     boardVersion: 1,
   },
 ];
-export const editionAt = (date: Date): Edition | undefined =>
-  EDITIONS.find((e) => e.date === date.toISOString().slice(0, 10));
+const dayMs = 86_400_000;
+const rotationStart = Date.parse('2026-11-28T00:00:00Z');
+// This order is permanent. Future curated boards can be introduced by
+// explicitly versioning a later rotation era, never by editing this pool.
+const rotation = EDITIONS.slice();
+export function editionAt(date: Date): Edition | undefined {
+  const iso = date.toISOString().slice(0, 10);
+  const original = EDITIONS.find((e) => e.date === iso);
+  if (original) return original;
+  const offset = Math.floor((date.getTime() - rotationStart) / dayMs);
+  if (offset < 0) return undefined;
+  const board = rotation[offset % rotation.length]!;
+  return { ...board, id: `loo-${iso}`, date: iso, number: 11 + offset };
+}
 export function editionById(id: string): Edition {
-  const edition = EDITIONS.find((e) => e.id === id);
-  if (!edition) throw new Error('No edition is scheduled for this ID');
+  if (!/^loo-\d{4}-\d{2}-\d{2}$/.test(id))
+    throw new Error('Invalid edition ID');
+  const date = new Date(`${id.slice(4)}T00:00:00Z`);
+  const edition = Number.isFinite(date.getTime()) ? editionAt(date) : undefined;
+  if (edition?.id !== id)
+    throw new Error('No edition is scheduled for this ID');
   return edition;
+}
+export function recentEditions(now: Date): Edition[] {
+  return Array.from({ length: 30 }, (_, i) =>
+    editionAt(new Date(now.getTime() - i * dayMs))
+  ).filter((edition): edition is Edition => !!edition);
 }
 export const bindingFor = (edition: Edition) => ({
   editionId: edition.id,

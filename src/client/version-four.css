@@ -1,0 +1,174 @@
+:root {
+  --forest: #0b302f;
+  --deep: #092523;
+  --cream: #fff1d6;
+  --warm: #ffc267;
+  --citron: #e5fa78;
+  --danger: #ff9c85;
+}
+
+body {
+  background: var(--deep);
+}
+
+#app {
+  color: var(--cream);
+  background: var(--forest);
+  border-color: #ffffff20;
+  font-family: system-ui, sans-serif;
+}
+
+#app h1,
+#app h2,
+#tour-title {
+  font-family: system-ui, sans-serif;
+  font-weight: 850;
+  letter-spacing: -0.045em;
+}
+
+#app
+  :where(
+    .brand p,
+    .puzzle-heading p,
+    .daily-line,
+    #first-move,
+    .animal-picker,
+    #hint-text,
+    .feedback,
+    #preview-picker p
+  ) {
+  color: #e2e8d8;
+}
+
+#app :is(.brand-moon, .rescue) {
+  color: var(--citron);
+}
+
+#app .rescue {
+  background: #061e1d;
+  border-color: #ffffff45;
+}
+
+#app #game-container {
+  border-color: #b9cb9a70;
+  box-shadow:
+    0 0 0 2px #061e1daa,
+    0 5px 13px #0004;
+}
+
+#app .feedback.warning {
+  color: var(--danger);
+}
+
+#app button {
+  border-color: #b2cab08c;
+  color: var(--cream);
+  background: #103936;
+  box-shadow: none;
+  font-weight: 700;
+}
+
+#app .primary {
+  color: #1b2419;
+  background: var(--warm);
+  border-color: var(--warm);
+  box-shadow: none;
+  outline: 0;
+}
+
+#app.stranded #undo:not(:disabled) {
+  color: #1b2419;
+  background: var(--warm);
+  border-color: var(--warm);
+  outline: 0;
+}
+
+#app :is(button, select, summary):focus-visible {
+  outline: 2px solid var(--citron);
+  outline-offset: 2px;
+}
+
+#app button[aria-pressed='true']:not(.primary) {
+  color: #172d27;
+  background: #cfe3bf;
+  border-color: #cfe3bf;
+}
+
+#app :is(dialog, .result, #tour-panel, #empty-state) {
+  color: #102f2c;
+  background: var(--cream);
+  border-color: #c4b994;
+}
+
+#app :is(dialog, .result, #tour-panel, #empty-state) button:not(.primary) {
+  background: #fff8e7;
+  color: #12342f;
+  border-color: #7b8b6f;
+}
+
+#app
+  :is(dialog, .result, #tour-panel, #empty-state)
+  button[aria-pressed='true'] {
+  background: #d7e8bc;
+  color: #15332a;
+}
+
+#app :is(dialog, .result, #tour-panel, #empty-state) :focus-visible {
+  outline-color: #176458;
+}
+
+#app #card-portrait {
+  border: 1px solid #b4a16b;
+  border-radius: 12px;
+  background: #dbe6bd;
+}
+
+#app .result .reunion-illustration {
+  border-color: #31554d;
+}
+
+#app .atmosphere {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #a7a582;
+  border-radius: 12px;
+  margin: 12px 0;
+  padding: 10px;
+}
+
+#app .atmosphere select {
+  min-height: 44px;
+  padding-inline: 8px;
+  color: #102f2c;
+  background: #fff9eb;
+  border: 1px solid #7b8b6f;
+  border-radius: 8px;
+}
+
+#sound-status:empty {
+  display: none;
+}
+
+@media (min-height: 640px) and (max-width: 559px) {
+  #app .result-top {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  #app .result .reunion-illustration {
+    display: block;
+    height: clamp(85px, 17dvh, 150px);
+    object-position: 50% 52%;
+  }
+}
+
+#app .rescue small,
+#app #preview-picker label {
+  color: #d3e4c5;
+}
+
+#app .control-column {
+  background: #103936;
+  border-color: #7f9a826b;
+  box-shadow: none;
+}

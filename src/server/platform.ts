@@ -20,8 +20,14 @@ export async function requireModerator(): Promise<void> {
   );
   if (!authorized) throw new Error('Moderator post permissions are required');
   const info = await reddit.getSubredditInfoByName(context.subredditName);
-  if (info.type !== 'private')
-    throw new Error('Use the private playtest community for this build');
+  const smallPublicTest =
+    info.type === 'public' &&
+    typeof info.subscribersCount === 'number' &&
+    info.subscribersCount < 200;
+  if (info.type !== 'private' && !smallPublicTest)
+    throw new Error(
+      'Use a private or under-200-member public playtest community'
+    );
 }
 export async function readBoundPost(postId: string): Promise<unknown> {
   if (!isT3(postId)) throw new Error('Invalid Reddit post ID');
@@ -36,6 +42,7 @@ export async function readBoundPost(postId: string): Promise<unknown> {
 export async function createPost(edition: Edition): Promise<string> {
   return createOrRetrievePost(redis, edition, async () => {
     const post = await reddit.submitCustomPost({
+      entry: 'splash',
       title: `Last One Out · Day ${edition.number} · ${edition.date}`,
       postData: bindingFor(edition),
       textFallback: {

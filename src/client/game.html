@@ -8,6 +8,7 @@
     />
     <meta name="theme-color" content="#0c252b" />
     <link rel="stylesheet" href="game.css" />
+    <link rel="stylesheet" href="version-four.css" />
     <title>Last One Out · Moonroot Crossing</title>
   </head>
   <body>
@@ -21,9 +22,12 @@
           </div>
         </div>
         <div class="header-actions">
-          <button id="expand" class="expand-button">Full screen</button
-          ><button id="help" class="icon-button" aria-label="How to play">
-            ?
+          <button
+            id="help"
+            class="secondary"
+            aria-label="Settings and how to play"
+          >
+            Settings
           </button>
         </div>
       </header>
@@ -33,6 +37,9 @@
       </div>
       <div id="play-layout" class="play-layout" data-play>
         <div class="board-column">
+          <p id="first-move" hidden>
+            Tap to preview a path. Watch who holds the bridges.
+          </p>
           <div
             id="game-container"
             data-play
@@ -51,7 +58,8 @@
               <p>Send everyone home.</p>
             </div>
             <div class="rescue">
-              <span id="rescue-count">0 / 4</span><small>home</small>
+              <span id="rescue-count">0 / 4</span><small>home</small
+              ><small id="run-clock" hidden></small>
             </div>
           </section>
           <section id="tour-panel" hidden aria-labelledby="tour-title">
@@ -83,10 +91,12 @@
             <button id="undo" class="secondary" disabled>↶ Undo</button
             ><button id="send" class="primary" disabled>
               Send home <span>→</span></button
-            ><button id="restart" class="secondary">↻ Restart</button>
+            ><button id="hint" class="secondary">Hint</button>
           </div>
           <footer data-play>
-            <span id="personal-stats">No timer. Take your time.</span>
+            <span id="personal-stats" class="visually-hidden"></span>
+            <span id="lifeline-status" class="visually-hidden"></span>
+            <p id="hint-text" role="status" hidden></p>
           </footer>
         </aside>
       </div>
@@ -106,6 +116,8 @@
               <div class="card-facts">
                 <p id="card-day"></p>
                 <p id="card-undos"></p>
+                <p id="card-time" hidden></p>
+                <p id="card-streak" hidden></p>
                 <p id="clean-badge" hidden>✦ Clean crossing</p>
                 <p id="card-animal"></p>
               </div>
@@ -117,9 +129,12 @@
           <div id="favorites"></div>
         </fieldset>
         <div class="result-actions">
-          <button id="copy-result" class="primary">Copy result</button
+          <button id="post-rescue" class="primary" hidden>
+            Post Rescue to Comments</button
+          ><button id="copy-result" class="secondary">Copy result</button
           ><button id="comments" class="secondary">Back to comments</button>
         </div>
+        <p id="post-status" role="status" hidden></p>
         <p id="save-status" role="status"></p>
         <button id="retry-save" hidden>Retry saving · no replay needed</button>
         <p id="favorite-status" role="status"></p>
@@ -133,8 +148,13 @@
         </details>
         <p id="next-crossing" hidden></p>
         <details id="past-crossings">
-          <summary>Past crossings</summary>
+          <summary>Card collection &amp; past crossings</summary>
+          <div id="card-collection"></div>
           <div id="archive-result"></div>
+          <button id="apply-flair" class="secondary" hidden>
+            Use Crossing Keeper flair
+          </button>
+          <p id="flair-status" role="status" hidden></p>
         </details>
         <p class="discussion">Which move fooled you?</p>
       </section>
@@ -151,37 +171,6 @@
           participation or telemetry is simulated.
         </p>
       </section>
-      <dialog id="welcome-dialog" aria-labelledby="welcome-title">
-        <p class="eyebrow">WELCOME TO THE CROSSING</p>
-        <h2 id="welcome-title">
-          A safe way home.<br />A little thought first.
-        </h2>
-        <div class="guide-animals" aria-hidden="true">
-          <span class="guide-animal turtle"></span
-          ><span class="guide-animal rabbit"></span
-          ><span class="guide-animal fox"></span
-          ><span class="guide-animal badger"></span>
-        </div>
-        <ol class="guide-rules">
-          <li><b>Follow the arrow.</b> Walk straight to a lantern.</li>
-          <li>
-            <b>Look for matching symbols.</b> A friend may be holding a bridge
-            open for someone else.
-          </li>
-          <li>
-            <b>Try, then Undo.</b> You can always bring a friend and its bridge
-            back.
-          </li>
-        </ol>
-        <p class="guide-note">
-          Try a short practice first. It won’t change your daily result.
-        </p>
-        <button id="welcome-practice" class="primary">
-          Teach me with a practice</button
-        ><button id="welcome-skip" class="secondary">
-          I know the rules · play
-        </button>
-      </dialog>
       <dialog id="help-dialog">
         <button
           id="close-help"
@@ -191,10 +180,35 @@
           ×
         </button>
         <p class="eyebrow">A QUIET WAY HOME</p>
-        <h2>Look before you leave.</h2>
+        <h2>Settings</h2>
+        <fieldset class="atmosphere">
+          <legend>Scenery and sound</legend>
+          <label for="scenery">Background</label>
+          <select id="scenery">
+            <option value="moon">Moonroot River</option>
+            <option value="dawn">Silver Dawn</option>
+            <option value="autumn">Amber Creek</option>
+          </select>
+          <label for="soundtrack">Soundscape</label>
+          <select id="soundtrack">
+            <option value="nature">Forest ambience</option>
+            <option value="music">Woodland music</option>
+          </select>
+          <button type="button" id="forest-sound" aria-pressed="false">
+            Forest sound off
+          </button>
+          <p id="sound-status" role="status"></p>
+        </fieldset>
         <button id="help-practice" class="primary">Try guided practice</button>
-        <button id="hint">Get a hint</button>
-        <p id="hint-text" role="status" hidden></p>
+        <div class="settings-actions">
+          <button id="expand" class="expand-button">Full screen</button>
+          <button id="restart" class="secondary">↻ Restart</button>
+          <button id="archive-open" class="secondary">Archive</button>
+        </div>
+        <label class="timer-setting"
+          ><input id="show-timer" type="checkbox" /> Show live timer</label
+        >
+        <div id="settings-archive" hidden></div>
         <p>
           Each animal follows its arrow straight to a lantern exit. Tap once to
           preview; tap again or choose <b>Send home</b> to move.
@@ -206,7 +220,7 @@
         </p>
         <p>
           Blocked paths end at a coral cross. Undo restores the animal and its
-          bridge. There’s no timer or penalty.
+          bridge. The timer tracks your personal run. Undo has no penalty.
         </p>
         <fieldset class="motion-setting">
           <legend>Animations</legend>

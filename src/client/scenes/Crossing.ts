@@ -1,3 +1,5 @@
+import { scenery } from '../atmosphere';
+import type { Scenery } from '../atmosphere';
 import * as Phaser from 'phaser';
 import { bridgeOpen, isHome, samePoint, trace } from '../../shared/engine';
 import type { AnimalId, Point, Session } from '../../shared/engine';
@@ -25,6 +27,7 @@ export class Crossing extends Phaser.Scene {
   art: Phaser.GameObjects.Graphics;
   routeArt: Phaser.GameObjects.Graphics;
   labels: Phaser.GameObjects.Text[] = [];
+  backdrop?: Phaser.GameObjects.Image;
   reunionArt: Phaser.GameObjects.Image | undefined;
   tokens = new Map<AnimalId, Phaser.GameObjects.Container>();
   constructor(session: Session, onSelect: (id: AnimalId) => void) {
@@ -34,6 +37,8 @@ export class Crossing extends Phaser.Scene {
   }
   preload(): void {
     this.load.image('forest-art', '/art/forest-board.webp');
+    this.load.image('dawn-art', '/art/dawn-river.webp');
+    this.load.image('autumn-art', '/art/autumn-river.webp');
     this.load.image('reunion-art', '/art/reunion.webp');
     this.load.spritesheet('animal-art', '/art/animals.webp', {
       frameWidth: 631,
@@ -42,16 +47,22 @@ export class Crossing extends Phaser.Scene {
   }
   create(): void {
     this.cameras.main.setZoom(2).centerOn(210, 210);
-    if (this.textures.exists('forest-art'))
-      this.add
-        .image(210, 210, 'forest-art')
-        .setDisplaySize(420, 420)
-        .setDepth(-2);
+    this.setScenery('moon');
     this.art = this.add.graphics();
     this.routeArt = this.add.graphics().setDepth(2);
     this.ready = true;
     this.refresh();
     this.game.events.emit('board-ready');
+  }
+  setScenery(id: Scenery): void {
+    const key = scenery[id].texture;
+    if (!this.textures.exists(key)) return;
+    if (this.backdrop) this.backdrop.setTexture(key).setDisplaySize(420, 420);
+    else
+      this.backdrop = this.add
+        .image(210, 210, key)
+        .setDisplaySize(420, 420)
+        .setDepth(-2);
   }
   label(x: number, y: number, text: string, size: number, color: string): void {
     this.labels.push(
@@ -228,8 +239,8 @@ export class Crossing extends Phaser.Scene {
       if (!a || isHome(this.session.state, id)) continue;
       const route = trace(this.session.board, this.session.state, id),
         start = pixel(a);
-      const color = route.legal ? 0x195e46 : 0xbb3927;
-      g.lineStyle(5, color, 0.8);
+      const color = route.legal ? 0xffc267 : 0xff8c70;
+      g.lineStyle(7, 0x102e2d, 0.94);
       g.beginPath();
       g.moveTo(start.x, start.y);
       for (const p of route.path) {
@@ -241,6 +252,18 @@ export class Crossing extends Phaser.Scene {
         g.lineTo(q.x, q.y);
       }
       g.strokePath();
+      const end = route.obstacle?.at ?? route.path.at(-1);
+      if (end) {
+        const q = pixel(end);
+        const distance = Math.hypot(q.x - start.x, q.y - start.y);
+        g.fillStyle(color);
+        for (let n = 7; n < distance; n += 8)
+          g.fillCircle(
+            start.x + ((q.x - start.x) * n) / distance,
+            start.y + ((q.y - start.y) * n) / distance,
+            2.1
+          );
+      }
       for (const p of route.path) {
         const q = pixel(p);
         g.fillStyle(color, 0.8);
@@ -248,7 +271,7 @@ export class Crossing extends Phaser.Scene {
       }
       if (route.obstacle) {
         const q = pixel(route.obstacle.at);
-        g.fillStyle(0xffedc5, 0.98);
+        g.fillStyle(0x102e2d, 0.98);
         g.fillCircle(q.x, q.y, 13);
         g.lineStyle(3, color);
         g.lineBetween(q.x - 5, q.y - 5, q.x + 5, q.y + 5);
@@ -265,6 +288,11 @@ export class Crossing extends Phaser.Scene {
       );
       const badgeX =
         p.x - 17 + siblings.findIndex((other) => other.id === b.id) * 27;
+      if (b.holder === this.selected) {
+        const q = pixel(b);
+        g.lineStyle(2, 0xffce75, 0.9);
+        g.lineBetween(badgeX, p.y - 19, q.x, q.y - 29);
+      }
       g.fillStyle(0xffefcc);
       g.fillCircle(badgeX, p.y - 19, 11);
       g.lineStyle(
@@ -371,28 +399,51 @@ export class Crossing extends Phaser.Scene {
       token.setAlpha(0);
       return;
     }
-    const last = route.path.at(-1);
-    if (last) {
-      const destination = pixel(last);
-      await new Promise<void>((resolve) => {
-        this.tweens.add({
-          targets: token,
-          ...destination,
-          duration: 75 + route.path.length * 48,
-          ease: 'Linear',
-          onComplete: () => resolve(),
-        });
-      });
-    }
     const v = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[a.direction];
+    const last = pixel(route.path.at(-1) ?? a);
+    const endX = last.x + (v[0] ?? 0) * 25;
+    const endY = last.y + (v[1] ?? 0) * 25;
+    const origin = { x: token.x, y: token.y };
+    const gait = {
+      turtle: { beat: 115, lift: 1.8, squash: 0.025, pace: 81 },
+      rabbit: { beat: 143, lift: 12, squash: 0.11, pace: 69 },
+      fox: { beat: 92, lift: 4.5, squash: 0.06, pace: 52 },
+      badger: { beat: 128, lift: 2.7, squash: 0.045, pace: 75 },
+    }[id];
+    const duration = 140 + route.path.length * gait.pace;
+    const clock = { progress: 0 };
+    const sprite = token.list[1];
+    if (
+      sprite instanceof Phaser.GameObjects.Image &&
+      a.direction !== 'S' &&
+      a.direction !== 'N'
+    )
+      sprite.setFlipX(
+        id === 'turtle' ? a.direction === 'E' : a.direction === 'W'
+      );
     await new Promise<void>((resolve) => {
       this.tweens.add({
-        targets: token,
-        x: token.x + (v[0] ?? 0) * 22,
-        y: token.y + (v[1] ?? 0) * 22,
-        alpha: 0,
-        scale: 0.6,
-        duration: 105,
+        targets: clock,
+        progress: 1,
+        duration,
+        ease: 'Linear',
+        onUpdate: () => {
+          const t = clock.progress;
+          const phase = ((t * duration) / gait.beat) % 1;
+          const stride = Math.sin(Math.PI * phase);
+          const finish = Math.min(1, (1 - t) * 6);
+          const sway =
+            id === 'badger' ? Math.sin(phase * Math.PI * 2) * 0.035 : 0;
+          token.setPosition(
+            Phaser.Math.Linear(origin.x, endX, t),
+            Phaser.Math.Linear(origin.y, endY, t) - stride * gait.lift * finish
+          );
+          token.setScale(
+            1 + stride * gait.squash * finish,
+            1 - stride * gait.squash * finish
+          );
+          token.setRotation(sway * finish).setAlpha(finish);
+        },
         onComplete: () => resolve(),
       });
     });

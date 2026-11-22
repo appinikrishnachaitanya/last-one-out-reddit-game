@@ -1,93 +1,59 @@
 # Last One Out
 
-A mobile-first daily rescue puzzle inside Reddit, built on the official **Devvit + Phaser + TypeScript** starter. Seven curated editions share a pure rule engine. Moonroot Crossing preserves the signature moment: Turtle can leave safely, but its moon bridge folds and strands Rabbit; Undo restores both.
+**Getting home is easy. Knowing when to stay is the puzzle.**
 
-The visual design follows the supplied storybook reference: painted animal sprites, a leafy turquoise river, parchment panels, warm gold controls, and a campfire reunion. Wide Reddit frames use a larger board beside the controls; phones retain a compact layout. See [art notes](docs/ART.md) for asset details. The four-animal rules and published board versions remain unchanged.
+Last One Out is a daily forest rescue playable inside Reddit. Tap an animal to see its path, then tap again or choose **Send home**. If it leaves a latch, the matching bridge folds. On Moonroot Crossing, send Turtle early and watch Rabbit’s route end at the gap. **Undo** brings Turtle and the bridge back together.
 
-## Learn, play larger, and share
+## What to try
 
-First-time players see a short rules guide, then can try a separate guided practice: preview Turtle, send it, see Rabbit stranded, and Undo. Practice never submits a rescue, changes the daily run, or contributes to community totals. Help can reopen it later.
-
-**Full screen** uses Reddit's official expanded-view SDK and the registered `game` entrypoint. The current legal move prefix and personal undo count are saved locally before switching views and restored if the view reloads. The local demo uses browser full screen instead. The board and controls use normal document flow with side-by-side layouts where space allows; there are no absolute-positioned board/controls.
-
-The result screen is compact: favorite portrait, day, personal undo count, Copy and Comments come first. Community openings are collapsed until requested. Large reunion art is omitted in short frames so the useful controls remain within one post view. No public publishing is part of these commands.
+- Start on the board with a single first-move cue. **Settings** holds optional guided practice, keyboard instructions, reduced motion, Full screen, Restart, and the archive. You can Undo freely. A quiet 60-second rechargeable hint is available on the board. The personal timer appears in the result unless you turn on the live clock.
+- Settings offers Moonroot River, Silver Dawn and Amber Creek. Choose the scenery’s forest ambience or the supplied woodland music. Sound is optional and pauses when the tab is hidden. Scenery and sound preferences are stored on the device. Rabbit hops, Fox trots, Badger lumbers and Turtle shuffles along the same straight puzzle routes. Skip animations removes these motions.
+- The first ten handcrafted boards progress from simple bridge dependencies to overlapping escape paths, alternate starts, shared bridges, an animal crossing its own bridge, and a mid-rescue trap. Every board is exhaustively [solver-checked](docs/SOLVER-REPORT.md).
+- A saved rescue earns a collectible animal portrait. The result includes the personal time, undos, and a Clean Crossing badge for zero undos. Undo and time are personal stats. The archive and saved cards follow your Reddit account.
+- Choose **Post Rescue to Comments** to share a spoiler-free recap to the current post through the app account, or copy it and share it yourself. A separate button opts into Crossing Keeper subreddit flair. Reddit failures leave the result available.
+- After two unique verified finishers, successful opening moves are available for comparison. Reported opening traps are tracked separately and shown only when at least two finishers report the same trap. The comment prompt is **Which move fooled you?**
 
 ## Local preview
 
-Node **24+** is required (`.nvmrc` pins the starter version).
+Requires Node 24+. The demo uses the real rules, Hono routes and completion validator with a labeled mock identity and ignored local storage adapter.
 
 ```sh
 npm ci
 npm run demo
 ```
 
-Open `http://localhost:5173/game.html`. The local-only picker offers all ten editions. Phaser renders the board and animations; HTML controls support keyboard play. Tap once to preview, again to send, or use Send home. Reduced motion respects the OS setting and can be toggled. All four animal choices, the board, Undo, and Send home fit a simulated 512px-high Reddit frame.
+Open `http://localhost:5173/game.html` and use the local-only edition picker. Use a fresh browser profile for a new mock player. The demo does not write Reddit comments, flair, Redis, or Journeys.
 
-The preview uses the **same Hono API, canonical boards, validator, and completion service**, with an explicitly labeled mock identity and local storage adapter. Its cookie identifies a local mock player, and ignored `.local/demo-store.json` keeps results across reloads/server restarts. Community participation and Reddit telemetry are not simulated. Preview results are not Reddit completions. Use a new browser profile/context for a fresh mock player. The API runs on loopback port 5174, proxied by Vite on 5173.
+```sh
+npm run check
+npm run test:browser
+npm run solver:report
+```
 
-In this cloud workspace, use `npm ci --cache /workspace/.npm-cache` if the default npm cache is unwritable.
-
-## Current private build
-
-The [Day 1 Reddit post](https://www.reddit.com/r/last_one_out_app_dev/comments/1xzazsj/last_one_out_day_1_20261118/) now uses the storybook redesign installed privately as **v0.0.3**, from source commit `1fe5f69`. GitHub push and Reddit upload succeeded after the earlier HTTP 503 connection failures cleared. Local checks passed (22 unit/API tests, 15 browser tests). The latest update adds a first-visit guide, isolated practice, expanded play view, fluid alignment and compact results. A fresh in-Reddit review and physical-phone check remain to be confirmed. See [playtest evidence](docs/PLAYTEST.md).
-
-## Private Reddit playtest
-
-The official SDKs provide player context, Reddit post creation/navigation, and Devvit Redis. `devvit.json` defines the app `last-one-out-app`, inline Phaser entrypoint, Hono server, moderator actions, and permissions. Credentials are kept out of Git and configuration.
+## Devvit playtest
 
 ```sh
 npm run login -- --copy-paste
 npm run devvit -- whoami
 npm run deploy
-npm run dev
+npm run dev -- last_one_out_app_dev
 ```
 
-Use **`npm run login`**, not `npm login`. Complete the printed Reddit OAuth URL, then enter the returned code into the **CLI terminal**, never chat or source. The copy/paste flow avoids an unreachable `localhost:65010` callback when the CLI is in the cloud. `.local/` contains ignored CLI auth/cache; existing environment overrides are honored.
+Run the CLI login in your terminal, follow the printed Reddit URL, and paste the returned code into that terminal. The copy/paste flow avoids a cloud localhost callback. CLI credentials stay in ignored local storage.
 
-`deploy` checks/builds and runs `devvit upload`. Uploads are owner-visible, and Devvit creates a private default test community with you as moderator. `dev` starts the playtest and prints its link. An alternate small private community where you have moderator post permissions can be selected with `npm run dev -- community_name`.
+In the playtest subreddit, use **Open today’s daily** or **Choose playtest edition** in the moderator menu. Choose Moonroot for the signature sequence. Existing posts retain their entrypoint and puzzle binding. Newly created posts use the woodland feed preview and open the same game in expanded view. If post creation was interrupted, use **Recover edition post** with the existing `t3_…` ID. This avoids duplicate posts after an ambiguous Reddit response.
 
-In that community's moderator menu:
+For a public test community with fewer than 200 members, replace `last_one_out_app_dev` in the last command with that community’s name. Use a moderator account with post permissions. After installation, create the test post explicitly with the moderator menu. A post created this way in a public community is publicly visible.
 
-1. **Open today’s daily** creates or retrieves the UTC edition's post.
-2. **Choose playtest edition** opens any of the ten dated editions, including future ones for testing.
-3. **Recover edition post** registers an existing app post after an interrupted creation or to adopt a legacy Moonroot post. Enter its `t3_...` ID.
+For a live judge rehearsal, have two distinct signed-in Reddit accounts finish the same post. On one account, send Turtle early and Undo before solving. Verify the saved result and collection across devices, check both accounts see the opening comparison, then explicitly test posting once, opting into flair, copying, and opening the original comments. Also check the feed card and the active board on a physical phone. [Official Devvit playtest guide](https://developers.reddit.com/docs/guides/tools/playtest)
 
-Server checks enforce authenticated moderator post permissions and a **private** community. The one-post registry atomically reserves each edition. Concurrent attempts reuse its registered post or show a recoverable pending/recovery error. Ambiguous Reddit timeouts are never retried blindly: a durable reservation prevents a second submission. If a post exists, use Recover with its ID. If no post exists after a failed ambiguous submission, an administrator must audit the failed reservation before clearing it; do not delete reservations merely because a request timed out.
+## Daily rotation and architecture
 
-These commands do **not** publicly publish the app or submit it to Devpost. See [official playtest documentation](https://developers.reddit.com/docs/guides/tools/playtest).
+- **Shared TypeScript** owns the board definitions, rules, and solver. **Phaser** renders motion and routes. HTML provides accessible controls and results.
+- **Devvit Web 0.15.4 and Hono** bind each post to a unique UTC edition and its immutable board version. A `0 0 * * *` Devvit Scheduler task creates or retrieves the next post in private installations. Public test posts use the explicit moderator action.
+- The ten dated boards run November 18–27 UTC. From Day 11, the same boards repeat in a fixed order with new date IDs, posts, results, and cards. The end screen countdown uses server time. The archive includes the original editions and recent rotation posts. Earned cards persist after posts age out of that list.
+- **Devvit Redis** stores first validated completions by account and edition. The server replays every final sequence, and atomic first-write storage prevents duplicate contributions. Redis also stores portrait preferences, earned card indexes, recharge state and comment receipts. Streaks are derived from dated rescues.
+- **Permissions** in `devvit.json` are `reddit: true`, `redis: true`, and `journeys: true`. Scheduler is registered in the top-level `scheduler.tasks` config. Comments post as the app. Flair requires the installed app to have effective subreddit flair permissions.
+- **Journeys** reports ready, first move, progress, and server-validated completion independently of gameplay. In-Reddit ingestion requires approval and live verification. [Journeys details](docs/JOURNEYS.md)
 
-## Daily bindings and saved results
-
-The server-only schedule is `src/server/core/schedule.ts`, with explicit UTC dates **2026-11-18 through 2026-11-27**, immutable edition IDs, puzzle IDs, and board versions. Outside these dates, today's action shows a clear no-edition message. Existing posts always resolve their stored binding; midnight never substitutes another board. Legacy Milestone 1 Moonroot bindings remain Day 1. There is no modulo rotation and no client-controlled production picker.
-
-A signed-in player's final sequence is replayed on the server against the post's canonical version. Illegal, incomplete, malformed, mismatched-edition and wrong-version submissions are rejected. Identity comes exclusively from Devvit context. One atomic Redis `HSETNX` stores the first valid record, including its first move. Community aggregates are derived from those unique records, without a separate counter that could double-increment on retries. Reloading restores the recorded rescue, personal undo count, card art preference, and saved result without submitting again. Undo counts are **personal, unverified stats**.
-
-The reunion appears immediately. Saving errors leave it visible with a retry button; replaying is unnecessary. Replays never replace the recorded opening. Favorite-animal art is a separate preference. Copy results contain “Everyone home,” day number, personal undo count, favorite animal, and the same post's comments URL—never the rescue order. Players choose whether to copy or open comments. Aggregates are returned only after that player's completion; low participation has an honest empty state.
-
-## Verification
-
-```sh
-npm run check          # rules, schedule/API/storage tests, TypeScript, lint, Reddit build
-npm run test:browser   # builds the production bundle, then runs real Chromium acceptance checks
-npm run solver:report  # regenerates developer-only spoilers/report
-```
-
-The browser suite checks the actual Phaser canvas, mouse/touch, rapid-tap protection, keyboard, reduced motion, all ten solves, save failure/retry, favorite art, reload, clipboard, compact layout, and the production bundle's comments navigation SDK effect. Production-bundle API responses in local browser tests are fixtures; they are not evidence of in-Reddit execution.
-
-Browser tests use `/usr/bin/chromium` by default. Set `CHROMIUM_PATH`, or install Playwright Chromium and set `PLAYWRIGHT_BUNDLED_CHROMIUM=1`. Tests run the local preview on 5173/5174 and serve the production client on 5175. Screenshots are under ignored `artifacts/`. Widths 288, 320, 390, and 640 are checked at height 512, alongside narrow phone viewports.
-
-[Developer solver report](docs/SOLVER-REPORT.md) records solution counts, safe openings, dead-end openings, and every valid order. It is not imported into the player UI. [Journeys notes](docs/JOURNEYS.md) document SDK integration, the map, approval requirements, and the distinction between local event tests and Reddit ingestion. [Judge playtest notes](docs/PLAYTEST.md) record the tested revision and remaining runtime/device checks.
-
-## Add a solver-verified edition
-
-1. Add a new immutable board in `src/shared/boards.ts`; use the existing four animals, straight arrows, paths, and matching bridge/latch symbols. Do not edit any already published board/version. Add a new ID/version for a revision.
-2. Add an explicit new date, unique edition ID, consecutive daily number, puzzle ID, and exact board version to the **server** schedule. Keep existing entries intact. Do not cycle old boards by array index.
-3. Run `npm run solver:report`. Require at least one complete solution; inspect safe/tempting openings and test the intended dependency. Update the targeted solver-count tests when adding editions, keeping previous counts stable.
-4. Play it in the local picker at phone size, including blocked moves, bridge folding, Undo, and reunion. Run `npm run check` and `npm run test:browser`.
-5. Upload to the private playtest and use **Choose playtest edition** to create/retrieve its bound post. Check it on Reddit and a physical phone before releasing it.
-
-## Scope and provenance
-
-Implemented: ten editions, stable private posts, validated Redis completions, restored results, favorite art, spoiler-free copying/comments, real aggregates after completion, and isolated Journeys calls. Journeys ingestion requires Reddit approval and is not assumed from local tests. Streaks, leaderboards, editor, campaign, payments, public publishing, and submissions remain out of scope.
-
-Starter: [reddit/devvit-template-phaser](https://github.com/reddit/devvit-template-phaser), commit `537cb84534dde85ae21b26912141cd525c20d86e`. Existing Git history and Moonroot board/version are preserved. The starter's license is `LICENSE`; the repository's original license is retained in `docs/ORIGINAL-LICENSE`.
+To add a new board, register a new ID/version in `src/shared/boards.ts`, solve it exhaustively and play it in a narrow viewport, then add an explicitly dated, versioned rotation era beginning on a future UTC date. Keep the existing rotation and bindings intact so posted days continue to resolve correctly. Re-run the checks and playtest the new edition before release.

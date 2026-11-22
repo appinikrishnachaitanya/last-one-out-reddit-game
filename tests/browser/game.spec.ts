@@ -1,9 +1,4 @@
 import { test, expect } from '@playwright/test';
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem('loo-guide-seen:v1', 'yes')
-  );
-});
 async function open(page: import('@playwright/test').Page) {
   await page.goto('/game.html');
   await expect(page.getByText('LOCAL PREVIEW', { exact: true })).toBeVisible();
@@ -29,10 +24,10 @@ test('Moonroot tempting exit, exact blocked route feedback, Undo, real animation
   page.on('pageerror', (e) => errors.push(e.message));
   await open(page);
   await page.screenshot({ path: 'artifacts/moonroot-mobile.png' });
-  await page.locator('#help').click();
   await page.locator('#hint').click();
   await expect(page.locator('#hint-text')).toContainText('Who still needs it');
-  await page.locator('#close-help').click();
+  await expect(page.locator('#hint')).toBeDisabled();
+  await expect(page.locator('#lifeline-status')).toContainText('recharges in');
   await page.locator('.animal-picker summary').click();
   await page.locator('[data-animal=turtle]').click();
   await expect(page.locator('#feedback')).toContainText(
@@ -67,6 +62,12 @@ test('Moonroot tempting exit, exact blocked route feedback, Undo, real animation
     path: 'artifacts/reunion-mobile.png',
     fullPage: true,
   });
+  await expect(page.locator('#card-time')).toHaveText(/^Time \d+:\d{2}$/);
+  await page.locator('#past-crossings summary').click();
+  await expect(page.locator('#card-collection')).toContainText(
+    'Moonroot Crossing'
+  );
+  await page.locator('#help').click();
   await page.locator('#restart').click();
   await expect(page.locator('#result')).toBeHidden();
   await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
@@ -337,6 +338,17 @@ test('production-shaped response hides the preview picker, restores a saved post
       body: '{"error":"Telemetry unavailable in local test"}',
     })
   );
+  let posts = 0;
+  await page.route('**/api/share', (route) => {
+    posts++;
+    return route.fulfill({ json: { shared: true } });
+  });
+  await page.goto('http://127.0.0.1:5175/splash.html');
+  await expect(page.locator('#edition')).toHaveText(
+    'Day 1 · Moonroot Crossing'
+  );
+  await expect(page.locator('#play')).toHaveText('View Your Rescue');
+  await expect(page.locator('#badge')).toContainText('Badger card earned');
   await page.goto('http://127.0.0.1:5175/game.html');
   await expect(page.locator('#result')).toBeVisible();
   // This uses a production-shaped server response, not a claim of in-Reddit execution.
@@ -346,6 +358,11 @@ test('production-shaped response hides the preview picker, restores a saved post
   });
   await expect(page.locator('#community')).toContainText('aren’t enough');
   await expect(page.locator('#card-animal')).toContainText('Badger');
+  expect(posts).toBe(0);
+  await page.locator('#post-rescue').click();
+  await expect(page.locator('#post-rescue')).toHaveText('Shared to Comments ✓');
+  await expect(page.locator('#post-rescue')).toBeDisabled();
+  expect(posts).toBe(1);
   await page.locator('#comments').click();
   await expect(page.locator('html')).toHaveAttribute(
     'data-navigation',
@@ -503,9 +520,10 @@ test('first visit teaches the rules, guides a real practice, and never changes d
     if (new URL(r.url()).pathname === '/api/complete') saves++;
   });
   await page.goto('http://127.0.0.1:5173/game.html');
-  await expect(page.locator('#welcome-dialog')).toBeVisible();
-  await page.screenshot({ path: 'artifacts/guide-welcome.png' });
-  await page.locator('#welcome-practice').click();
+  await expect(page.locator('#first-move')).toBeVisible();
+  await expect(page.locator('#help-dialog')).toBeHidden();
+  await page.locator('#help').click();
+  await page.locator('#help-practice').click();
   await expect(page.locator('#tour-title')).toHaveText('Preview Turtle.');
   await page.locator('#tour-action').click();
   await expect(page.locator('#tour-title')).toHaveText('Send Turtle.');
@@ -525,7 +543,7 @@ test('first visit teaches the rules, guides a real practice, and never changes d
   expect(data.completion).toBeNull();
   await send(page, 'fox');
   await page.reload();
-  await expect(page.locator('#welcome-dialog')).toBeHidden();
+  await expect(page.locator('#first-move')).toBeHidden();
   await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
   await page.locator('#help').click();
   await page.locator('#help-practice').click();
@@ -620,6 +638,7 @@ test('Full screen emits the registered Reddit expanded-view effect and keeps a p
   await page.goto('http://127.0.0.1:5175/game.html');
   await expect(page.locator('[data-animal=fox]')).toBeEnabled();
   await send(page, 'fox');
+  await page.locator('#help').click();
   await page.locator('#expand').click();
   await expect(page.locator('html')).toHaveAttribute(
     'data-expand',
@@ -714,21 +733,23 @@ test('the compact saved result keeps copy and comments inside one short frame', 
   await expect(page.getByLabel('Fox: 1 of 2')).toBeVisible();
   await page.screenshot({ path: 'artifacts/compact-result-desktop.png' });
 });
-test('first-visit guide starts at the title and offers practice without a long scroll', async ({
+test('first visit opens on a playable board with a contextual cue and a quiet timer', async ({
   browser,
 }) => {
   const context = await browser.newContext({
-      viewport: { width: 320, height: 512 },
-    }),
-    page = await context.newPage();
+    viewport: { width: 360, height: 640 },
+  });
+  const page = await context.newPage();
   await page.goto('http://127.0.0.1:5173/game.html');
-  await expect(page.locator('#welcome-dialog')).toBeVisible();
-  const dialog = await page.locator('#welcome-dialog').boundingBox(),
-    title = await page.locator('#welcome-title').boundingBox(),
-    practice = await page.locator('#welcome-practice').boundingBox();
-  expect(title?.y).toBeGreaterThanOrEqual(dialog?.y ?? 0);
-  expect((practice?.y ?? 0) + (practice?.height ?? 0)).toBeLessThanOrEqual(512);
-  await page.screenshot({ path: 'artifacts/guide-compact-phone.png' });
+  await expect(page.locator('#first-move')).toBeVisible();
+  await expect(page.locator('#help-dialog')).toBeHidden();
+  await send(page, 'fox');
+  await expect(page.locator('#first-move')).toBeHidden();
+  await expect(page.locator('#run-clock')).toBeHidden();
+  await page.locator('#help').click();
+  await page.locator('#show-timer').check();
+  await page.locator('#close-help').click();
+  await expect(page.locator('#run-clock')).toBeVisible();
   await context.close();
 });
 
@@ -742,7 +763,8 @@ for (const width of [288, 390, 640, 1024]) {
     });
     const page = await context.newPage();
     await page.goto('http://127.0.0.1:5173/game.html');
-    await page.locator('#welcome-practice').click();
+    await page.locator('#help').click();
+    await page.locator('#help-practice').click();
     const action = page.locator('#tour-action');
     const board = page.locator('#game-container canvas');
     for (const label of [
@@ -813,3 +835,107 @@ for (const puzzle of [
     await expect(page.locator('#bridge-recap')).toContainText(puzzle.recap);
   });
 }
+
+test('Version 4 captures the playable screens and keeps scenery and sound preferences', async ({
+  page,
+  context,
+}) => {
+  await page.addInitScript(() => {
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      return play.call(this).then(() => {
+        document.documentElement.dataset.soundPlaying = this.currentSrc;
+      });
+    };
+  });
+  await page.setViewportSize({ width: 390, height: 720 });
+  await open(page);
+  await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
+  await page.screenshot({ path: 'artifacts/version4/01-mobile-board.png' });
+  await page.locator('.animal-picker summary').click();
+  await page.locator('[data-animal=turtle]').click();
+  await expect(page.locator('#feedback')).toContainText(
+    'Leaving folds the ☾ bridge'
+  );
+  await page.locator('.animal-picker summary').click();
+  await page.screenshot({ path: 'artifacts/version4/02-turtle-preview.png' });
+  await page.locator('#send').click();
+  await expect(page.locator('#feedback')).toContainText('Stranded!');
+  await page.screenshot({ path: 'artifacts/version4/03-rabbit-stranded.png' });
+  await page.locator('#undo').click();
+  await page.locator('#help').click();
+  await page.locator('#scenery').selectOption('dawn');
+  await expect(page.locator('html')).toHaveAttribute('data-scenery', 'dawn');
+  await page.locator('#forest-sound').click();
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-sound-playing',
+    /dawn\.mp3/
+  );
+  await page.screenshot({ path: 'artifacts/version4/04-settings.png' });
+  await page.locator('#close-help').click();
+  await page.screenshot({ path: 'artifacts/version4/05-silver-dawn.png' });
+  await page.locator('#help').click();
+  await page.locator('#scenery').selectOption('autumn');
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-sound-playing',
+    /autumn\.mp3/
+  );
+  await page.locator('#soundtrack').selectOption('music');
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-sound-playing',
+    /woodland-music\.mp3/
+  );
+  await page.screenshot({ path: 'artifacts/version4/04-settings.png' });
+  await page.locator('#forest-sound').click();
+  await page.locator('#close-help').click();
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-scenery', 'autumn');
+  await expect(page.locator('#forest-sound')).toHaveAttribute(
+    'aria-pressed',
+    'false'
+  );
+  await page.screenshot({ path: 'artifacts/version4/06-amber-creek.png' });
+  for (const animal of ['fox', 'rabbit', 'turtle', 'badger'])
+    await send(page, animal);
+  await expect(page.locator('#save-status')).toContainText(
+    'validated and saved'
+  );
+  const saved = await (await page.request.get('/api/init')).json();
+  expect(saved.completion).toBeTruthy();
+  await page.close();
+  const production = await context.newPage();
+  const init = {
+    ...saved,
+    mode: 'reddit',
+    commentsUrl: 'https://www.reddit.com/comments/preview/',
+  };
+  let solved = false;
+  await production.route('**/api/init', (route) =>
+    route.fulfill({
+      json: { ...init, completion: solved ? init.completion : null },
+    })
+  );
+  await production.setViewportSize({ width: 390, height: 360 });
+  await production.goto('http://127.0.0.1:5175/splash.html');
+  await expect(production.locator('#edition')).toHaveText(
+    'Day 1 · Moonroot Crossing'
+  );
+  await production.screenshot({
+    path: 'artifacts/version4/08-reddit-feed.png',
+  });
+  solved = true;
+  await production.setViewportSize({ width: 390, height: 720 });
+  await production.goto('http://127.0.0.1:5175/game.html');
+  await expect(production.locator('#result')).toBeVisible({ timeout: 15000 });
+  await expect(production.locator('#post-rescue')).toBeVisible();
+  await production.screenshot({ path: 'artifacts/version4/07-result.png' });
+  await production.close();
+  const desktop = await context.newPage();
+  await desktop.setViewportSize({ width: 1280, height: 800 });
+  await desktop.goto('/game.html');
+  await expect(desktop.locator('#rescue-count')).toHaveText('4 / 4');
+  await desktop.locator('#help').click();
+  await desktop.locator('#restart').click();
+  await expect(desktop.locator('#result')).toBeHidden();
+  await desktop.screenshot({ path: 'artifacts/version4/09-desktop-board.png' });
+});

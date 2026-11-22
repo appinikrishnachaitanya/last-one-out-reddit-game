@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Hono } from 'hono';
+import type { Dependencies } from '../src/server/app.ts';
 import { createApi } from '../src/server/app.ts';
 import { MemoryStore } from '../src/server/core/memory-store.ts';
 import {
@@ -10,7 +11,11 @@ import {
   completionKey,
 } from '../src/server/core/completions.ts';
 import { createOrRetrievePost, recoverPost } from '../src/server/core/posts.ts';
-import { EDITIONS, bindingFor } from '../src/server/core/schedule.ts';
+import {
+  EDITIONS,
+  bindingFor,
+  editionAt,
+} from '../src/server/core/schedule.ts';
 import { boardById } from '../src/shared/boards.ts';
 import { solve } from '../src/shared/engine.ts';
 const day1 = EDITIONS[0]!,
@@ -83,7 +88,10 @@ test('illegal, malformed, partial, wrong edition/version and anonymous submissio
   assert.equal(store.hashes.size, 0);
 });
 function fixture(
-  options: { telemetry?: () => Promise<void>; store?: MemoryStore } = {}
+  options: Pick<Dependencies, 'share' | 'setFlair' | 'hintRefill'> & {
+    telemetry?: () => Promise<void>;
+    store?: MemoryStore;
+  } = {}
 ) {
   const store = options.store ?? new MemoryStore();
   let clock = now,
@@ -101,6 +109,9 @@ function fixture(
       }),
       readPost: async () => bindingFor(postEdition),
       endJourney: options.telemetry,
+      share: options.share,
+      setFlair: options.setFlair,
+      hintRefill: options.hintRefill,
     })
   );
   return {
@@ -161,7 +172,7 @@ test('API hides aggregates before solve, binds to the post, and restores the sav
   await request(f.app, 'init');
   assert.equal(JSON.stringify([...f.store.hashes]), once);
   f.noPost();
-  f.setClock(new Date('2030-01-01'));
+  f.setClock(new Date('2026-11-17'));
   const empty = await (await request(f.app, 'init')).json();
   assert.equal(empty.status, 'empty');
   assert.match(empty.message, /No puzzle/);
@@ -250,11 +261,35 @@ test('crossing archive only lists registered past posts, marks personal completi
   const day2 = EDITIONS[1]!;
   await recoverPost(store, day1, 't3_moonroot');
   await recoverPost(store, day3, 't3_later');
-  await complete(store, day1, 't2_player', payload(), now);
+  const won = await complete(
+    store,
+    day1,
+    't2_player',
+    { ...payload(), elapsedSeconds: 42 },
+    now
+  );
+  assert.equal(won.completion.elapsedSeconds, 42);
+  await assert.rejects(
+    complete(
+      store,
+      day1,
+      't2_player',
+      { ...payload(), elapsedSeconds: -1 },
+      now
+    )
+  );
   setClock(new Date(`${day2.date}T00:00:01Z`));
   const response = await request(app, 'crossings', undefined, 't2_player');
   assert.equal(response.headers.get('cache-control'), 'private, no-store');
   const crossings = await response.json();
+  assert.deepEqual(crossings.cards, [
+    { day: 1, title: 'Moonroot Crossing', favorite: 'fox' },
+  ]);
+  assert.deepEqual(
+    (await (await request(app, 'crossings', undefined, 't2_other')).json())
+      .cards,
+    []
+  );
   assert.equal(crossings.nextAt, Date.parse(`${day3.date}T00:00:00Z`));
   assert.deepEqual(crossings.past, [
     {
@@ -265,5 +300,136 @@ test('crossing archive only lists registered past posts, marks personal completi
     },
   ]);
   setClock(new Date('2027-01-01T00:00:00Z'));
-  assert.equal((await (await request(app, 'crossings')).json()).nextAt, null);
+  assert.equal(
+    (await (await request(app, 'crossings')).json()).nextAt,
+    Date.parse('2027-01-02T00:00:00Z')
+  );
+});
+
+test('shares only saved rescues, posts once per account and edition, and persists the delivery state', async () => {
+  const messages: string[] = [];
+  const f = fixture({
+    share: async (postId, text) => {
+      assert.equal(postId, 't3_original');
+      messages.push(text);
+      return 't1_shared';
+    },
+  });
+  assert.equal((await request(f.app, 'share', {})).status, 403);
+  assert.equal((await request(f.app, 'share', {}, '')).status, 403);
+  await request(f.app, 'complete', {
+    ...payload(),
+    personalUndos: 0,
+    elapsedSeconds: 65,
+  });
+  assert.equal(messages.length, 0);
+  await Promise.all(
+    Array.from({ length: 12 }, () =>
+      request(f.app, 'share', { favorite: 'turtle' })
+    )
+  );
+  assert.equal(messages.length, 1);
+  assert.match(messages[0]!, /Day #1/);
+  assert.match(messages[0]!, /Clean Crossing/);
+  assert.match(messages[0]!, /Card: Turtle · Time 1:05/);
+  assert.doesNotMatch(messages[0]!, /Fox|Rabbit|Badger/);
+  assert.equal(
+    (await (await request(f.app, 'init')).json()).shareStatus,
+    't1_shared'
+  );
+});
+
+test('failed comment delivery is not retried blindly; flair failure leaves a saved result intact', async () => {
+  let shareCalls = 0,
+    flairCalls = 0;
+  const f = fixture({
+    share: async () => {
+      shareCalls++;
+      throw new Error('ambiguous delivery');
+    },
+    setFlair: async () => {
+      flairCalls++;
+      throw new Error('flair not granted');
+    },
+  });
+  await request(f.app, 'complete', payload());
+  assert.equal(flairCalls, 0);
+  assert.equal((await request(f.app, 'share', {})).status, 503);
+  assert.equal((await request(f.app, 'share', {})).status, 409);
+  assert.equal(shareCalls, 1);
+  assert.equal((await request(f.app, 'flair', {})).status, 503);
+  assert.equal(flairCalls, 1);
+  const reopened = await (await request(f.app, 'init')).json();
+  assert.equal(reopened.shareStatus, 'pending');
+  assert.equal(reopened.community.total, 1);
+});
+
+test('reported opening traps require a legal stranding move and are counted once among validated finishers', async () => {
+  const f = fixture();
+  await request(f.app, 'complete', { ...payload(), openingTrap: 'turtle' });
+  await request(f.app, 'complete', { ...payload(), openingTrap: 'rabbit' });
+  await request(
+    f.app,
+    'complete',
+    { ...payload(), openingTrap: 'badger' },
+    't2_b'
+  );
+  await request(
+    f.app,
+    'complete',
+    { ...payload(), openingTrap: 'turtle', personalUndos: 0 },
+    't2_c'
+  );
+  assert.deepEqual(await community(f.store, day1), {
+    total: 3,
+    openings: { fox: 3 },
+    traps: { turtle: 1 },
+  });
+});
+
+test('a rotated edition keeps its earned card after it ages out of the recent archive', async () => {
+  const edition = editionAt(new Date('2026-11-28T00:00:00Z'))!;
+  const f = fixture();
+  f.setEdition(edition);
+  f.setClock(new Date('2026-11-28T10:00:00Z'));
+  assert.equal(
+    (await request(f.app, 'complete', payload(edition))).status,
+    200
+  );
+  f.setClock(new Date('2027-02-01T00:00:00Z'));
+  const archive = await (await request(f.app, 'crossings')).json();
+  assert.deepEqual(archive.cards, [
+    { day: 11, title: 'Moonroot Crossing', favorite: 'fox' },
+  ]);
+  assert.equal(
+    (await (await request(f.app, 'init')).json()).edition.id,
+    edition.id
+  );
+});
+
+test('hint state uses the authenticated account and can be read in another post', async () => {
+  let refillAt = 0;
+  const f = fixture({
+    hintRefill: async (id, consume) => {
+      assert.equal(id, 't2_a');
+      const granted = consume && refillAt === 0;
+      if (granted) refillAt = now.getTime() + 60_000;
+      return { refillAt, granted };
+    },
+  });
+  assert.equal((await request(f.app, 'hint', {}, '')).status, 403);
+  assert.equal(
+    (await (await request(f.app, 'hint', { userId: 't2_spoof' })).json())
+      .granted,
+    true
+  );
+  f.setEdition(day3);
+  assert.equal(
+    (await (await request(f.app, 'init')).json()).refillAt,
+    refillAt
+  );
+  assert.equal(
+    (await (await request(f.app, 'hint', {})).json()).granted,
+    false
+  );
 });
