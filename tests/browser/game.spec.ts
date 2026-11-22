@@ -340,6 +340,7 @@ test('production-shaped response hides the preview picker, restores a saved post
     favorite: 'badger',
     completedAt: '2026-11-18T10:00:00Z',
   };
+  let solvedOnSplash = false;
   await page.route('**/api/init*', (route) =>
     route.fulfill({
       contentType: 'application/json',
@@ -347,7 +348,8 @@ test('production-shaped response hides the preview picker, restores a saved post
         status: 'ready',
         mode: 'reddit',
         edition,
-        completion,
+        username: 'trailtester',
+        completion: solvedOnSplash ? completion : null,
         community: { total: 1, openings: { fox: 1 } },
         commentsUrl: 'https://www.reddit.com/comments/judgetest/',
       }),
@@ -369,8 +371,49 @@ test('production-shaped response hides the preview picker, restores a saved post
   await expect(page.locator('#edition')).toHaveText(
     'Day 1 · Moonroot Crossing'
   );
+  await page.setViewportSize({ width: 390, height: 512 });
+  await expect(page.locator('#play')).toHaveText('Play Today’s Rescue');
+  await expect(page.locator('#welcome-profile')).toHaveText(
+    'Welcome, u/trailtester'
+  );
+  await page.screenshot({ path: 'artifacts/welcome-preview/01-welcome.png' });
+  solvedOnSplash = true;
+  await page.route('**/api/crossings', (route) =>
+    route.fulfill({
+      json: {
+        cards: [
+          { day: 1, title: 'Moonroot Crossing', favorite: 'badger' },
+          { day: 2, title: 'Willow Bridge', favorite: 'rabbit' },
+          { day: 3, title: 'Lantern Bend', favorite: 'fox' },
+        ],
+        signedIn: true,
+        totalEditions: 10,
+        streak: 3,
+        past: [],
+      },
+    })
+  );
+  await page.reload();
   await expect(page.locator('#play')).toHaveText('View Your Rescue');
   await expect(page.locator('#badge')).toContainText('Badger card earned');
+  await page.getByRole('button', { name: 'My progress' }).click();
+  await expect(page.locator('.score-grid')).toContainText('Crossings rescued');
+  await expect(page.locator('#panel-status')).toContainText('1 undo');
+  await expect(page.locator('.score-grid')).toContainText('3 / 10');
+  await page.screenshot({
+    path: 'artifacts/welcome-preview/02-my-progress.png',
+  });
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Card collection' }).click();
+  await expect(page.locator('.card-gallery li')).toHaveCount(3);
+  await page.screenshot({
+    path: 'artifacts/welcome-preview/03-card-collection.png',
+  });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#personal-panel')).toBeHidden();
+  await page.setViewportSize({ width: 1200, height: 720 });
+  await page.screenshot({ path: 'artifacts/welcome-preview/04-desktop.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('http://127.0.0.1:5175/game.html');
   await expect(page.locator('#result')).toBeVisible();
   // This uses a production-shaped server response, not a claim of in-Reddit execution.

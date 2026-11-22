@@ -92,6 +92,7 @@ export type Init =
       shareStatus?: string;
       refillAt?: number;
       commentsUrl: string | null;
+      username?: string;
       mode: 'reddit' | 'demo';
     }
   | { status: 'empty'; message: string; mode: 'reddit' | 'demo' };
@@ -265,6 +266,10 @@ export function parseInit(value: unknown): Init {
     communityEnabled: value.communityEnabled === true,
     attemptStats: parseAttemptStats(value.attemptStats),
     mode: value.mode,
+    ...(typeof value.username === 'string' &&
+    /^[a-z0-9_-]{1,32}$/i.test(value.username)
+      ? { username: value.username }
+      : {}),
     completion: value.completion
       ? parseCompletion(value.completion, edition)
       : null,

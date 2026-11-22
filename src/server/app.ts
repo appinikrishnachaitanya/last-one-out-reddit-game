@@ -145,6 +145,7 @@ export function createApi(deps: Dependencies) {
     c.header('Cache-Control', 'private, no-store');
     return c.json({
       streak,
+      signedIn: Boolean(userId),
       totalEditions: EDITIONS.length,
       cards: cards.filter((card) => card !== null),
       serverTime: now.getTime(),
@@ -192,6 +193,9 @@ export function createApi(deps: Dependencies) {
       return c.json({
         status: 'ready',
         mode: deps.mode,
+        ...(ctx.userId && ctx.username && deps.mode === 'reddit'
+          ? { username: ctx.username }
+          : {}),
         edition,
         completion,
         attemptStats: completion ? todayStats : undefined,

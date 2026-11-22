@@ -47,10 +47,18 @@
         <button id="solo-tab" type="button" aria-pressed="true">
           Solo Rescue
         </button>
-        <button id="community-tab" type="button" aria-pressed="false">
+        <button
+          id="community-tab"
+          type="button"
+          aria-pressed="false"
+          aria-describedby="community-mode-description"
+        >
           Community Rescue
         </button>
       </div>
+      <span id="community-mode-description" class="visually-hidden">
+        Turn-based team puzzle. Everyone on this post shares one board.
+      </span>
       <div class="daily-line">
         <span id="daily-label">MOONROOT · 01</span
         ><span id="mode-label">Connecting to the forest…</span>
@@ -193,7 +201,6 @@
           </button>
           <p id="flair-status" role="status" hidden></p>
         </details>
-        <p class="discussion">Which move fooled you?</p>
       </section>
       <section id="empty-state" hidden>
         <h2>A quiet crossing</h2>

@@ -405,17 +405,45 @@ export class Crossing extends Phaser.Scene {
     const endY = last.y + (v[1] ?? 0) * 25;
     const origin = { x: token.x, y: token.y };
     const gait = {
-      turtle: { cadence: 2, lift: 3, squash: 0.08, lean: 0.07, pace: 100 },
-      rabbit: { cadence: 1, lift: 19, squash: 0.2, lean: 0.12, pace: 130 },
-      fox: { cadence: 1.6, lift: 8, squash: 0.13, lean: 0.17, pace: 91 },
-      badger: { cadence: 1.8, lift: 5, squash: 0.13, lean: 0.19, pace: 117 },
+      turtle: {
+        cadence: 2,
+        lift: 3,
+        squash: 0.12,
+        lean: 0.14,
+        pace: 95,
+        ready: 160,
+      },
+      rabbit: {
+        cadence: 1,
+        lift: 23,
+        squash: 0.26,
+        lean: 0.16,
+        pace: 125,
+        ready: 115,
+      },
+      fox: {
+        cadence: 1.4,
+        lift: 10,
+        squash: 0.19,
+        lean: 0.24,
+        pace: 75,
+        ready: 85,
+      },
+      badger: {
+        cadence: 1.2,
+        lift: 6,
+        squash: 0.19,
+        lean: 0.24,
+        pace: 120,
+        ready: 145,
+      },
     }[id];
     const steps = Math.max(
       1,
       Math.round((route.path.length + 0.5) * gait.cadence)
     );
     const travel = 260 + route.path.length * gait.pace;
-    const arrival = 150;
+    const arrival = 200;
     const clock = { elapsed: 0 };
     // The feet and shadow follow the route. Only the portrait lifts off it.
     const image = token.list[1];
@@ -436,19 +464,26 @@ export class Crossing extends Phaser.Scene {
         id === 'turtle' ? a.direction === 'E' : a.direction === 'W'
       );
     const facing = a.direction === 'W' ? -1 : 1;
-    const lantern = this.add.circle(endX, endY, 10, 0xffcf76, 0).setDepth(2);
+    const effects = this.add.graphics().setDepth(2);
+    const duration = gait.ready + travel + arrival;
     await new Promise<void>((resolve) => {
       this.tweens.add({
         targets: clock,
-        elapsed: travel + arrival,
-        duration: travel + arrival,
+        elapsed: duration,
+        duration,
         ease: 'Linear',
         onUpdate: () => {
-          const t = Math.min(1, clock.elapsed / travel);
-          const cycle = t * steps;
+          const motion = Math.max(0, clock.elapsed - gait.ready);
+          const t = Math.min(1, motion / travel);
+          const anticipation =
+            clock.elapsed < gait.ready
+              ? Math.sin((Math.PI * clock.elapsed) / gait.ready)
+              : 0;
+          effects.clear();
+          const cycle = (id === 'fox' ? t * (2 - t) : t) * steps;
           const phase = cycle % 1;
           const easedStep = phase * phase * (3 - 2 * phase);
-          const blend = id === 'fox' ? 0.3 : 0.85;
+          const blend = id === 'fox' ? 0.18 : id === 'rabbit' ? 0.95 : 0.7;
           const along =
             (Math.floor(cycle) + phase * (1 - blend) + easedStep * blend) /
             steps;
@@ -456,8 +491,11 @@ export class Crossing extends Phaser.Scene {
             Math.sin(Math.PI * phase),
             id === 'rabbit' ? 0.75 : 1.8
           );
-          const settle = Math.max(0, (clock.elapsed - travel) / arrival);
-          const impact = Math.pow(Math.max(0, 1 - phase * 5), 2) * (1 - settle);
+          const settle = Math.max(0, (motion - travel) / arrival);
+          const impact =
+            (motion > 0
+              ? Math.pow(Math.max(0, 1 - phase * 5), 2) * (1 - settle)
+              : 0) + anticipation;
           const groundY = Phaser.Math.Linear(origin.y, endY, along);
           token.setPosition(Phaser.Math.Linear(origin.x, endX, along), groundY);
           const lift = gait.lift * air;
@@ -466,18 +504,40 @@ export class Crossing extends Phaser.Scene {
             base.xScale * (1 + gait.squash * (impact - air * 0.45)),
             base.yScale * (1 - gait.squash * (impact - air))
           );
+          const wobble = Math.sin(phase * Math.PI * 2);
           sprite.setRotation(
-            gait.lean * Math.sin(phase * Math.PI * 2) * facing
+            (gait.lean * wobble - anticipation * gait.lean * 0.65) * facing
           );
           if (separateShadow)
             shadow.setScale(1 - air * 0.24).setAlpha(1 - air * 0.6);
-          token.setAlpha(1 - settle);
-          lantern
-            .setScale(1 + settle * 1.4)
-            .setAlpha(Math.sin(Math.PI * settle) * 0.65);
+          token.setAlpha(1 - Math.max(0, (settle - 0.2) / 0.8));
+          if (t > 0 && t < 1 && (id === 'fox' || phase < 0.32)) {
+            const trail = id === 'fox' ? 18 : 10 + phase * 28;
+            const alpha = id === 'fox' ? 0.43 : (1 - phase / 0.32) * 0.55;
+            effects.fillStyle(0xffdaa1, alpha);
+            for (let puff = 0; puff < 3; puff++) {
+              effects.fillCircle(
+                token.x - (v[0] ?? 0) * (trail + puff * 4) + (puff - 1) * 4,
+                groundY - (v[1] ?? 0) * (trail + puff * 4) + 13,
+                3 - puff * 0.65
+              );
+            }
+          }
+          if (settle > 0) {
+            const glow = Math.sin(Math.PI * settle);
+            effects.lineStyle(2, 0xffcf76, glow);
+            effects.strokeCircle(endX, endY, 7 + settle * 18);
+            effects.fillStyle(0xffdf9c, glow);
+            for (let spark = 0; spark < 3; spark++)
+              effects.fillCircle(
+                endX + (spark - 1) * (13 + settle * 9),
+                endY - 9 - settle * 18,
+                2.2
+              );
+          }
         },
         onComplete: () => {
-          lantern.destroy();
+          effects.destroy();
           resolve();
         },
       });

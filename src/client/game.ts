@@ -224,13 +224,15 @@ let savedSolo:
     }
   | undefined;
 
+const sharedRules =
+  'One shared board. One move per player. The board resets if a friend gets stranded.';
 function applyShared(state: CommunityBoard): void {
   session = new Session(session.board);
   for (const animal of state.home) session.send(animal);
   selected = undefined;
   scene.blocked = [];
   const latest = state.log.at(-1);
-  say(latest ? describeMove(latest) : 'Nobody has moved yet.');
+  say(latest ? describeMove(latest) : sharedRules);
   element('shared-summary', HTMLElement).textContent =
     `Attempt ${state.attempts + 1} · ${state.successfulRescues} shared wins · Move log`;
   const log = element('shared-log', HTMLOListElement);
@@ -277,7 +279,7 @@ button('community-tab').addEventListener('click', () => {
   document.querySelector('.animal-picker')?.removeAttribute('open');
   element('shared-rescue', HTMLElement).hidden = false;
   shared.open();
-  say('');
+  say(sharedRules);
   refresh();
 });
 button('solo-tab').addEventListener('click', () => {
@@ -385,6 +387,15 @@ function choose(id: AnimalId): void {
   )
     return;
   if (busy || isHome(session.state, id)) return;
+  if (shared.active && !shared.state?.canMove) {
+    const message = !shared.state
+      ? 'The shared board is loading.'
+      : shared.state.signedIn
+        ? 'You can watch the board while another player takes a turn.'
+        : 'Sign in to Reddit to take your turn.';
+    say(message);
+    return;
+  }
   if (selected === id && trace(session.board, session.state, id).legal) {
     void send();
     return;
