@@ -158,6 +158,9 @@ test('touch on Phaser pieces previews and commits; rapid taps cannot duplicate a
   );
   const page = await context.newPage();
   await open(page);
+  // A canvas can appear before the daily load enables the board’s input.
+  await expect(page.locator('[data-animal=turtle]')).toBeEnabled();
+  await expect(page.locator('#first-move')).toBeVisible();
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing canvas');
   const x = canvas.x + (canvas.width * 106) / 420,

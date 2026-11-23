@@ -1608,7 +1608,7 @@ h2,
 }
 @media (max-width: 559px) and (max-height: 620px) {
   .touring #game-container {
-    width: min(100%, 224px, max(204px, calc(100dvh - 286px)));
+    width: min(100%, 210px, max(204px, calc(100dvh - 302px)));
   }
 }
 

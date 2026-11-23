@@ -431,6 +431,8 @@ function refresh(): void {
     ? `${session.undos} personal undo${session.undos === 1 ? '' : 's'}`
     : '';
   updateRunIndicators();
+  // A cue or mode change can move the canvas without resizing it.
+  game.scale.updateBounds();
 }
 function choose(id: AnimalId): void {
   if (
