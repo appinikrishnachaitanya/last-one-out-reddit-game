@@ -154,6 +154,7 @@ const request = (
   });
 test('API hides aggregates before solve, binds to the post, and restores the saved result after midnight without writing', async () => {
   const f = fixture();
+  assert.equal((await request(f.app, 'comparison')).status, 403);
   const before = await (await request(f.app, 'init')).json();
   assert.equal(before.community, null);
   assert.equal(before.completion, null);
@@ -166,6 +167,10 @@ test('API hides aggregates before solve, binds to the post, and restores the sav
     await request(f.app, 'complete', { ...payload(), userId: 'spoofed' })
   ).json();
   assert.equal(saved.validated, true);
+  assert.equal(
+    (await (await request(f.app, 'comparison')).json()).totalSolves,
+    1
+  );
   assert.equal(await f.store.hGet(completionKey(day1), 'spoofed'), undefined);
   f.setClock(new Date('2026-11-19T00:00:01Z'));
   const reopened = await (await request(f.app, 'init')).json();
@@ -343,7 +348,7 @@ test('shares only saved rescues, posts once per account and edition, and persist
     )
   );
   assert.equal(messages.length, 1);
-  assert.match(messages[0]!, /Last One Out - 2026-11-18/);
+  assert.match(messages[0]!, /^>!Last One Out - 2026-11-18!<!?$/m);
   assert.match(messages[0]!, /Rescued: 4\/4 \| Undos: 0 \| First move: Fox/);
   assert.match(messages[0]!, /Can Reddit rescue today's Community Crossing/);
   assert.doesNotMatch(messages[0]!, /Turtle|Rabbit|Badger|% club/);

@@ -177,6 +177,9 @@
           aria-live="polite"
           hidden
         ></section>
+        <button id="copy-result-link" class="secondary" hidden>
+          Copy result link
+        </button>
         <p id="post-status" role="status" hidden></p>
         <p id="save-status" role="status"></p>
         <button id="retry-save" hidden>Retry saving · no replay needed</button>
@@ -194,6 +197,9 @@
         <p id="next-crossing" hidden></p>
         <details id="past-crossings">
           <summary>Card collection &amp; past crossings</summary>
+          <button id="save-image" class="secondary">
+            Download result image
+          </button>
           <div id="card-collection"></div>
           <div id="archive-result"></div>
           <button id="apply-flair" class="secondary" hidden>
@@ -271,7 +277,7 @@
           <p>
             Blocked paths end at a coral cross. Undo restores the animal and its
             bridge. The timer tracks elapsed time. Undo starts with two charges
-            and restores one every 45 seconds. You can always restart the board.
+            and restores one every 8 minutes. You can always restart the board.
           </p>
           <p>
             Keyboard: open Animal buttons, then use Tab to select an animal.

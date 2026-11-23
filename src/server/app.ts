@@ -1,3 +1,4 @@
+import { undoState } from './core/lifelines.ts';
 import {
   CommunityMoveError,
   readCommunity,
@@ -224,6 +225,17 @@ export function createApi(deps: Dependencies) {
                 .hGet(shareKey(edition), ctx.userId)
                 .catch(() => undefined)
             : undefined,
+        undoSync: Boolean(ctx.userId && deps.communityStorage),
+        hintSync: Boolean(ctx.userId && deps.hintRefill),
+        undoState:
+          ctx.userId && deps.communityStorage
+            ? await undoState(
+                deps.communityStorage,
+                ctx.userId,
+                deps.now().getTime(),
+                false
+              ).catch(() => undefined)
+            : undefined,
         refillAt:
           ctx.userId && deps.hintRefill
             ? (await deps.hintRefill(ctx.userId, false).catch(() => undefined))
@@ -367,6 +379,59 @@ export function createApi(deps: Dependencies) {
       );
     }
   });
+  api.get('/lifelines', async (c) => {
+    try {
+      const { userId } = await deps.getContext(c);
+      if (!userId || !deps.communityStorage)
+        return c.json({ error: 'Sign in to sync lifelines.' }, 403);
+      c.header('Cache-Control', 'private, no-store');
+      const [undo, hint] = await Promise.all([
+        undoState(deps.communityStorage, userId, deps.now().getTime(), false),
+        deps.hintRefill?.(userId, false),
+      ]);
+      return c.json({ undo, refillAt: hint?.refillAt });
+    } catch {
+      return c.json({ error: 'Could not refresh lifelines.' }, 503);
+    }
+  });
+  api.post('/undo', async (c) => {
+    try {
+      const { ctx, edition } = await requestEdition(c);
+      if (!ctx.userId || !edition || !deps.communityStorage)
+        return c.json({ error: 'Sign in to sync Undo.' }, 403);
+      return c.json(
+        await undoState(
+          deps.communityStorage,
+          ctx.userId,
+          deps.now().getTime(),
+          true
+        )
+      );
+    } catch {
+      return c.json(
+        { error: 'Could not confirm Undo. Refresh and try again.' },
+        503
+      );
+    }
+  });
+  api.get('/comparison', async (c) => {
+    try {
+      const { ctx, edition } = await requestEdition(c);
+      if (
+        !ctx.userId ||
+        !edition ||
+        !(await loadCompletion(deps.store, edition, ctx.userId))
+      )
+        return c.json(
+          { error: 'Finish your rescue to unlock comparisons.' },
+          403
+        );
+      c.header('Cache-Control', 'private, no-store');
+      return c.json(await readAttemptStats(deps.store, edition));
+    } catch {
+      return c.json({ error: 'Could not refresh comparisons.' }, 503);
+    }
+  });
   api.post('/hint', async (c) => {
     try {
       const { ctx, edition } = await requestEdition(c);
@@ -480,7 +545,8 @@ export function createApi(deps: Dependencies) {
       );
       if ((await deps.store.hSetNX(key, ctx.userId, 'pending')) !== 1) {
         const status = await deps.store.hGet(key, ctx.userId);
-        if (status && status !== 'pending') return c.json({ shared: true });
+        if (status && status !== 'pending')
+          return c.json({ shared: true, commentId: status });
         return c.json(
           {
             error:
@@ -489,9 +555,15 @@ export function createApi(deps: Dependencies) {
           409
         );
       }
-      const commentId = await deps.share(ctx.postId, text);
+      const commentId = await deps.share(
+        ctx.postId,
+        text
+          .split('\n')
+          .map((line) => `>!${line}!<`)
+          .join('\n\n')
+      );
       await deps.store.hSet(key, { [ctx.userId]: commentId });
-      return c.json({ shared: true });
+      return c.json({ shared: true, commentId });
     } catch {
       return c.json(
         {

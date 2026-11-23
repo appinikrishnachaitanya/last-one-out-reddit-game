@@ -525,3 +525,18 @@ body {
     text-wrap: pretty;
   }
 }
+
+#app #copy-result-link {
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app * {
+    animation: none !important;
+  }
+}
+
+#app.skip-animations * {
+  animation: none !important;
+  transition: none !important;
+}

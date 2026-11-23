@@ -186,13 +186,12 @@ test('all first three editions solve, favorite art changes, saved result survive
   context,
 }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await open(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  if (
-    (await page.locator('#motion-dialog').getAttribute('aria-pressed')) !==
+  await open(page);
+  await expect(page.locator('#motion-dialog')).toHaveAttribute(
+    'aria-pressed',
     'true'
-  )
-    await toggleMotion(page);
+  );
   const editions = [
     [
       'loo-2026-11-18',
@@ -231,6 +230,12 @@ test('all first three editions solve, favorite art changes, saved result survive
     await expect(page.locator('#card-animal')).toContainText('Rabbit');
     await page.locator('#copy-result').click();
     await expect(page.locator('#copy-status')).toContainText('Copied');
+    await page.locator('#past-crossings summary').click();
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download result image' }).click();
+    const image = await download;
+    expect(image.suggestedFilename()).toMatch(/^last-one-out-.*\.png$/);
+    expect(await image.failure()).toBeNull();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     expect(copied).toContain('Rescued: 4/4');
     expect(copied).not.toContain('→');
@@ -368,7 +373,7 @@ test('production-shaped response hides the preview picker, restores a saved post
   let posts = 0;
   await page.route('**/api/share', (route) => {
     posts++;
-    return route.fulfill({ json: { shared: true } });
+    return route.fulfill({ json: { shared: true, commentId: 't1_example' } });
   });
   await page.goto('http://127.0.0.1:5175/splash.html');
   await expect(page.locator('#edition')).toHaveText(
@@ -452,6 +457,9 @@ test('production-shaped response hides the preview picker, restores a saved post
   await expect(page.locator('#card-animal')).toContainText('Badger');
   expect(posts).toBe(0);
   await page.locator('#post-rescue').click();
+  await expect(
+    page.getByRole('button', { name: 'Copy result link' })
+  ).toBeVisible();
   await expect(page.locator('#post-rescue')).toHaveText('Shared to Comments ✓');
   await expect(page.locator('#post-rescue')).toBeDisabled();
   expect(posts).toBe(1);
@@ -1109,7 +1117,7 @@ test('Community Rescue shows yesterday, prevents a repeat turn, and preserves th
   await page.locator('[data-animal=turtle]').click();
   await page.locator('#send').click();
   await expect(page.locator('#feedback')).toContainText(
-    'Rabbit needs a rethink'
+    'Rabbit lost their way home. A fresh attempt is ready!'
   );
   await expect(page.locator('#shared-status')).toContainText('Waiting');
   await page.locator('#shared-history summary').click();
@@ -1148,7 +1156,7 @@ test('Undo charges run out and refill one at a time, including after reload', as
   await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
   await expect(undo).toBeDisabled();
   // Advance the clock without waiting for real time.
-  await page.clock.fastForward(46_000);
+  await page.clock.fastForward(481_000);
   await expect(undo).toHaveText('↶ Undo · 1');
   await expect(undo).toBeEnabled();
   await undo.click();

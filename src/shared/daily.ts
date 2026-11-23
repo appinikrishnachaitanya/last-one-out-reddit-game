@@ -1,3 +1,5 @@
+import { parseUndoState } from './undo-charge.ts';
+import type { UndoState } from './undo-charge.ts';
 import { boardById } from './boards.ts';
 import { isAnimalId, titleCase, validateSolution } from './engine.ts';
 import type { AnimalId } from './engine.ts';
@@ -91,6 +93,9 @@ export type Init =
       communityEnabled?: boolean;
       shareStatus?: string;
       refillAt?: number;
+      undoState?: UndoState;
+      undoSync?: boolean;
+      hintSync?: boolean;
       commentsUrl: string | null;
       username?: string;
       mode: 'reddit' | 'demo';
@@ -221,7 +226,7 @@ function counts(value: unknown): Partial<Record<AnimalId, number>> {
       if (isAnimalId(id) && isCount(count) && count > 0) out[id] = count;
   return out;
 }
-function parseAttemptStats(value: unknown): AttemptStats | undefined {
+export function parseAttemptStats(value: unknown): AttemptStats | undefined {
   if (
     !isObject(value) ||
     !isCount(value.players) ||
@@ -243,6 +248,7 @@ export function parseInit(value: unknown): Init {
     throw new Error('Invalid response');
   if (value.status === 'empty' && typeof value.message === 'string')
     return { status: 'empty', message: value.message, mode: value.mode };
+  const undoState = parseUndoState(value.undoState);
   if (value.status !== 'ready') throw new Error('Missing daily');
   const edition = parseEdition(value.edition);
   const previous = value.previousRescues;
@@ -278,6 +284,9 @@ export function parseInit(value: unknown): Init {
       ? { shareStatus: value.shareStatus }
       : {}),
     ...(typeof value.refillAt === 'number' ? { refillAt: value.refillAt } : {}),
+    ...(undoState ? { undoState } : {}),
+    undoSync: value.undoSync === true,
+    hintSync: value.hintSync === true,
     commentsUrl:
       typeof value.commentsUrl === 'string' ? value.commentsUrl : null,
   };

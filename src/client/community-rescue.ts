@@ -24,6 +24,8 @@ export class CommunityRescue {
   active = false;
   moving = false;
   private reading = false;
+  private refreshQueued = false;
+  private lastRefresh = 0;
   private generation = 0;
   private poll?: number;
   private channel: string | undefined;
@@ -42,7 +44,9 @@ export class CommunityRescue {
     this.poll = window.setInterval(() => {
       if (
         !document.hidden &&
-        (!this.channel || !isRealtimeConnected(this.channel))
+        (!this.channel ||
+          !isRealtimeConnected(this.channel) ||
+          Date.now() - this.lastRefresh >= 30_000)
       )
         void this.refresh();
     }, 5000);
@@ -53,6 +57,8 @@ export class CommunityRescue {
     this.generation++;
     this.state = undefined;
     this.reading = false;
+    this.refreshQueued = false;
+    this.lastRefresh = 0;
     window.clearInterval(this.poll);
     if (this.channel) disconnectRealtime(this.channel);
     this.channel = undefined;
@@ -91,7 +97,12 @@ export class CommunityRescue {
   }
 
   async refresh(): Promise<void> {
-    if (!this.active || this.reading || this.moving) return;
+    if (!this.active) return;
+    if (this.reading || this.moving) {
+      this.refreshQueued = true;
+      return;
+    }
+    this.refreshQueued = false;
     const current = this.generation;
     this.reading = true;
     try {
@@ -100,8 +111,10 @@ export class CommunityRescue {
         this.generation === current &&
         !this.moving &&
         (!this.state || state.moveNumber >= this.state.moveNumber)
-      )
+      ) {
+        this.lastRefresh = Date.now();
         this.apply(state);
+      }
     } catch (error) {
       if (this.generation === current)
         this.notice(
@@ -110,7 +123,10 @@ export class CommunityRescue {
             : 'Could not refresh the shared board.'
         );
     } finally {
-      if (this.generation === current) this.reading = false;
+      if (this.generation === current) {
+        this.reading = false;
+        if (this.refreshQueued && !this.moving) void this.refresh();
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import {
   highestCount,
   isObject,
   openingPercent,
+  parseAttemptStats,
   rescueShare,
 } from '../shared/daily';
 import { navigateTo, showShareSheet } from '@devvit/web/client';
@@ -13,7 +14,7 @@ import type { Edition, Completion, AttemptStats } from '../shared/daily';
 import { isAnimalId, titleCase } from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
 import { DailyApi } from './daily-api';
-import { portrait } from './portraits';
+import { portrait, portraitOffsets } from './portraits';
 const animals: readonly AnimalId[] = ['turtle', 'rabbit', 'fox', 'badger'];
 function el(id: string): HTMLElement {
   const e = document.getElementById(id);
@@ -33,6 +34,8 @@ export class Results {
   stats: AttemptStats | undefined;
   countdown?: number;
   api = new DailyApi();
+  private sharedLink: string | undefined;
+  private refreshingComparison = false;
   shareState: 'ready' | 'busy' | 'done' | 'pending' = 'ready';
   onFavorite: (id: AnimalId) => void;
   onRetry: () => void;
@@ -60,6 +63,14 @@ export class Results {
     el('copy-result').addEventListener('click', () => {
       void this.copy();
     });
+    el('save-image').addEventListener('click', () => void this.saveImage());
+    el('copy-result-link').addEventListener('click', () => {
+      if (this.sharedLink)
+        void this.copyText(this.sharedLink, 'Result link copied.');
+    });
+    window.setInterval(() => {
+      void this.refreshComparison();
+    }, 12000);
     el('post-rescue').addEventListener('click', () => void this.post());
     el('apply-flair').addEventListener('click', () => void this.flair());
     el('comments').addEventListener('click', () => {
@@ -162,7 +173,46 @@ export class Results {
     this.community(stats, record.firstMove ?? record.opening);
     void this.loadCrossings();
   }
+  private async refreshComparison(): Promise<void> {
+    const edition = this.edition;
+    if (
+      this.demo ||
+      !this.validated ||
+      document.hidden ||
+      el('result').hidden ||
+      !edition ||
+      !this.opening ||
+      this.refreshingComparison
+    )
+      return;
+    this.refreshingComparison = true;
+    try {
+      const stats = parseAttemptStats(await this.api.request('comparison'));
+      if (
+        stats &&
+        this.validated &&
+        this.edition === edition &&
+        this.opening &&
+        JSON.stringify(this.stats) !== JSON.stringify(stats)
+      )
+        this.community(stats, this.opening);
+    } catch {
+      /* Keep the last confirmed comparison visible. */
+    } finally {
+      this.refreshingComparison = false;
+    }
+  }
+
   sharing(status?: string): void {
+    const receipt =
+      status && /^t1_[a-z0-9]+$/.test(status) ? status.slice(3) : undefined;
+    this.sharedLink =
+      receipt &&
+      this.url &&
+      /^https:\/\/www\.reddit\.com\/comments\/[a-z0-9]+\/$/.test(this.url)
+        ? `${this.url}comment/${receipt}/`
+        : undefined;
+    el('copy-result-link').hidden = !this.sharedLink;
     this.shareState =
       status === 'pending' ? 'pending' : status ? 'done' : 'ready';
     const button = el('post-rescue') as HTMLButtonElement;
@@ -186,8 +236,14 @@ export class Results {
     button.disabled = true;
     button.textContent = 'Posting…';
     try {
-      await this.api.request('share', { favorite: this.favorite });
-      this.sharing('sent');
+      const result = await this.api.request('share', {
+        favorite: this.favorite,
+      });
+      this.sharing(
+        isObject(result) && typeof result.commentId === 'string'
+          ? result.commentId
+          : 'sent'
+      );
     } catch {
       this.sharing('pending');
     }
@@ -246,11 +302,11 @@ export class Results {
     box.replaceChildren();
     box.hidden = false;
     const intro = document.createElement('p');
-    intro.textContent = `You started with ${titleCase(ownOpening)}.`;
+    intro.textContent = `See how Reddit solved it · You started with ${titleCase(ownOpening)}.`;
     box.append(intro);
     if (!stats || stats.players < 10) {
       const early = document.createElement('p');
-      early.textContent = "You're among the first rescuers today";
+      early.textContent = `You're among the first rescuers today${stats ? ` · ${stats.players}/10 players` : ''}`;
       box.append(early);
       return;
     }
@@ -380,6 +436,77 @@ export class Results {
       el('card-collection').textContent = '';
     }
   }
+  private async saveImage(): Promise<void> {
+    const edition = this.edition;
+    if (!edition) return;
+    const { favorite, elapsedSeconds, undos } = this;
+    const count = boardById(edition.puzzleId, edition.boardVersion).animals
+      .length;
+    try {
+      const art = new Image();
+      art.src = '/art/animals.webp';
+      await art.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 600;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas unavailable');
+      ctx.fillStyle = '#132f28';
+      ctx.fillRect(0, 0, 1080, 600);
+      ctx.fillStyle = '#f3deb0';
+      ctx.beginPath();
+      ctx.roundRect(28, 28, 1024, 544, 30);
+      ctx.fill();
+      const [x, y] = portraitOffsets[favorite];
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(811, 300, 166, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(
+        art,
+        (-x * art.width) / 200,
+        (-y * art.height) / 200,
+        art.width / 2,
+        art.height / 2,
+        645,
+        134,
+        332,
+        332
+      );
+      ctx.restore();
+      ctx.fillStyle = '#132f28';
+      ctx.font = 'bold 27px system-ui';
+      ctx.fillText('LAST ONE OUT · DAILY RESCUE', 72, 135);
+      ctx.font = 'bold 66px Georgia';
+      ctx.fillText('Everyone home.', 72, 232);
+      ctx.font = '30px system-ui';
+      ctx.fillText(`Day ${edition.number} · ${edition.date} UTC`, 72, 296);
+      ctx.fillText(
+        `${count}/${count} rescued · ${undos} ${undos === 1 ? 'undo' : 'undos'}`,
+        72,
+        354
+      );
+      if (elapsedSeconds !== undefined)
+        ctx.fillText(`Time ${formatElapsed(elapsedSeconds)}`, 72, 402);
+      ctx.font = 'italic 27px Georgia';
+      ctx.fillText(`${titleCase(favorite)}’s lantern is lit.`, 72, 475);
+      const image = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/png')
+      );
+      if (!image) throw new Error('Could not encode result');
+      const url = URL.createObjectURL(image);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `last-one-out-${edition.date}.png`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      el('copy-status').textContent = 'Result image ready.';
+    } catch {
+      el('copy-status').textContent =
+        'Could not download the image. You can still copy your result.';
+    }
+  }
+
   async copy(): Promise<void> {
     if (!this.edition) return;
     const text = rescueShare(
@@ -388,9 +515,13 @@ export class Results {
       this.opening,
       this.stats
     );
+    await this.copyText(text, 'Copied. No puzzle spoilers.');
+  }
+
+  private async copyText(text: string, confirmation: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text);
-      el('copy-status').textContent = 'Copied. No puzzle spoilers.';
+      el('copy-status').textContent = confirmation;
     } catch {
       if (!this.demo) {
         try {
