@@ -807,6 +807,7 @@ test('the compact saved result keeps copy and comments inside one short frame', 
     await page.setViewportSize({ width, height: 512 });
     await page.goto('http://127.0.0.1:5175/game.html');
     await expect(page.locator('#result')).toBeVisible();
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     for (const id of ['copy-result', 'comments']) {
       const box = await page.locator(`#${id}`).boundingBox();
       expect(box?.y).toBeGreaterThanOrEqual(0);

@@ -302,7 +302,7 @@ export class Results {
     box.replaceChildren();
     box.hidden = false;
     const intro = document.createElement('p');
-    intro.textContent = `See how Reddit solved it · You started with ${titleCase(ownOpening)}.`;
+    intro.textContent = `You started with ${titleCase(ownOpening)}.`;
     box.append(intro);
     if (!stats || stats.players < 10) {
       const early = document.createElement('p');
