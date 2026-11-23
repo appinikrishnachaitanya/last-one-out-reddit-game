@@ -291,7 +291,13 @@ test('crossing archive only lists registered past posts, marks personal completi
   assert.equal(response.headers.get('cache-control'), 'private, no-store');
   const crossings = await response.json();
   assert.deepEqual(crossings.cards, [
-    { day: 1, title: 'Moonroot Crossing', favorite: 'fox' },
+    {
+      day: 1,
+      title: 'Moonroot Crossing',
+      favorite: 'fox',
+      puzzleId: day1.puzzleId,
+      earnedAt: now.toISOString(),
+    },
   ]);
   assert.deepEqual(
     (await (await request(app, 'crossings', undefined, 't2_other')).json())
@@ -407,7 +413,13 @@ test('a rotated edition keeps its earned card after it ages out of the recent ar
   f.setClock(new Date('2027-02-01T00:00:00Z'));
   const archive = await (await request(f.app, 'crossings')).json();
   assert.deepEqual(archive.cards, [
-    { day: 11, title: 'Moonroot Crossing', favorite: 'fox' },
+    {
+      day: 11,
+      title: boardById(edition.puzzleId, edition.boardVersion).title,
+      favorite: 'fox',
+      puzzleId: edition.puzzleId,
+      earnedAt: '2026-11-28T10:00:00.000Z',
+    },
   ]);
   assert.equal(
     (await (await request(f.app, 'init')).json()).edition.id,

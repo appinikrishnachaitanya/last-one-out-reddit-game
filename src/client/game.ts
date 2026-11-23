@@ -1,3 +1,4 @@
+import { UNDO_MAX, UNDO_REFILL_MS, undoRecharge } from './undo-charge';
 import { CommunityRescue, describeMove } from './community-rescue';
 import type { CommunityBoard } from '../shared/community-board';
 import { setupAtmosphere } from './atmosphere';
@@ -127,6 +128,40 @@ function storeTimestamp(key: string, value: number): void {
     /* optional */
   }
 }
+let undoStorageKey = 'loo-undo-recharge:v1:guest';
+let spentUndo = { nextAt: 0, missing: 0 };
+function undoSupply() {
+  try {
+    const raw: unknown = JSON.parse(
+      localStorage.getItem(undoStorageKey) ?? 'null'
+    );
+    if (
+      isObject(raw) &&
+      typeof raw.nextAt === 'number' &&
+      Number.isSafeInteger(raw.nextAt) &&
+      raw.nextAt > 0 &&
+      typeof raw.missing === 'number' &&
+      Number.isInteger(raw.missing) &&
+      raw.missing >= 1 &&
+      raw.missing <= UNDO_MAX
+    )
+      spentUndo = { nextAt: raw.nextAt, missing: raw.missing };
+  } catch {
+    /* Keep the current session’s supply. */
+  }
+  return undoRecharge(Date.now(), spentUndo.nextAt, spentUndo.missing);
+}
+function useUndo(available: number, nextAt: number): void {
+  spentUndo = {
+    nextAt: nextAt || Date.now() + UNDO_REFILL_MS,
+    missing: UNDO_MAX - available + 1,
+  };
+  try {
+    localStorage.setItem(undoStorageKey, JSON.stringify(spentUndo));
+  } catch {
+    /* optional */
+  }
+}
 function updateRunIndicators(): void {
   const clock = element('run-clock', HTMLElement);
   const clockGroup = element('play-clock', HTMLElement);
@@ -136,6 +171,24 @@ function updateRunIndicators(): void {
     clock.textContent = formatElapsed(
       startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0
     );
+  const undo = button('undo');
+  const supply = undoSupply();
+  const refill = Math.max(0, Math.ceil((supply.nextAt - Date.now()) / 1000));
+  undo.disabled =
+    busy ||
+    shared.active ||
+    !session.history.length ||
+    (!tourActive && supply.available === 0);
+  undo.textContent = tourActive
+    ? '↶ Undo'
+    : supply.available
+      ? `↶ Undo · ${supply.available}`
+      : `↶ Undo · ${refill}s`;
+  undo.title = tourActive
+    ? 'Restore the previous move'
+    : refill
+      ? `${supply.available} of ${UNDO_MAX} Undo charges. Next in ${refill}s.`
+      : `${UNDO_MAX} Undo charges ready. One refills every 45 seconds.`;
   const left = Math.max(0, Math.ceil((refillAt - Date.now()) / 1000));
   button('hint').disabled =
     !!left || hintRequest || busy || tourActive || !result.hidden;
@@ -355,7 +408,6 @@ function refresh(): void {
     b.addEventListener('click', () => choose(a.id));
     controls.append(b);
   }
-  button('undo').disabled = busy || !session.history.length;
   updateRunIndicators();
   button('restart').disabled = busy || shared.active;
   button('help-practice').disabled = shared.active;
@@ -376,7 +428,7 @@ function refresh(): void {
   element('app', HTMLElement).classList.toggle('skip-animations', reduced);
   rememberRun();
   element('personal-stats', HTMLSpanElement).textContent = session.undos
-    ? `${session.undos} personal undo${session.undos === 1 ? '' : 's'} · no penalty`
+    ? `${session.undos} personal undo${session.undos === 1 ? '' : 's'}`
     : '';
   updateRunIndicators();
 }
@@ -544,7 +596,10 @@ button('send').addEventListener('click', () => {
   void send();
 });
 button('undo').addEventListener('click', () => {
-  if (busy || shared.active || !session.undo()) return;
+  if (busy || shared.active) return;
+  const supply = undoSupply();
+  if ((!tourActive && !supply.available) || !session.undo()) return;
+  if (!tourActive) useUndo(supply.available, supply.nextAt);
   if (tourActive) {
     tourPhase = 'finish';
     selected = undefined;
@@ -767,6 +822,11 @@ async function load(previewId?: string): Promise<void> {
       return;
     }
     edition = data.edition;
+    const accountUndoKey = `loo-undo-recharge:v1:${data.username?.toLowerCase() ?? 'guest'}`;
+    if (undoStorageKey !== accountUndoKey) {
+      undoStorageKey = accountUndoKey;
+      spentUndo = { nextAt: 0, missing: 0 };
+    }
     element('rescue-modes', HTMLElement).hidden = !data.communityEnabled;
     startAttempt(true);
     openingTrap = undefined;

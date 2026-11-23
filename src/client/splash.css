@@ -106,6 +106,7 @@ dialog {
   width: min(420px, calc(100% - 24px));
   max-height: calc(100dvh - 24px);
   overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid #a2b89a;
   border-radius: 16px;
   padding: 14px;
@@ -116,6 +117,10 @@ dialog::backdrop {
   background: #061918bd;
 }
 dialog header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #10332f;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -169,7 +174,7 @@ dialog form button {
   list-style: none;
   display: grid;
   gap: 5px;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto 1fr auto;
   padding: 7px;
   border: 2px solid var(--card-color);
   border-radius: 10px;
@@ -232,4 +237,23 @@ dialog form button {
   .score-grid div:last-child:nth-child(3) {
     grid-column: 1 / -1;
   }
+}
+
+.card-gallery .card-stamp {
+  display: grid;
+  gap: 3px;
+  border-top: 1px solid #aa946d;
+  margin: 2px 3px 0;
+  padding-top: 5px;
+  font-size: 10px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.card-gallery .card-stamp span {
+  font-weight: 700;
+}
+
+.card-stamp:empty {
+  display: none;
 }

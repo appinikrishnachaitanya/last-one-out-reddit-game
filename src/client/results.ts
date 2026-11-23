@@ -1,3 +1,4 @@
+import { cardStamp } from './card-stamp';
 import { boardById } from '../shared/boards';
 import { initialState, samePoint, trace } from '../shared/engine';
 import {
@@ -319,7 +320,7 @@ export class Results {
         name.textContent = card.title;
         const day = document.createElement('small');
         day.textContent = `Day ${card.day}`;
-        item.append(art, day, name);
+        item.append(art, day, name, cardStamp(data.owner, card.earnedAt));
         grid.append(item);
       }
       collection.textContent = grid.childElementCount

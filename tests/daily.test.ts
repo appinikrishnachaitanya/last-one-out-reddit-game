@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BOARDS,
+  CHALLENGES,
   CONFLUENCE,
   LAST_LIGHT,
   HUSHWATER,
@@ -66,13 +67,13 @@ test('explicit UTC schedule has an empty date; old and legacy posts never rebind
 });
 test('the opening run has ten immutable, distinct boards and expected solver counts', () => {
   assert.equal(EDITIONS.length, 10);
-  assert.equal(BOARDS.length, 10);
+  assert.equal(BOARDS.length, 31);
   assert.deepEqual(
-    BOARDS.map((b) => solve(b).length),
+    BOARDS.slice(0, 10).map((b) => solve(b).length),
     [3, 4, 3, 1, 3, 1, 6, 2, 5, 3]
   );
   const layouts = BOARDS.map((b) => JSON.stringify([b.animals, b.bridges]));
-  assert.equal(new Set(layouts).size, 10);
+  assert.equal(new Set(layouts).size, 31);
   for (const edition of EDITIONS) {
     assert.ok(
       BOARDS.some(
@@ -86,7 +87,7 @@ test('the opening run has ten immutable, distinct boards and expected solver cou
   }
   const rotation = editionAt(new Date('2026-11-28T00:00:00Z'))!;
   assert.equal(rotation.number, 11);
-  assert.equal(rotation.puzzleId, EDITIONS[0]!.puzzleId);
+  assert.ok(CHALLENGES.some((board) => board.id === rotation.puzzleId));
   assert.notEqual(rotation.id, EDITIONS[0]!.id);
   assert.deepEqual(editionFromPost(bindingFor(rotation)), rotation);
   assert.equal(editionAt(new Date('2026-12-08T00:00:00Z'))?.number, 21);
@@ -111,4 +112,46 @@ test('days 8–10 teach a shared bridge, a keeper crossing its own bridge, and a
   assert.ok(solve(HUSHWATER, afterFox).length);
   assert.ok(trace(HUSHWATER, afterFox, 'turtle').legal);
   assert.equal(solve(HUSHWATER, move(HUSHWATER, afterFox, 'turtle')).length, 0);
+});
+
+test('21 challenge boards each have one solution and traps at two different points', () => {
+  assert.equal(CHALLENGES.length, 21);
+  for (const board of CHALLENGES) {
+    const state = initialState();
+    const orders = solve(board);
+    assert.equal(orders.length, 1, board.title);
+    assert.ok(
+      board.animals.filter(({ id }) => trace(board, state, id).legal).length >=
+        3,
+      board.title
+    );
+    const next = move(board, state, orders[0]![0]!);
+    assert.ok(
+      board.animals.some(
+        ({ id }) =>
+          trace(board, next, id).legal &&
+          solve(board, move(board, next, id)).length === 0
+      ),
+      board.title
+    );
+  }
+});
+
+test('UTC daily rotation shuffles complete 21-board cycles without a boundary repeat', () => {
+  const start = Date.parse('2026-11-28T00:00:00Z');
+  const schedule = Array.from({ length: 84 }, (_, day) =>
+    editionAt(new Date(start + day * 86400000))!
+  );
+  for (let index = 0; index < schedule.length; index += 21) {
+    const cycle = schedule.slice(index, index + 21);
+    assert.equal(new Set(cycle.map((edition) => edition.puzzleId)).size, 21);
+    if (index)
+      assert.notEqual(schedule[index - 1]!.puzzleId, cycle[0]!.puzzleId);
+  }
+  assert.notDeepEqual(
+    schedule.slice(0, 21).map((e) => e.puzzleId),
+    schedule.slice(21, 42).map((e) => e.puzzleId)
+  );
+  for (const edition of schedule)
+    assert.deepEqual(editionFromPost(bindingFor(edition)), edition);
 });

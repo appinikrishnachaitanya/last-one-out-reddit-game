@@ -1,3 +1,4 @@
+import { cardStamp } from './card-stamp';
 import { requestExpandedMode } from '@devvit/web/client';
 import { DailyApi } from './daily-api';
 import { boardById } from '../shared/boards';
@@ -68,7 +69,15 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
         typeof entry.day === 'number' &&
         typeof entry.title === 'string' &&
         isAnimalId(entry.favorite)
-          ? [{ day: entry.day, title: entry.title, favorite: entry.favorite }]
+          ? [
+              {
+                day: entry.day,
+                title: entry.title,
+                favorite: entry.favorite,
+                puzzleId: entry.puzzleId,
+                earnedAt: entry.earnedAt,
+              },
+            ]
           : []
       )
       .sort((a, b) => b.day - a.day);
@@ -76,13 +85,25 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
       payload.signedIn === false ? 'Sign in to see your rescues.' : '';
     if (payload.signedIn === false) return;
 
+    const challengeTotal =
+      typeof payload.challengeTotal === 'number' && payload.challengeTotal > 0
+        ? payload.challengeTotal
+        : 0;
     const launchTotal =
       typeof payload.totalEditions === 'number' && payload.totalEditions > 0
         ? payload.totalEditions
-        : undefined;
-    const launchCount = launchTotal
-      ? cards.filter(({ day }) => day <= launchTotal).length
-      : 0;
+        : 0;
+    const setTotal = challengeTotal || launchTotal;
+    const setCount = challengeTotal
+      ? new Set(
+          cards.flatMap(({ puzzleId }) =>
+            typeof puzzleId === 'string' &&
+            /^challenge-\d{2}-v1$/.test(puzzleId)
+              ? [puzzleId]
+              : []
+          )
+        ).size
+      : cards.filter(({ day }) => day <= launchTotal).length;
     if (view === 'progress') {
       const scores = document.createElement('dl');
       scores.className = 'score-grid';
@@ -96,7 +117,11 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
         scores.append(item);
       };
       score('Crossings rescued', cards.length);
-      if (launchTotal) score('Launch cards', `${launchCount} / ${launchTotal}`);
+      if (setTotal)
+        score(
+          challengeTotal ? 'Challenge set' : 'Launch cards',
+          `${setCount} / ${setTotal}`
+        );
       score(
         'Day streak',
         typeof payload.streak === 'number' ? payload.streak : 0
@@ -109,7 +134,7 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
     }
 
     status.textContent = cards.length
-      ? `${cards.length} ${cards.length === 1 ? 'card' : 'cards'} earned${launchTotal ? ` · Launch set ${launchCount}/${launchTotal}` : ''}`
+      ? `${cards.length} ${cards.length === 1 ? 'card' : 'cards'} earned${setTotal ? ` · ${challengeTotal ? 'Challenge' : 'Launch'} set ${setCount}/${setTotal}` : ''}`
       : 'Finish a rescue to earn your first card.';
     const grid = document.createElement('ul');
     grid.className = 'card-gallery';
@@ -123,7 +148,7 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
       name.textContent = titleCase(card.favorite);
       const crossing = document.createElement('span');
       crossing.textContent = `Day ${card.day} · ${card.title}`;
-      item.append(art, name, crossing);
+      item.append(art, name, crossing, cardStamp(payload.owner, card.earnedAt));
       grid.append(item);
     }
     if (cards.length) content.append(grid);

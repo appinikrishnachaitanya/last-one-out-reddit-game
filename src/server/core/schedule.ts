@@ -1,3 +1,4 @@
+import { CHALLENGES } from '../../shared/boards.ts';
 import type { Edition } from '../../shared/daily.ts';
 import { isObject } from '../../shared/daily.ts';
 // Published entries and board versions are immutable. Add new dated editions; never rotate by array index.
@@ -75,18 +76,40 @@ export const EDITIONS: readonly Edition[] = [
 ];
 const dayMs = 86_400_000;
 const rotationStart = Date.parse('2026-11-28T00:00:00Z');
-// This order is permanent. Future curated boards can be introduced by
-// explicitly versioning a later rotation era, never by editing this pool.
-const rotation = EDITIONS.slice();
+// Version the seed and pool together when a new rotation era is introduced.
+function shuffle(cycle: number) {
+  const pool = [...CHALLENGES];
+  let state = (0x94a33721 ^ Math.imul(cycle + 1, 0x9e3779b9)) >>> 0;
+  for (let i = pool.length - 1; i > 0; i--) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    const j = Math.floor((state / 2 ** 32) * (i + 1));
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+  return pool;
+}
 export function editionAt(date: Date): Edition | undefined {
   const iso = date.toISOString().slice(0, 10);
   const original = EDITIONS.find((e) => e.date === iso);
   if (original) return original;
   const offset = Math.floor((date.getTime() - rotationStart) / dayMs);
   if (offset < 0) return undefined;
-  const board = rotation[offset % rotation.length]!;
-  return { ...board, id: `loo-${iso}`, date: iso, number: 11 + offset };
+  const cycle = Math.floor(offset / CHALLENGES.length);
+  const pool = shuffle(cycle);
+  if (cycle && shuffle(cycle - 1).at(-1)?.id === pool[0]?.id)
+    [pool[0], pool[1]] = [pool[1]!, pool[0]!];
+  const board = pool[offset % pool.length]!;
+  return {
+    puzzleId: board.id,
+    boardVersion: board.version,
+    id: `loo-${iso}`,
+    date: iso,
+    number: 11 + offset,
+  };
 }
+
+export const challengePreviews: readonly Edition[] = CHALLENGES.map((_, i) =>
+  editionAt(new Date(rotationStart + i * dayMs))!
+);
 export function editionById(id: string): Edition {
   if (!/^loo-\d{4}-\d{2}-\d{2}$/.test(id))
     throw new Error('Invalid edition ID');

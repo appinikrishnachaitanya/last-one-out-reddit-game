@@ -2,7 +2,12 @@ import { Hono } from 'hono';
 import type { UiResponse } from '@devvit/web/shared';
 import { context } from '@devvit/web/server';
 import { isObject } from '../../shared/daily';
-import { EDITIONS, editionAt, editionById } from '../core/schedule';
+import {
+  EDITIONS,
+  challengePreviews,
+  editionAt,
+  editionById,
+} from '../core/schedule';
 import { createPost, recoverEditionPost, requireModerator } from '../platform';
 export const menu = new Hono();
 const url = (id: string) =>
@@ -53,7 +58,7 @@ menu.post('/choose-edition', (c) =>
             name: 'editionId',
             label: 'Daily edition (UTC)',
             type: 'select',
-            options: EDITIONS.map((e) => ({
+            options: [...EDITIONS, ...challengePreviews].map((e) => ({
               label: `Day ${e.number} · ${e.date}`,
               value: e.id,
             })),

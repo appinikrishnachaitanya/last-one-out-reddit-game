@@ -382,11 +382,17 @@ test('production-shaped response hides the preview picker, restores a saved post
     route.fulfill({
       json: {
         cards: [
-          { day: 1, title: 'Moonroot Crossing', favorite: 'badger' },
+          {
+            day: 1,
+            title: 'Moonroot Crossing',
+            favorite: 'badger',
+            earnedAt: completion.completedAt,
+          },
           { day: 2, title: 'Willow Bridge', favorite: 'rabbit' },
           { day: 3, title: 'Lantern Bend', favorite: 'fox' },
         ],
         signedIn: true,
+        owner: 'trailtester',
         totalEditions: 10,
         streak: 3,
         past: [],
@@ -406,9 +412,25 @@ test('production-shaped response hides the preview picker, restores a saved post
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByRole('button', { name: 'Card collection' }).click();
   await expect(page.locator('.card-gallery li')).toHaveCount(3);
+  await expect(page.locator('.card-gallery time')).toHaveAttribute(
+    'datetime',
+    completion.completedAt
+  );
+  await expect(page.locator('.card-gallery li').last()).toContainText(
+    'u/trailtester'
+  );
   await page.screenshot({
     path: 'artifacts/welcome-preview/03-card-collection.png',
   });
+  await page.setViewportSize({ width: 288, height: 512 });
+  await expectNoHorizontalOverflow(page);
+  await page.locator('#personal-panel').evaluate((panel) => {
+    panel.scrollTop = panel.scrollHeight;
+  });
+  await expect(
+    page.getByRole('button', { name: 'Close', exact: true })
+  ).toBeInViewport();
+  await page.setViewportSize({ width: 390, height: 512 });
   await page.keyboard.press('Escape');
   await expect(page.locator('#personal-panel')).toBeHidden();
   await page.setViewportSize({ width: 1200, height: 720 });
@@ -1102,4 +1124,62 @@ test('Community Rescue shows yesterday, prevents a repeat turn, and preserves th
   await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
   await expect(page.locator('#undo')).toBeEnabled();
   await expect(page.locator('#shared-rescue')).toBeHidden();
+});
+
+test('Undo charges run out and refill one at a time, including after reload', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.clock.install();
+  await open(page);
+  const undo = page.locator('#undo');
+  for (const remaining of [1, 0]) {
+    await send(page, 'fox');
+    await undo.click();
+    if (remaining) await expect(undo).toHaveText('↶ Undo · 1');
+  }
+  await send(page, 'fox');
+  await expect(undo).toBeDisabled();
+  await expect(undo).toHaveText(/Undo · \d+s/);
+  await page.reload();
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+  await expect(undo).toBeDisabled();
+  // Advance the clock without waiting for real time.
+  await page.clock.fastForward(46_000);
+  await expect(undo).toHaveText('↶ Undo · 1');
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(undo).toHaveText(/Undo · \d+s/);
+});
+
+test('a Challenge edition fits the inline frame and can be completed', async ({
+  page,
+}) => {
+  const { editionAt } = await import('../../src/server/core/schedule.ts');
+  const { boardById } = await import('../../src/shared/boards.ts');
+  const { solve } = await import('../../src/shared/engine.ts');
+  const edition = editionAt(new Date('2026-11-28T00:00:00Z'))!;
+  const board = boardById(edition.puzzleId, edition.boardVersion);
+  await page.setViewportSize({ width: 390, height: 512 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page);
+  await page.locator('#edition-picker').selectOption(edition.id);
+  await expect(page.locator('#board-title')).toHaveText(board.title);
+  await expect(page.locator('#run-clock')).toHaveText('0:00');
+  await expect(page.locator('#undo')).toHaveText('↶ Undo · 2');
+  await expectNoHorizontalOverflow(page);
+  const boardBox = await page.locator('#game-container').boundingBox();
+  const actions = await page.locator('.actions').boundingBox();
+  expect(boardBox).not.toBeNull();
+  expect(actions).not.toBeNull();
+  expect(Math.abs(boardBox!.x - actions!.x)).toBeLessThan(1);
+  expect(Math.abs(boardBox!.width - actions!.width)).toBeLessThan(1);
+  expect(actions!.y + actions!.height).toBeLessThanOrEqual(512);
+  await page.screenshot({
+    path: 'artifacts/challenge-preview/01-challenge.png',
+  });
+  for (const animal of solve(board)[0]!) await send(page, animal);
+  await expect(page.locator('#save-status')).toContainText(
+    'validated and saved'
+  );
 });

@@ -442,8 +442,8 @@ export class Crossing extends Phaser.Scene {
       1,
       Math.round((route.path.length + 0.5) * gait.cadence)
     );
-    const travel = 260 + route.path.length * gait.pace;
-    const arrival = 200;
+    const travel = Math.min(680, 160 + route.path.length * gait.pace);
+    const arrival = 150;
     const clock = { elapsed: 0 };
     // The feet and shadow follow the route. Only the portrait lifts off it.
     const image = token.list[1];

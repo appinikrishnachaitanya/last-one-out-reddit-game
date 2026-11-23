@@ -184,6 +184,335 @@ export const HUSHWATER = crossing(
   ]
 );
 
+type ChallengeLayout = [
+  string,
+  [number, number, Animal['direction']][],
+  [number, number, Animal['id']][],
+];
+
+// Each fixed layout has one complete rescue order and traps both on the
+// opening and after the first correct move. The daily schedule only shuffles IDs.
+const challengeLayouts: ChallengeLayout[] = [
+  [
+    'Moth Hollow',
+    [
+      [2, 3, 'W'],
+      [3, 1, 'N'],
+      [1, 2, 'E'],
+      [5, 3, 'W'],
+    ],
+    [
+      [2, 2, 'rabbit'],
+      [0, 3, 'rabbit'],
+      [6, 2, 'turtle'],
+    ],
+  ],
+  [
+    'Bracken Lock',
+    [
+      [1, 1, 'S'],
+      [2, 2, 'S'],
+      [3, 1, 'S'],
+      [5, 2, 'S'],
+    ],
+    [
+      [5, 6, 'fox'],
+      [3, 3, 'turtle'],
+      [2, 5, 'badger'],
+    ],
+  ],
+  [
+    'Stillwater Switch',
+    [
+      [3, 3, 'S'],
+      [2, 3, 'E'],
+      [5, 5, 'S'],
+      [3, 2, 'W'],
+    ],
+    [
+      [3, 6, 'rabbit'],
+      [0, 2, 'fox'],
+      [5, 6, 'turtle'],
+    ],
+  ],
+  [
+    'Three Lanterns',
+    [
+      [1, 2, 'W'],
+      [3, 4, 'W'],
+      [4, 2, 'N'],
+      [3, 2, 'E'],
+    ],
+    [
+      [0, 2, 'fox'],
+      [4, 0, 'rabbit'],
+      [1, 4, 'badger'],
+    ],
+  ],
+  [
+    'Owl Gate',
+    [
+      [3, 1, 'E'],
+      [1, 1, 'S'],
+      [2, 5, 'S'],
+      [3, 5, 'N'],
+    ],
+    [
+      [2, 6, 'rabbit'],
+      [1, 3, 'badger'],
+      [1, 2, 'turtle'],
+    ],
+  ],
+  [
+    'Hazel Weir',
+    [
+      [1, 4, 'N'],
+      [4, 1, 'W'],
+      [5, 5, 'S'],
+      [1, 5, 'N'],
+    ],
+    [
+      [3, 1, 'fox'],
+      [0, 1, 'turtle'],
+      [1, 3, 'fox'],
+    ],
+  ],
+  [
+    'Fernfall Narrows',
+    [
+      [4, 3, 'S'],
+      [1, 1, 'S'],
+      [2, 5, 'S'],
+      [1, 2, 'S'],
+    ],
+    [
+      [1, 6, 'turtle'],
+      [1, 3, 'fox'],
+      [2, 6, 'turtle'],
+    ],
+  ],
+  [
+    'Slate Ferry',
+    [
+      [4, 4, 'E'],
+      [1, 3, 'S'],
+      [3, 4, 'N'],
+      [5, 1, 'N'],
+    ],
+    [
+      [1, 5, 'fox'],
+      [5, 0, 'rabbit'],
+      [3, 3, 'turtle'],
+    ],
+  ],
+  [
+    'Copper Brook',
+    [
+      [1, 3, 'S'],
+      [1, 1, 'W'],
+      [2, 3, 'N'],
+      [2, 5, 'S'],
+    ],
+    [
+      [0, 1, 'turtle'],
+      [2, 6, 'fox'],
+      [2, 1, 'rabbit'],
+    ],
+  ],
+  [
+    'Wildmint Run',
+    [
+      [1, 2, 'S'],
+      [4, 5, 'E'],
+      [1, 1, 'S'],
+      [2, 4, 'S'],
+    ],
+    [
+      [2, 6, 'rabbit'],
+      [1, 6, 'badger'],
+      [1, 3, 'rabbit'],
+    ],
+  ],
+  [
+    'Mossglass Ford',
+    [
+      [2, 5, 'S'],
+      [4, 3, 'N'],
+      [2, 3, 'S'],
+      [2, 4, 'W'],
+    ],
+    [
+      [4, 1, 'badger'],
+      [4, 0, 'badger'],
+      [0, 4, 'turtle'],
+    ],
+  ],
+  [
+    'Juniper Locks',
+    [
+      [1, 1, 'S'],
+      [5, 1, 'N'],
+      [2, 4, 'W'],
+      [3, 1, 'E'],
+    ],
+    [
+      [5, 0, 'turtle'],
+      [1, 4, 'badger'],
+      [1, 3, 'fox'],
+    ],
+  ],
+  [
+    'Cloudberry Creek',
+    [
+      [4, 3, 'S'],
+      [5, 4, 'E'],
+      [1, 3, 'S'],
+      [5, 2, 'N'],
+    ],
+    [
+      [5, 1, 'turtle'],
+      [6, 4, 'fox'],
+      [1, 5, 'badger'],
+    ],
+  ],
+  [
+    'Emberbank Tangle',
+    [
+      [4, 3, 'E'],
+      [2, 5, 'E'],
+      [3, 3, 'N'],
+      [1, 1, 'N'],
+    ],
+    [
+      [4, 5, 'fox'],
+      [1, 0, 'rabbit'],
+      [5, 3, 'badger'],
+    ],
+  ],
+  [
+    'Echo Pools',
+    [
+      [3, 1, 'E'],
+      [1, 4, 'S'],
+      [2, 4, 'S'],
+      [4, 1, 'S'],
+    ],
+    [
+      [1, 6, 'badger'],
+      [5, 1, 'fox'],
+      [4, 6, 'turtle'],
+    ],
+  ],
+  [
+    'Wren’s Passage',
+    [
+      [5, 3, 'N'],
+      [5, 1, 'W'],
+      [1, 5, 'E'],
+      [1, 3, 'W'],
+    ],
+    [
+      [5, 2, 'badger'],
+      [2, 5, 'rabbit'],
+      [4, 5, 'turtle'],
+    ],
+  ],
+  [
+    'Alderlock Crossing',
+    [
+      [1, 3, 'E'],
+      [5, 2, 'S'],
+      [5, 1, 'W'],
+      [1, 4, 'S'],
+    ],
+    [
+      [4, 3, 'fox'],
+      [5, 6, 'turtle'],
+      [1, 6, 'rabbit'],
+    ],
+  ],
+  [
+    'Thistle Run',
+    [
+      [3, 4, 'E'],
+      [1, 3, 'N'],
+      [2, 4, 'N'],
+      [1, 2, 'E'],
+    ],
+    [
+      [2, 0, 'turtle'],
+      [5, 2, 'rabbit'],
+      [5, 4, 'badger'],
+    ],
+  ],
+  [
+    'Willowglass Bend',
+    [
+      [4, 5, 'S'],
+      [5, 4, 'E'],
+      [3, 5, 'W'],
+      [3, 1, 'E'],
+    ],
+    [
+      [2, 5, 'rabbit'],
+      [6, 1, 'fox'],
+      [4, 6, 'badger'],
+    ],
+  ],
+  [
+    'Hearthwater Gate',
+    [
+      [4, 1, 'W'],
+      [1, 2, 'E'],
+      [2, 3, 'E'],
+      [1, 5, 'N'],
+    ],
+    [
+      [1, 4, 'fox'],
+      [2, 1, 'rabbit'],
+      [3, 1, 'rabbit'],
+    ],
+  ],
+  [
+    'Moonlit Last Call',
+    [
+      [4, 3, 'S'],
+      [1, 1, 'W'],
+      [2, 1, 'W'],
+      [5, 4, 'W'],
+    ],
+    [
+      [4, 5, 'fox'],
+      [4, 6, 'rabbit'],
+      [0, 1, 'badger'],
+    ],
+  ],
+];
+const challengeAnimals = ['turtle', 'rabbit', 'fox', 'badger'] as const;
+const challengeBridgeIds = ['moon', 'star', 'leaf'] as const;
+const challengeBridgeMarks = ['☾', '✦', '◆'] as const;
+export const CHALLENGES: readonly Board[] = challengeLayouts.map(
+  ([title, animals, bridges], index) =>
+    crossing(
+      `challenge-${String(index + 1).padStart(2, '0')}-v1`,
+      title,
+      'Several ways out. One order gets everyone home.',
+      animals.map(([x, y, direction], i) => ({
+        id: challengeAnimals[i]!,
+        x,
+        y,
+        direction,
+      })),
+      bridges.map(([x, y, holder], i) => ({
+        id: challengeBridgeIds[i]!,
+        symbol: challengeBridgeMarks[i]!,
+        x,
+        y,
+        holder,
+      }))
+    )
+);
+
 export const BOARDS: readonly Board[] = [
   MOONROOT,
   WILLOW,
@@ -195,6 +524,7 @@ export const BOARDS: readonly Board[] = [
   CONFLUENCE,
   LAST_LIGHT,
   HUSHWATER,
+  ...CHALLENGES,
 ];
 export function boardById(id: string, version: number): Board {
   const board = BOARDS.find((b) => b.id === id && b.version === version);

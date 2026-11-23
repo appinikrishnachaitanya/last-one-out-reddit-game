@@ -10,7 +10,7 @@ import {
   recordAttempt,
 } from './core/attempts.ts';
 import { postRegistryKey } from './core/posts.ts';
-import { boardById } from '../shared/boards.ts';
+import { CHALLENGES, boardById } from '../shared/boards.ts';
 import { Hono } from 'hono';
 import type { Context as HonoContext } from 'hono';
 import { isAnimalId, titleCase } from '../shared/engine.ts';
@@ -24,6 +24,7 @@ import {
   editionById,
   recentEditions,
   EDITIONS,
+  challengePreviews,
 } from './core/schedule.ts';
 export type GameContext = {
   userId?: string;
@@ -75,7 +76,7 @@ export function createApi(deps: Dependencies) {
   api.get('/crossings', async (c) => {
     const now = deps.now();
     const today = now.toISOString().slice(0, 10);
-    const { userId } = await deps.getContext(c);
+    const { userId, username } = await deps.getContext(c);
     const editions = [
       ...new Map(
         [...EDITIONS, ...recentEditions(now)].map((edition) => [
@@ -127,6 +128,8 @@ export function createApi(deps: Dependencies) {
                   title: boardById(edition.puzzleId, edition.boardVersion)
                     .title,
                   favorite: record.favorite,
+                  puzzleId: edition.puzzleId,
+                  earnedAt: record.completedAt,
                 }
               : null;
           })
@@ -146,6 +149,10 @@ export function createApi(deps: Dependencies) {
     return c.json({
       streak,
       signedIn: Boolean(userId),
+      ...(userId && username && deps.mode === 'reddit'
+        ? { owner: username }
+        : {}),
+      challengeTotal: CHALLENGES.length,
       totalEditions: EDITIONS.length,
       cards: cards.filter((card) => card !== null),
       serverTime: now.getTime(),
@@ -521,6 +528,8 @@ export function createApi(deps: Dependencies) {
     }
   });
   if (deps.mode === 'demo')
-    api.get('/previews', (c) => c.json({ editions: EDITIONS }));
+    api.get('/previews', (c) =>
+      c.json({ editions: [...EDITIONS, ...challengePreviews] })
+    );
   return api;
 }
