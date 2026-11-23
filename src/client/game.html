@@ -119,6 +119,9 @@
               Send home <span>→</span></button
             ><button id="hint" class="secondary">Hint</button>
           </div>
+          <button id="view-result" class="primary" data-play hidden>
+            View result
+          </button>
           <footer data-play>
             <span id="personal-stats" class="visually-hidden"></span>
             <span id="lifeline-status" class="visually-hidden"></span>
@@ -138,6 +141,7 @@
         </details>
       </section>
       <section id="result" class="result" hidden aria-labelledby="result-title">
+        <button id="back-to-board" class="secondary">← Back to board</button>
         <div class="result-top">
           <img
             class="reunion-illustration"
@@ -155,35 +159,49 @@
                 <p id="card-undos"></p>
                 <p id="card-time" hidden></p>
                 <p id="card-streak" hidden></p>
-                <p id="clean-badge" hidden>✦ Clean crossing</p>
+                <p id="clean-badge" hidden></p>
                 <p id="card-animal"></p>
               </div>
             </div>
           </div>
         </div>
-        <fieldset>
-          <legend>Choose your card’s friend</legend>
-          <div id="favorites"></div>
-        </fieldset>
         <div class="result-actions">
-          <button id="post-rescue" class="primary" hidden>
-            Post Rescue to Comments</button
-          ><button id="copy-result" class="secondary">Copy result</button
-          ><button id="comments" class="secondary">Back to comments</button>
+          <button id="copy-result" class="primary">Share result</button>
+          <button id="comments" class="secondary">Reddit comments</button>
         </div>
+        <details id="result-options">
+          <summary>Customize card &amp; more ways to share</summary>
+          <fieldset>
+            <legend>Favorite animal</legend>
+            <div id="favorites"></div>
+            <label for="companion-scarf">Scarf color</label>
+            <select id="companion-scarf">
+              <option value="none">None</option>
+              <option value="moss">Moss</option>
+              <option value="berry">Berry</option>
+              <option value="gold">Gold</option>
+            </select>
+          </fieldset>
+          <button id="save-image" class="secondary">
+            Download result image
+          </button>
+          <button id="post-rescue" class="secondary" hidden>
+            Post Rescue to Comments
+          </button>
+          <button id="copy-result-link" class="secondary" hidden>
+            Copy result link
+          </button>
+          <p id="post-status" role="status" hidden></p>
+          <p id="favorite-status" role="status"></p>
+        </details>
         <section
           id="comparison"
           aria-label="Community opening moves"
           aria-live="polite"
           hidden
         ></section>
-        <button id="copy-result-link" class="secondary" hidden>
-          Copy result link
-        </button>
-        <p id="post-status" role="status" hidden></p>
         <p id="save-status" role="status"></p>
         <button id="retry-save" hidden>Retry saving · no replay needed</button>
-        <p id="favorite-status" role="status"></p>
         <p id="copy-status" role="status"></p>
         <pre id="copy-fallback" hidden tabindex="0"></pre>
         <details id="community-details" hidden>
@@ -197,9 +215,6 @@
         <p id="next-crossing" hidden></p>
         <details id="past-crossings">
           <summary>Card collection &amp; past crossings</summary>
-          <button id="save-image" class="secondary">
-            Download result image
-          </button>
           <div id="card-collection"></div>
           <div id="archive-result"></div>
           <button id="apply-flair" class="secondary" hidden>
@@ -276,8 +291,8 @@
           </p>
           <p>
             Blocked paths end at a coral cross. Undo restores the animal and its
-            bridge. The timer tracks elapsed time. Undo starts with two charges
-            and restores one every 8 minutes. You can always restart the board.
+            bridge. The timer tracks elapsed time. Undo is unlimited. Your
+            finished card shows your rank based on the number of undos.
           </p>
           <p>
             Keyboard: open Animal buttons, then use Tab to select an animal.

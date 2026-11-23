@@ -348,7 +348,7 @@ test('shares only saved rescues, posts once per account and edition, and persist
     )
   );
   assert.equal(messages.length, 1);
-  assert.match(messages[0]!, /^>!Last One Out - 2026-11-18!<!?$/m);
+  assert.match(messages[0]!, /^>!Last One Out - 2026-11-18 · Rank S!<!?$/m);
   assert.match(messages[0]!, /Rescued: 4\/4 \| Undos: 0 \| First move: Fox/);
   assert.match(messages[0]!, /Can Reddit rescue today's Community Crossing/);
   assert.doesNotMatch(messages[0]!, /Turtle|Rabbit|Badger|% club/);

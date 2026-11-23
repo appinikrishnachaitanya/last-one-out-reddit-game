@@ -6,7 +6,7 @@ Use the [private test community](https://www.reddit.com/r/last_one_out_app_dev/)
 
 1. Open the same post on all four accounts. Keep one viewer in Community Rescue while two accounts try to move from the same board version. Confirm one accepted move, one updated board, and no duplicate move log entry.
 2. In a fresh attempt, let all four accounts take one turn each. Verify the rescue credits all four and the board resets. Confirm the last mover cannot open the next attempt.
-3. On two browser sessions signed in as the same account, spend both Undo charges in Solo. Confirm both sessions show the same balance after focus or refresh. Spend Hint in one session and verify it cools down in both. Check one Undo refills after 8 minutes and Hint after 15 minutes.
+3. Undo at least three Solo moves in succession. On two sessions signed in as the same account, use the first Hint on one and verify the other session sees the cooldown after focus or refresh. Open another daily and confirm its first Hint is ready. Check result rank, Back to board, and the personalized PNG.
 4. On iPhone (iOS 17) and Pixel 7, verify the feed, Solo, shared board, Undo, Hint, and result actions. Capture a screenshot with any affected screen, device, and app version.
 5. With VoiceOver or NVDA enabled, select each animal through the accessible buttons. Check that its name, reachability, and bridge status are announced. Turn on system reduced motion before playing and check movement, folding, and reunion.
 6. Share a saved rescue by choosing **Post Rescue to Comments**, then **Copy result link**. Open the link as another account. Verify that the comment shows spoiler controls and that revealing it gives no solution order.

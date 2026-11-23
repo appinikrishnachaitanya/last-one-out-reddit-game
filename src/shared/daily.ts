@@ -1,5 +1,3 @@
-import { parseUndoState } from './undo-charge.ts';
-import type { UndoState } from './undo-charge.ts';
 import { boardById } from './boards.ts';
 import { isAnimalId, titleCase, validateSolution } from './engine.ts';
 import type { AnimalId } from './engine.ts';
@@ -18,6 +16,7 @@ export type Completion = Readonly<{
   opening: AnimalId;
   firstMove?: AnimalId;
   personalUndos: number;
+  hintUsed?: boolean;
   elapsedSeconds?: number;
   openingTrap?: AnimalId;
   favorite: AnimalId;
@@ -36,6 +35,9 @@ export type AttemptStats = {
   totalSolves: number;
   perfectRuns: number;
 };
+export function rescueRank(undos: number): 'S' | 'A' | 'B' {
+  return undos === 0 ? 'S' : undos <= 2 ? 'A' : 'B';
+}
 export function rescueShare(
   edition: Edition,
   undos: number,
@@ -47,7 +49,7 @@ export function rescueShare(
   const percent = opening && openingPercent(stats, opening);
   const club =
     typeof percent === 'number' && percent > 0 ? ` (${percent}% club)` : '';
-  return `Last One Out - ${edition.date}\nRescued: ${total}/${total} | Undos: ${undos} | First move: ${opening ? titleCase(opening) : '—'}${club}\nCan Reddit rescue today's Community Crossing?`;
+  return `Last One Out - ${edition.date} · Rank ${rescueRank(undos)}\nRescued: ${total}/${total} | Undos: ${undos} | First move: ${opening ? titleCase(opening) : '—'}${club}\nCan Reddit rescue today's Community Crossing?`;
 }
 export type PreviousRescues = Pick<
   AttemptStats,
@@ -93,8 +95,6 @@ export type Init =
       communityEnabled?: boolean;
       shareStatus?: string;
       refillAt?: number;
-      undoState?: UndoState;
-      undoSync?: boolean;
       hintSync?: boolean;
       commentsUrl: string | null;
       username?: string;
@@ -170,6 +170,7 @@ export function parseCompletion(value: unknown, edition: Edition): Completion {
     opening: value.opening,
     ...(isAnimalId(value.firstMove) ? { firstMove: value.firstMove } : {}),
     personalUndos: value.personalUndos,
+    ...(value.hintUsed === true ? { hintUsed: true } : {}),
     ...(validElapsed(value.elapsedSeconds)
       ? { elapsedSeconds: value.elapsedSeconds }
       : {}),
@@ -248,7 +249,6 @@ export function parseInit(value: unknown): Init {
     throw new Error('Invalid response');
   if (value.status === 'empty' && typeof value.message === 'string')
     return { status: 'empty', message: value.message, mode: value.mode };
-  const undoState = parseUndoState(value.undoState);
   if (value.status !== 'ready') throw new Error('Missing daily');
   const edition = parseEdition(value.edition);
   const previous = value.previousRescues;
@@ -284,8 +284,6 @@ export function parseInit(value: unknown): Init {
       ? { shareStatus: value.shareStatus }
       : {}),
     ...(typeof value.refillAt === 'number' ? { refillAt: value.refillAt } : {}),
-    ...(undoState ? { undoState } : {}),
-    undoSync: value.undoSync === true,
     hintSync: value.hintSync === true,
     commentsUrl:
       typeof value.commentsUrl === 'string' ? value.commentsUrl : null,

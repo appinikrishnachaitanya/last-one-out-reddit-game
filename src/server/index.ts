@@ -15,7 +15,7 @@ import { menu } from './routes/menu';
 import { telemetryRoutes } from './routes/telemetry';
 import { isT3 } from '@devvit/web/shared';
 import { parseCommentHint } from '../shared/daily';
-import { HINT_REFILL_MS } from '../shared/undo-charge';
+import { HINT_REFILL_MS } from '../shared/hint-refill';
 import { editionAt } from './core/schedule';
 const app = new Hono();
 app.route(
@@ -54,8 +54,8 @@ app.route(
     },
     notifyCommunity: (channel, revision) =>
       realtime.send(channel, { revision }),
-    hintRefill: async (userId, consume) => {
-      const key = `hint-refill:v1:${userId}`;
+    hintRefill: async (userId, consume, edition) => {
+      const key = `hint-refill:v2:${edition.id}:${userId}`;
       const refillAt = Date.now() + HINT_REFILL_MS;
       const claim = `${refillAt}:${crypto.randomUUID()}`;
       if (consume)

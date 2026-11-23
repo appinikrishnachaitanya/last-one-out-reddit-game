@@ -215,7 +215,9 @@ test('all first three editions solve, favorite art changes, saved result survive
     await expect(page.locator('#save-status')).toContainText(
       'validated and saved'
     );
+    await page.locator('#result-options summary').click();
     await page.locator('[data-favorite=rabbit]').click();
+    await page.locator('#companion-scarf').selectOption('moss');
     await expect(page.locator('#card-portrait svg')).toHaveAttribute(
       'aria-label',
       'rabbit by a lantern'
@@ -228,9 +230,13 @@ test('all first three editions solve, favorite art changes, saved result survive
     await expect(page.locator('#board-title')).toHaveText(title);
     await expect(page.locator('#rescue-count')).toHaveText('4 / 4');
     await expect(page.locator('#card-animal')).toContainText('Rabbit');
+    await expect(page.locator('#card-portrait path')).toHaveAttribute(
+      'fill',
+      '#486d44'
+    );
     await page.locator('#copy-result').click();
     await expect(page.locator('#copy-status')).toContainText('Copied');
-    await page.locator('#past-crossings summary').click();
+    await page.locator('#result-options summary').click();
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download result image' }).click();
     const image = await download;
@@ -456,6 +462,7 @@ test('production-shaped response hides the preview picker, restores a saved post
   );
   await expect(page.locator('#card-animal')).toContainText('Badger');
   expect(posts).toBe(0);
+  await page.locator('#result-options summary').click();
   await page.locator('#post-rescue').click();
   await expect(
     page.getByRole('button', { name: 'Copy result link' })
@@ -559,7 +566,8 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   await expect(page.locator('#save-status')).toContainText(
     'validated and saved'
   );
-  await expect(page.locator('#card-undos')).toHaveText('1 personal undo');
+  await expect(page.locator('#card-undos')).toHaveText('1 undo');
+  await expect(page.locator('#clean-badge')).toHaveText('A Rank');
   await page.locator('#community-details').evaluate((el) => {
     el.setAttribute('open', '');
   });
@@ -569,6 +577,7 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   expect(completedJourneys).toBe(1);
   expect(events.filter((e) => e === 'start')).toHaveLength(1);
   expect(events.filter((e) => e === 'progress')).toHaveLength(3);
+  await page.locator('#result-options summary').click();
   await page.locator('[data-favorite=badger]').click();
   await expect(page.locator('#favorite-status')).toContainText(
     'Card art saved'
@@ -1028,6 +1037,7 @@ test('Version 4 captures the playable screens and keeps scenery and sound prefer
   await production.setViewportSize({ width: 390, height: 720 });
   await production.goto('http://127.0.0.1:5175/game.html');
   await expect(production.locator('#result')).toBeVisible({ timeout: 15000 });
+  await production.locator('#result-options summary').click();
   await expect(production.locator('#post-rescue')).toBeVisible();
   await production.screenshot({ path: 'artifacts/version4/07-result.png' });
   await production.close();
@@ -1138,30 +1148,31 @@ test('Community Rescue shows yesterday, prevents a repeat turn, and preserves th
   await expect(page.locator('#shared-rescue')).toBeHidden();
 });
 
-test('Undo charges run out and refill one at a time, including after reload', async ({
+test('Undo stays available and the first Hint is separate for each daily', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.clock.install();
   await open(page);
+  await page.locator('#hint').click();
+  await expect(page.locator('#hint')).toBeDisabled();
   const undo = page.locator('#undo');
-  for (const remaining of [1, 0]) {
+  for (let i = 0; i < 3; i++) {
     await send(page, 'fox');
+    await expect(undo).toBeEnabled();
     await undo.click();
-    if (remaining) await expect(undo).toHaveText('↶ Undo · 1');
   }
-  await send(page, 'fox');
-  await expect(undo).toBeDisabled();
-  await expect(undo).toHaveText(/Undo · \d+s/);
   await page.reload();
-  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
-  await expect(undo).toBeDisabled();
-  // Advance the clock without waiting for real time.
-  await page.clock.fastForward(481_000);
-  await expect(undo).toHaveText('↶ Undo · 1');
-  await expect(undo).toBeEnabled();
-  await undo.click();
-  await expect(undo).toHaveText(/Undo · \d+s/);
+  await expect(page.locator('#hint')).toBeDisabled();
+  for (const animal of ['fox', 'rabbit', 'turtle', 'badger'])
+    await send(page, animal);
+  await expect(page.locator('#clean-badge')).toHaveText('B Rank');
+  await expect(page.locator('#card-undos')).toContainText('Hint used');
+  await page.locator('#back-to-board').click();
+  await expect(page.locator('#result')).toBeHidden();
+  await page.locator('#view-result').click();
+  await expect(page.locator('#result')).toBeVisible();
+  await page.locator('#edition-picker').selectOption('loo-2026-11-19');
+  await expect(page.locator('#hint')).toBeEnabled();
 });
 
 test('a Challenge edition fits the inline frame and can be completed', async ({
@@ -1178,7 +1189,7 @@ test('a Challenge edition fits the inline frame and can be completed', async ({
   await page.locator('#edition-picker').selectOption(edition.id);
   await expect(page.locator('#board-title')).toHaveText(board.title);
   await expect(page.locator('#run-clock')).toHaveText('0:00');
-  await expect(page.locator('#undo')).toHaveText('↶ Undo · 2');
+  await expect(page.locator('#undo')).toHaveText('↶ Undo');
   await expectNoHorizontalOverflow(page);
   const boardBox = await page.locator('#game-container').boundingBox();
   const actions = await page.locator('.actions').boundingBox();

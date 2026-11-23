@@ -102,6 +102,7 @@ export async function complete(
     ...(firstMove ? { firstMove } : {}),
     ...(verifiedTrap ? { openingTrap: trap } : {}),
     personalUndos: input.personalUndos,
+    ...(input.hintUsed === true ? { hintUsed: true } : {}),
     ...(validElapsed(input.elapsedSeconds)
       ? { elapsedSeconds: input.elapsedSeconds }
       : {}),

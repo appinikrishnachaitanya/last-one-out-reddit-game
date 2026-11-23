@@ -540,3 +540,24 @@ body {
   animation: none !important;
   transition: none !important;
 }
+
+#app #result-options {
+  border-top: 1px solid #b7a57b;
+  margin-top: 6px;
+}
+
+#app #result-options summary {
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+#app #back-to-board {
+  padding: 4px 8px;
+  min-height: 32px;
+  margin-bottom: 4px;
+}
+
+#app #companion-scarf {
+  margin: 8px 0 2px 6px;
+}

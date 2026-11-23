@@ -1,4 +1,3 @@
-import { undoState } from './core/lifelines.ts';
 import {
   CommunityMoveError,
   readCommunity,
@@ -48,7 +47,8 @@ export type Dependencies = {
   setFlair?: (text: string) => Promise<void>;
   hintRefill?: (
     userId: string,
-    consume: boolean
+    consume: boolean,
+    edition: Edition
   ) => Promise<{ refillAt: number; granted: boolean }>;
   endJourney?: (journeyId: string) => Promise<void>;
 };
@@ -225,21 +225,14 @@ export function createApi(deps: Dependencies) {
                 .hGet(shareKey(edition), ctx.userId)
                 .catch(() => undefined)
             : undefined,
-        undoSync: Boolean(ctx.userId && deps.communityStorage),
         hintSync: Boolean(ctx.userId && deps.hintRefill),
-        undoState:
-          ctx.userId && deps.communityStorage
-            ? await undoState(
-                deps.communityStorage,
-                ctx.userId,
-                deps.now().getTime(),
-                false
-              ).catch(() => undefined)
-            : undefined,
         refillAt:
           ctx.userId && deps.hintRefill
-            ? (await deps.hintRefill(ctx.userId, false).catch(() => undefined))
-                ?.refillAt
+            ? (
+                await deps
+                  .hintRefill(ctx.userId, false, edition)
+                  .catch(() => undefined)
+              )?.refillAt
             : undefined,
         community: completion ? await community(deps.store, edition) : null,
         commentsUrl:
@@ -381,37 +374,14 @@ export function createApi(deps: Dependencies) {
   });
   api.get('/lifelines', async (c) => {
     try {
-      const { userId } = await deps.getContext(c);
-      if (!userId || !deps.communityStorage)
-        return c.json({ error: 'Sign in to sync lifelines.' }, 403);
-      c.header('Cache-Control', 'private, no-store');
-      const [undo, hint] = await Promise.all([
-        undoState(deps.communityStorage, userId, deps.now().getTime(), false),
-        deps.hintRefill?.(userId, false),
-      ]);
-      return c.json({ undo, refillAt: hint?.refillAt });
-    } catch {
-      return c.json({ error: 'Could not refresh lifelines.' }, 503);
-    }
-  });
-  api.post('/undo', async (c) => {
-    try {
       const { ctx, edition } = await requestEdition(c);
-      if (!ctx.userId || !edition || !deps.communityStorage)
-        return c.json({ error: 'Sign in to sync Undo.' }, 403);
-      return c.json(
-        await undoState(
-          deps.communityStorage,
-          ctx.userId,
-          deps.now().getTime(),
-          true
-        )
-      );
+      if (!ctx.userId || !edition || !deps.hintRefill)
+        return c.json({ error: 'Sign in to sync hints.' }, 403);
+      c.header('Cache-Control', 'private, no-store');
+      const hint = await deps.hintRefill(ctx.userId, false, edition);
+      return c.json({ refillAt: hint.refillAt });
     } catch {
-      return c.json(
-        { error: 'Could not confirm Undo. Refresh and try again.' },
-        503
-      );
+      return c.json({ error: 'Could not refresh hints.' }, 503);
     }
   });
   api.get('/comparison', async (c) => {
@@ -437,7 +407,7 @@ export function createApi(deps: Dependencies) {
       const { ctx, edition } = await requestEdition(c);
       if (!ctx.userId || !edition || !deps.hintRefill)
         return c.json({ error: 'Hint sync unavailable' }, 403);
-      const charge = await deps.hintRefill(ctx.userId, true);
+      const charge = await deps.hintRefill(ctx.userId, true, edition);
       const previous =
         deps.mode === 'reddit' && charge.granted
           ? precedingEdition(edition)

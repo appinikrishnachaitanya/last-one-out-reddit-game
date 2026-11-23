@@ -1,11 +1,4 @@
-import { parseUndoState } from '../shared/undo-charge';
-import type { UndoState } from '../shared/undo-charge';
-import {
-  HINT_REFILL_MS,
-  UNDO_MAX,
-  UNDO_REFILL_MS,
-  undoRecharge,
-} from '../shared/undo-charge';
+import { HINT_REFILL_MS } from '../shared/hint-refill';
 import { CommunityRescue, describeMove } from './community-rescue';
 import type { CommunityBoard } from '../shared/community-board';
 import { setupAtmosphere } from './atmosphere';
@@ -119,7 +112,9 @@ timerSetting.addEventListener('change', () => {
 });
 let finishedSeconds: number | undefined;
 
-let refillAt = readTimestamp('loo-hint-refill');
+let refillAt = 0;
+let hintKey = '';
+let hintUsed = false;
 function readTimestamp(key: string): number {
   try {
     const value = Number(localStorage.getItem(key));
@@ -135,79 +130,24 @@ function storeTimestamp(key: string, value: number): void {
     /* optional */
   }
 }
-let undoStorageKey = 'loo-undo-recharge:v1:guest';
-let spentUndo = { nextAt: 0, missing: 0 };
-let syncedUndo: UndoState | undefined;
-let undoSyncEnabled = false;
-let undoPending = false;
-let lifelineOffset = 0;
-let lifelineRevision = 0;
-const lifelineNow = () => Date.now() + lifelineOffset;
-function acceptUndo(state: UndoState): void {
-  if (syncedUndo && state.lastSync < syncedUndo.lastSync) return;
-  syncedUndo = state;
-  lifelineOffset = state.lastSync - Date.now();
-}
-
-async function refreshLifelines(): Promise<void> {
-  if (!undoSyncEnabled || busy || tourActive || shared.active || hintRequest)
-    return;
-  const current = epoch;
-  const revision = ++lifelineRevision;
+let hintRevision = 0;
+async function refreshHint(): Promise<void> {
+  if (!hintSyncEnabled || !edition || hintRequest || busy) return;
+  const current = edition;
+  const revision = ++hintRevision;
   try {
     const data = await api.request('lifelines');
     if (
-      epoch !== current ||
-      revision !== lifelineRevision ||
-      busy ||
-      tourActive ||
-      shared.active ||
-      hintRequest ||
-      !isObject(data)
-    )
-      return;
-    const state = parseUndoState(data.undo);
-    if (!state || state.lastSync < (syncedUndo?.lastSync ?? 0)) return;
-    acceptUndo(state);
-    if (hintSyncEnabled && typeof data.refillAt === 'number')
+      edition === current &&
+      revision === hintRevision &&
+      isObject(data) &&
+      typeof data.refillAt === 'number'
+    ) {
       refillAt = data.refillAt;
-    updateRunIndicators();
+      updateRunIndicators();
+    }
   } catch {
-    /* Existing state stays visible until the next sync. */
-  }
-}
-function undoSupply() {
-  if (syncedUndo)
-    return undoRecharge(lifelineNow(), syncedUndo.nextAt, syncedUndo.missing);
-  try {
-    const raw: unknown = JSON.parse(
-      localStorage.getItem(undoStorageKey) ?? 'null'
-    );
-    if (
-      isObject(raw) &&
-      typeof raw.nextAt === 'number' &&
-      Number.isSafeInteger(raw.nextAt) &&
-      raw.nextAt > 0 &&
-      typeof raw.missing === 'number' &&
-      Number.isInteger(raw.missing) &&
-      raw.missing >= 1 &&
-      raw.missing <= UNDO_MAX
-    )
-      spentUndo = { nextAt: raw.nextAt, missing: raw.missing };
-  } catch {
-    /* Keep the current session’s supply. */
-  }
-  return undoRecharge(Date.now(), spentUndo.nextAt, spentUndo.missing);
-}
-function useUndo(available: number, nextAt: number): void {
-  spentUndo = {
-    nextAt: nextAt || Date.now() + UNDO_REFILL_MS,
-    missing: UNDO_MAX - available + 1,
-  };
-  try {
-    localStorage.setItem(undoStorageKey, JSON.stringify(spentUndo));
-  } catch {
-    /* optional */
+    /* Keep the current hint state until the next refresh. */
   }
 }
 function updateRunIndicators(): void {
@@ -220,33 +160,23 @@ function updateRunIndicators(): void {
       startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0
     );
   const undo = button('undo');
-  const supply = undoSupply();
-  const refill = Math.max(0, Math.ceil((supply.nextAt - lifelineNow()) / 1000));
   undo.disabled =
     busy ||
     shared.active ||
     !session.history.length ||
-    (!tourActive &&
-      (supply.available === 0 || (undoSyncEnabled && !syncedUndo)));
-  undo.textContent =
-    (!tourActive && undoSyncEnabled && !syncedUndo) || undoPending
-      ? '↶ Checking…'
-      : tourActive
-        ? '↶ Undo'
-        : supply.available
-          ? `↶ Undo · ${supply.available}`
-          : `↶ Undo · ${refill}s`;
-  undo.title = tourActive
-    ? 'Restore the previous move'
-    : refill
-      ? `${supply.available} of ${UNDO_MAX} Undo charges. Next in ${refill}s.`
-      : `${UNDO_MAX} Undo charges ready. One refills every 8 minutes.`;
-  const left = Math.max(0, Math.ceil((refillAt - lifelineNow()) / 1000));
+    (!tourActive && won(session.board, session.state));
+  undo.title = 'Restore the previous move';
+  const left = Math.max(0, Math.ceil((refillAt - Date.now()) / 1000));
   button('hint').disabled =
-    !!left || hintRequest || busy || tourActive || !result.hidden;
+    !!left ||
+    hintRequest ||
+    busy ||
+    tourActive ||
+    !result.hidden ||
+    won(session.board, session.state);
   button('hint').title = left ? 'Hint recharging' : 'Use one hint';
   element('lifeline-status', HTMLElement).textContent = left
-    ? `Hint recharges in ${left}s`
+    ? `Hint recharges in ${Math.ceil(left / 60)} min`
     : 'One hint ready · recharges after 15 minutes';
 }
 window.setInterval(updateRunIndicators, 1000);
@@ -426,6 +356,12 @@ function refresh(): void {
     'solved',
     won(session.board, session.state) && !result.hidden
   );
+  button('view-result').hidden =
+    tourActive ||
+    shared.active ||
+    !result.hidden ||
+    !won(session.board, session.state) ||
+    results.edition !== edition;
   scene.session = session;
   scene.selected = selected;
   scene.practiceTarget =
@@ -653,7 +589,8 @@ async function send(): Promise<void> {
         commentsUrl,
         null,
         session.state.home,
-        finishedSeconds
+        finishedSeconds,
+        hintUsed
       );
       submission = {
         editionId: edition.id,
@@ -661,6 +598,7 @@ async function send(): Promise<void> {
         boardVersion: edition.boardVersion,
         sequence: [...session.state.home],
         personalUndos: session.undos,
+        hintUsed,
         attemptId,
         ...(openingTrap ? { openingTrap } : {}),
         elapsedSeconds: finishedSeconds,
@@ -670,36 +608,26 @@ async function send(): Promise<void> {
     }
   } else button('undo').focus({ preventScroll: true });
 }
+button('back-to-board').addEventListener('click', () => {
+  result.hidden = true;
+  refresh();
+  button('view-result').focus();
+});
+button('view-result').addEventListener('click', () => {
+  result.hidden = false;
+  refresh();
+  button('copy-result').focus();
+});
 button('send').addEventListener('click', () => {
   void send();
 });
-button('undo').addEventListener('click', async () => {
-  if (busy || shared.active || !session.history.length) return;
-  const supply = undoSupply();
-  if (!tourActive && !supply.available) return;
-  if (!tourActive && undoSyncEnabled) {
-    busy = true;
-    undoPending = true;
-    lifelineRevision++;
-    scene.busy = true;
-    refresh();
-    let granted = false;
-    try {
-      const data = await api.request('undo', {});
-      const state = parseUndoState(data);
-      if (state) acceptUndo(state);
-      granted = Boolean(state && isObject(data) && data.granted === true);
-      if (!granted) say('Your Undo charges are recharging.');
-    } catch {
-      say('Could not confirm Undo. Try again in a moment.', true);
-    } finally {
-      undoPending = false;
-      busy = false;
-      scene.busy = false;
-      refresh();
-    }
-    if (!granted) return;
-  } else if (!tourActive) useUndo(supply.available, supply.nextAt);
+button('undo').addEventListener('click', () => {
+  if (
+    busy ||
+    shared.active ||
+    (!tourActive && won(session.board, session.state))
+  )
+    return;
   if (!session.undo()) return;
   if (tourActive) {
     tourPhase = 'finish';
@@ -776,29 +704,29 @@ button('archive-open').addEventListener('click', async () => {
   }
 });
 button('hint').addEventListener('click', async () => {
-  if (!hintSyncEnabled)
-    refillAt = Math.max(refillAt, readTimestamp('loo-hint-refill'));
+  if (!hintSyncEnabled) refillAt = Math.max(refillAt, readTimestamp(hintKey));
   if (
     hintRequest ||
     busy ||
     tourActive ||
     won(session.board, session.state) ||
-    lifelineNow() < refillAt
+    Date.now() < refillAt
   )
     return;
   const currentEpoch = epoch;
   let commentHint: ReturnType<typeof parseCommentHint>;
   if (hintSyncEnabled) {
     hintRequest = true;
-    lifelineRevision++;
+    hintRevision++;
     updateRunIndicators();
     try {
       const data = await api.request('hint', {});
       if (isObject(data) && typeof data.refillAt === 'number') {
+        if (currentEpoch !== epoch) return;
         refillAt = data.refillAt;
         if (data.granted !== true) return;
         if (data.granted === true) commentHint = parseCommentHint(data.hint);
-      }
+      } else return;
     } catch {
       say('Could not confirm your hint charge. Try again in a moment.', true);
       return;
@@ -809,10 +737,12 @@ button('hint').addEventListener('click', async () => {
   }
   if (!hintSyncEnabled) {
     refillAt = Date.now() + HINT_REFILL_MS;
-    storeTimestamp('loo-hint-refill', refillAt);
+    storeTimestamp(hintKey, refillAt);
   }
   updateRunIndicators();
   if (currentEpoch !== epoch || busy || tourActive || !result.hidden) return;
+  hintUsed = true;
+  storeTimestamp(`${hintKey}:used`, 1);
   const tip = element('hint-text', HTMLParagraphElement);
   if (commentHint) {
     const link = document.createElement('a');
@@ -903,8 +833,6 @@ function playable(show: boolean): void {
 async function load(previewId?: string): Promise<void> {
   if (scene.busy || tourActive || shared.active) return;
   const current = ++epoch;
-  syncedUndo = undefined;
-  lifelineOffset = 0;
   flow.abandon();
   flow = new JourneyFlow(journeyClient(edition?.id ?? 'loading'), !localDemo);
   busy = true;
@@ -932,15 +860,6 @@ async function load(previewId?: string): Promise<void> {
       return;
     }
     edition = data.edition;
-    syncedUndo = undefined;
-    undoSyncEnabled = Boolean(data.undoSync || data.undoState);
-    lifelineOffset = 0;
-    if (data.undoState) acceptUndo(data.undoState);
-    const accountUndoKey = `loo-undo-recharge:v1:${data.username?.toLowerCase() ?? 'guest'}`;
-    if (undoStorageKey !== accountUndoKey) {
-      undoStorageKey = accountUndoKey;
-      spentUndo = { nextAt: 0, missing: 0 };
-    }
     element('rescue-modes', HTMLElement).hidden = !data.communityEnabled;
     startAttempt(true);
     openingTrap = undefined;
@@ -952,7 +871,10 @@ async function load(previewId?: string): Promise<void> {
     }
     hintSyncEnabled =
       data.hintSync === true || typeof data.refillAt === 'number';
-    if (hintSyncEnabled) refillAt = data.refillAt ?? 0;
+    hintKey = `loo-daily-hint:v2:${edition.id}:${data.username?.toLowerCase() ?? 'guest'}`;
+    refillAt = hintSyncEnabled ? (data.refillAt ?? 0) : readTimestamp(hintKey);
+    hintUsed =
+      Boolean(readTimestamp(`${hintKey}:used`)) || refillAt > Date.now();
     element('hint-text', HTMLElement).hidden = true;
     startedAt = readTimestamp(`loo-start:${edition.id}`);
     finishedSeconds = data.completion?.elapsedSeconds;
@@ -1001,7 +923,8 @@ async function load(previewId?: string): Promise<void> {
         commentsUrl,
         data.completion,
         session.state.home,
-        finishedSeconds
+        finishedSeconds,
+        hintUsed
       );
       results.sharing(data.shareStatus);
       if (data.community)
@@ -1019,7 +942,8 @@ async function load(previewId?: string): Promise<void> {
         commentsUrl,
         null,
         session.state.home,
-        finishedSeconds
+        finishedSeconds,
+        hintUsed
       );
       submission = {
         editionId: edition.id,
@@ -1027,6 +951,7 @@ async function load(previewId?: string): Promise<void> {
         boardVersion: edition.boardVersion,
         sequence: [...session.state.home],
         personalUndos: session.undos,
+        hintUsed,
         attemptId,
         ...(openingTrap ? { openingTrap } : {}),
         elapsedSeconds: finishedSeconds,
@@ -1262,10 +1187,10 @@ button('expand').addEventListener('click', (event) => {
   }
 });
 window.setInterval(() => {
-  if (!document.hidden) void refreshLifelines();
+  if (!document.hidden) void refreshHint();
 }, 15000);
 window.addEventListener('focus', () => {
-  void refreshLifelines();
+  void refreshHint();
   syncPresentation();
   if (busy || tourActive || shared.active || !edition || !result.hidden) return;
   try {
