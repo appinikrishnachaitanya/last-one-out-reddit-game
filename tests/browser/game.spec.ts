@@ -933,7 +933,7 @@ for (const puzzle of [
       'validated and saved'
     );
     await page.reload();
-    await page.getByText('Who stayed for whom?', { exact: true }).click();
+    await page.getByText('See how Reddit solved it', { exact: true }).click();
     await expect(page.locator('#bridge-recap')).toContainText(puzzle.recap);
   });
 }
