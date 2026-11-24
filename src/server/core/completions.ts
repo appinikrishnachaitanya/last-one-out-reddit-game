@@ -1,3 +1,7 @@
+import {
+  rescueIdentity,
+  verifyRecovery,
+} from '../../shared/rescue-identity.ts';
 import { validElapsed } from '../../shared/daily.ts';
 import { boardById } from '../../shared/boards.ts';
 import {
@@ -93,7 +97,11 @@ export async function complete(
         trace(board, initialState(), id).legal &&
         trace(board, { home: [trap] }, id).obstacle?.kind === 'bridge'
     );
+  const recovered =
+    verifiedTrap || verifyRecovery(board, input.recovery, input.personalUndos);
   const record: Completion = {
+    ...(recovered ? { recovered: true } : {}),
+    identity: rescueIdentity(board, input.sequence, { recovered }),
     editionId: edition.id,
     puzzleId: edition.puzzleId,
     boardVersion: edition.boardVersion,

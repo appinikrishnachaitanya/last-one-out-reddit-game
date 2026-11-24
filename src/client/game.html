@@ -42,6 +42,8 @@
           </button>
         </div>
       </header>
+      <p id="daily-goal" class="daily-goal" role="status" hidden></p>
+      <p id="goal-toast" class="goal-toast" role="status" hidden></p>
       <p id="sound-status" role="status"></p>
       <div id="rescue-modes" role="group" aria-label="Rescue mode" hidden>
         <button id="solo-tab" type="button" aria-pressed="true">
@@ -139,7 +141,51 @@
           <summary id="shared-summary">Move log</summary>
           <ol id="shared-log"></ol>
         </details>
+        <section
+          id="spectator-vote"
+          data-play
+          hidden
+          aria-label="Suggest the next move"
+        >
+          <p id="vote-prompt" role="status">Who should go next?</p>
+          <div
+            id="vote-options"
+            role="group"
+            aria-label="Vote for an animal"
+          ></div>
+          <p id="vote-feedback" role="status" hidden></p>
+        </section>
+        <p id="replay-empty" hidden>
+          Be the first community to finish this crossing.
+        </p>
+        <button id="watch-replay" type="button" hidden>
+          Watch Replay · Contains Solution
+        </button>
+        <p id="replay-feedback" role="status" hidden></p>
+        <section id="replay-controls" aria-label="Replay controls" hidden>
+          <p id="replay-caption" role="status"></p>
+          <progress
+            id="replay-progress"
+            value="0"
+            max="4"
+            aria-label="Replay progress"
+          ></progress>
+          <div class="replay-actions">
+            <button id="replay-play" type="button">Pause</button>
+            <button id="replay-prev" type="button">Prev</button>
+            <button id="replay-next" type="button">Next</button>
+            <button id="replay-close" type="button">Close</button>
+          </div>
+        </section>
       </section>
+      <dialog id="replay-warning" aria-labelledby="replay-warning-title">
+        <h2 id="replay-warning-title">This replay reveals the solution</h2>
+        <p>You’ll see the full rescue order for this crossing.</p>
+        <form method="dialog" class="replay-actions">
+          <button value="cancel" autofocus>Go back</button>
+          <button value="watch" class="primary">Watch replay</button>
+        </form>
+      </dialog>
       <section id="result" class="result" hidden aria-labelledby="result-title">
         <button id="back-to-board" class="secondary">← Back to board</button>
         <div class="result-top">
@@ -206,6 +252,8 @@
         <pre id="copy-fallback" hidden tabindex="0"></pre>
         <details id="community-details" hidden>
           <summary>See how Reddit solved it</summary>
+          <p id="identity-explanation"></p>
+          <p id="rescue-hero"></p>
           <ul id="bridge-recap"></ul>
           <p>
             Which move fooled you? Start a short, spoiler-free tip with [hint]
@@ -273,6 +321,7 @@
           <label class="timer-setting"
             ><input id="show-timer" type="checkbox" /> Show live timer</label
           >
+          <button id="remix-open" type="button">Remix Sunday</button>
           <div id="settings-archive" hidden></div>
           <button id="motion-dialog" aria-pressed="false">
             Skip animations
@@ -299,6 +348,29 @@
             Press Enter or Space to preview and again to send.
           </p>
         </details>
+      </dialog>
+      <dialog id="remix-dialog" aria-labelledby="remix-title">
+        <form method="dialog"><button type="submit">← Close</button></form>
+        <h2 id="remix-title">Remix Sunday</h2>
+        <p id="remix-status" role="status"></p>
+        <section id="remix-creator" hidden>
+          <label for="remix-template">Board template</label>
+          <select id="remix-template"></select>
+          <div id="remix-slots"></div>
+          <button id="remix-submit" class="primary" type="button">
+            Check &amp; submit draft
+          </button>
+        </section>
+        <section id="remix-review-detail" hidden></section>
+        <div id="remix-grid" aria-label="Board preview" hidden></div>
+        <button id="remix-test" type="button" hidden>Test play</button>
+        <div id="remix-play"></div>
+        <section id="remix-reviews" hidden>
+          <h3>Moderator review</h3>
+          <button id="remix-queue-open" type="button">Load review queue</button>
+          <ul id="remix-queue"></ul>
+          <button id="remix-more" type="button" hidden>More drafts</button>
+        </section>
       </dialog>
     </main>
     <script type="module" src="game.ts"></script>

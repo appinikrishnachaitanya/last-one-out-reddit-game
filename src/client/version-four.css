@@ -561,3 +561,155 @@ body {
 #app #companion-scarf {
   margin: 8px 0 2px 6px;
 }
+
+#app :is(.replay-actions button, #watch-replay) {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+#app .replay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#app #replay-progress {
+  width: 100%;
+}
+
+#app.replaying :is(#shared-history, #watch-replay, #shared-celebration, .shared-status, .animal-picker, .actions, #feedback) {
+  display: none;
+}
+
+#app .daily-goal {
+  margin: 0 0 4px;
+  color: #ffe3a8;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 650;
+}
+
+#app .goal-toast {
+  position: fixed;
+  inset: auto 12px 12px;
+  z-index: 20;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff2ce;
+  color: #18382d;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+#app .golden-leaf {
+  color: #734700;
+  font-weight: 750;
+}
+
+@media (max-width: 559px) and (max-height: 620px) {
+  #app:has(.daily-goal:not([hidden])) {
+    --board-gap: 280px;
+  }
+  #app.community-mode:has(.daily-goal:not([hidden])) {
+    --board-gap: 312px;
+  }
+}
+
+#app #spectator-vote {
+  margin: 4px auto;
+  width: min(100%, 400px);
+}
+
+#app #vote-prompt {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.25;
+  color: #ffe3a8;
+}
+
+#app #vote-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#app #vote-options button {
+  flex: 1 1 auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+#app #vote-options button[aria-disabled='true'] {
+  opacity: 0.65;
+}
+
+#app #vote-options button[aria-pressed='true'] {
+  border-color: #f8c870;
+  background: #355343;
+}
+
+#app #vote-feedback {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+#app.spectating :is(.animal-picker, .actions) {
+  display: none;
+}
+
+#app #remix-dialog {
+  width: min(92%, 430px);
+  box-sizing: border-box;
+  max-height: 92dvh;
+  overflow: auto;
+}
+
+#app #remix-dialog :is(button, select, textarea), #app #remix-open {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+#app #remix-slots label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  margin-block: 4px;
+}
+
+#app #remix-grid:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(var(--remix-size), minmax(0, 1fr));
+  gap: 2px;
+  margin: 8px 0;
+  max-width: 265px;
+}
+
+#app #remix-grid span {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  font-size: 12px;
+  border-radius: 3px;
+  color: #173a2d;
+  background: #e5d7ad;
+}
+
+#app #remix-grid .remix-forest { background: #2d5948; }
+#app #remix-grid .remix-bridge { background: #edc877; }
+#app #remix-grid .remix-gap { background: #52798c; color: #fff; }
+
+#app #remix-play,
+#app #remix-review-detail {
+  margin-block: 6px;
+}
+
+#app #remix-queue {
+  padding-inline-start: 18px;
+}

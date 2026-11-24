@@ -1,12 +1,18 @@
+import { setupRemix } from './remix';
+import { parseCommunityReplay } from '../shared/community-replay';
+import type { CommunityReplay } from '../shared/community-replay';
+import type { RecoveryEvidence } from '../shared/rescue-identity';
 import { HINT_REFILL_MS } from '../shared/hint-refill';
 import { CommunityRescue, describeMove } from './community-rescue';
 import type { CommunityBoard } from '../shared/community-board';
+import { leadingAnimals } from '../shared/community-board';
 import { setupAtmosphere } from './atmosphere';
 import {
   formatElapsed,
   isObject,
   highestCount,
   parseCommentHint,
+  parseDailyGoal,
   validElapsed,
 } from '../shared/daily';
 import {
@@ -21,7 +27,7 @@ import { DailyApi } from './daily-api';
 import { Results } from './results';
 import { JourneyFlow } from './journeys';
 import { createTelemetryClient } from '@devvit/analytics/client/reddit';
-import type { Edition } from '../shared/daily';
+import type { DailyGoal, Edition } from '../shared/daily';
 import {
   Session,
   isHome,
@@ -45,12 +51,14 @@ const feedback = element('feedback', HTMLParagraphElement);
 const result = element('result', HTMLElement);
 let session = new Session(MOONROOT);
 const api = new DailyApi();
+setupRemix(api);
 let edition: Edition | undefined;
 let commentsUrl: string | null = null;
 let epoch = 0;
 const saving = new Set<number>();
 let submission: unknown;
 let startedAt = 0;
+let recovery: RecoveryEvidence | undefined;
 let openingTrap: AnimalId | undefined;
 let firstAttempt = false;
 let attemptId: string | undefined;
@@ -112,6 +120,71 @@ timerSetting.addEventListener('change', () => {
 });
 let finishedSeconds: number | undefined;
 
+let dailyGoalEnabled = false;
+let dailyGoal: DailyGoal | undefined;
+let goalLoading = false;
+let goalToastTimer: number | undefined;
+
+function displayDailyGoal(goal: DailyGoal): void {
+  if (
+    dailyGoal &&
+    (goal.date < dailyGoal.date ||
+      (goal.date === dailyGoal.date && goal.count < dailyGoal.count))
+  )
+    return;
+  const newlyEarned =
+    dailyGoal &&
+    !dailyGoal.reached &&
+    goal.date === dailyGoal.date &&
+    goal.reached;
+  dailyGoal = goal;
+  const label = element('daily-goal', HTMLElement);
+  const days = (count: number) => `${count} ${count === 1 ? 'day' : 'days'}`;
+  const text =
+    `Today’s Community Goal: ${goal.count}/${goal.target} · Streak: ${days(goal.streak)}` +
+    (goal.streak < goal.best ? ` · Best: ${days(goal.best)}` : '') +
+    (goal.reached ? ' · Complete' : '');
+  if (label.textContent !== text) label.textContent = text;
+  if (newlyEarned && !result.hidden && !saving.has(epoch))
+    void results.loadCrossings();
+}
+
+async function refreshDailyGoal(): Promise<void> {
+  if (!dailyGoalEnabled || goalLoading || document.hidden) return;
+  goalLoading = true;
+  const label = element('daily-goal', HTMLElement);
+  try {
+    const payload = await api.request('daily-goal');
+    const goal = parseDailyGoal(payload);
+    if (goal) displayDailyGoal(goal);
+    else if (isObject(payload) && payload.status === 'empty')
+      label.textContent = 'No community goal scheduled today.';
+    else throw new Error('Invalid goal');
+  } catch {
+    if (!dailyGoal)
+      label.textContent = 'Community goal unavailable. Retrying shortly.';
+  } finally {
+    goalLoading = false;
+  }
+}
+
+function showGoalToast(goal: DailyGoal): void {
+  if (!goal.position) return;
+  const toast = element('goal-toast', HTMLElement);
+  toast.textContent =
+    goal.position === goal.target
+      ? `You were rescuer #${goal.position} · Goal complete!`
+      : goal.reached
+        ? 'Goal complete · Your solve keeps the streak alive.'
+        : `You were rescuer #${goal.position} · Thanks for helping your subreddit!`;
+  toast.hidden = false;
+  clearTimeout(goalToastTimer);
+  goalToastTimer = window.setTimeout(() => {
+    toast.hidden = true;
+  }, 4500);
+}
+
+window.setInterval(() => void refreshDailyGoal(), 30_000);
 let refillAt = 0;
 let hintKey = '';
 let hintUsed = false;
@@ -261,7 +334,241 @@ let savedSolo:
 
 const sharedRules =
   'One shared board. One move per player. The board resets if a friend gets stranded.';
+let replay: CommunityReplay | undefined;
+let replayLoading = false;
+let replayPlaying = false;
+let replayAnimating = false;
+let replayClosing = false;
+let replayStep = 0;
+const replayWarning = element('replay-warning', HTMLDialogElement);
+
+function renderReplayControls(): void {
+  if (!replay) return;
+  const length = replay.moves.length;
+  const move = replay.moves[replayStep - 1];
+  const users = [
+    ...new Set(replay.moves.map(({ username }) => `u/${username}`)),
+  ];
+  const caption = element('replay-caption', HTMLElement);
+  caption.textContent =
+    replayStep === length
+      ? `Rescued together by ${users.length} Redditors in ${length} moves · ${users.join(', ')}`
+      : move
+        ? `${replayStep}/${length} · u/${move.username} moved ${titleCase(move.animal)} home`
+        : `0/${length} · Ready to watch`;
+  const progress = element('replay-progress', HTMLProgressElement);
+  progress.max = length;
+  progress.value = replayStep;
+  button('replay-play').hidden = reduced || motionPreference.matches;
+  button('replay-play').textContent = replayPlaying ? 'Pause' : 'Play';
+  button('replay-play').disabled = replayClosing || replayStep === length;
+  button('replay-prev').disabled = replayAnimating || replayStep === 0;
+  button('replay-next').disabled = replayAnimating || replayStep === length;
+  button('replay-close').disabled = replayClosing;
+}
+
+function closeReplay(): void {
+  replayPlaying = false;
+  if (replayAnimating) {
+    replayClosing = true;
+    renderReplayControls();
+    return;
+  }
+  replayClosing = false;
+  replay = undefined;
+  busy = false;
+  scene.busy = false;
+  element('replay-controls', HTMLElement).hidden = true;
+  element('app', HTMLElement).classList.remove('replaying');
+  if (shared.state) applyShared(shared.state);
+  button('watch-replay').focus({ preventScroll: true });
+}
+
+async function nextReplayMove(): Promise<void> {
+  const active = replay;
+  const move = active?.moves[replayStep];
+  if (!active || !move || replayAnimating) return;
+  replayAnimating = true;
+  const stepsOnly = reduced || motionPreference.matches;
+  renderReplayControls();
+  element('replay-caption', HTMLElement).textContent =
+    `${replayStep + 1}/${active.moves.length} · u/${move.username} moved ${titleCase(move.animal)} home`;
+  await scene.animateHome(move.animal, stepsOnly, 800);
+  session.send(move.animal);
+  replayStep++;
+  replayAnimating = false;
+  refresh();
+  if (replayClosing) {
+    closeReplay();
+    return;
+  }
+  if (
+    replayStep === active.moves.length ||
+    reduced ||
+    motionPreference.matches ||
+    document.hidden
+  )
+    replayPlaying = false;
+  renderReplayControls();
+  if (replayPlaying) void nextReplayMove();
+}
+
+button('watch-replay').addEventListener('click', () => {
+  if (busy || shared.moving || replayLoading) return;
+  replayWarning.returnValue = '';
+  replayWarning.showModal();
+});
+replayWarning.addEventListener('close', async () => {
+  if (replayWarning.returnValue !== 'watch' || replayLoading || !shared.active)
+    return;
+  const board = session.board;
+  replayLoading = true;
+  const status = element('replay-feedback', HTMLElement);
+  status.hidden = false;
+  status.textContent = 'Loading the saved rescue…';
+  button('watch-replay').disabled = true;
+  try {
+    const data = parseCommunityReplay(
+      board,
+      await api.request('community/replay')
+    );
+    if (!shared.active || session.board !== board || busy || shared.moving)
+      return;
+    replay = data;
+    replayStep = 0;
+    busy = true;
+    scene.busy = true;
+    session = new Session(board);
+    selected = undefined;
+    scene.blocked = [];
+    element('app', HTMLElement).classList.add('replaying');
+    element('replay-controls', HTMLElement).hidden = false;
+    status.hidden = true;
+    replayPlaying = !reduced && !motionPreference.matches;
+    refresh();
+    renderReplayControls();
+    button(replayPlaying ? 'replay-play' : 'replay-next').focus({
+      preventScroll: true,
+    });
+    if (replayPlaying) void nextReplayMove();
+  } catch {
+    status.textContent =
+      'This replay is unavailable. You can still play the shared crossing.';
+  } finally {
+    replayLoading = false;
+    button('watch-replay').disabled = false;
+    if (!shared.active || status.textContent === 'Loading the saved rescue…')
+      status.hidden = true;
+  }
+});
+button('replay-play').addEventListener('click', () => {
+  replayPlaying = !replayPlaying;
+  renderReplayControls();
+  if (replayPlaying) void nextReplayMove();
+});
+button('replay-prev').addEventListener('click', () => {
+  if (!replay || replayAnimating || replayStep === 0) return;
+  replayPlaying = false;
+  replayStep--;
+  session = new Session(session.board);
+  for (const move of replay.moves.slice(0, replayStep))
+    session.send(move.animal);
+  refresh();
+  renderReplayControls();
+});
+button('replay-next').addEventListener('click', () => {
+  replayPlaying = false;
+  void nextReplayMove();
+});
+button('replay-close').addEventListener('click', closeReplay);
+let voteNoticeTimer: number | undefined;
+let announcedVoteMove = -1;
+function renderSpectatorVote(): void {
+  const state = shared.state;
+  const votes = shared.displayedVotes();
+  const panel = element('spectator-vote', HTMLElement);
+  panel.hidden = !shared.active || !state || !votes || !!replay;
+  element('app', HTMLElement).classList.toggle(
+    'spectating',
+    !panel.hidden && !state?.canMove
+  );
+  if (panel.hidden || !state || !votes) return;
+  const leaders = leadingAnimals(votes.tally);
+  const prompt = element('vote-prompt', HTMLElement);
+  const text = !state.signedIn
+    ? 'Sign in to vote for the next animal.'
+    : leaders.length === 1
+      ? `Community suggests ${titleCase(leaders[0]!)} · ${state.canMove ? 'you decide' : 'the next player decides'}.`
+      : leaders.length
+        ? 'The vote is tied. The next player decides.'
+        : 'Who should go next?';
+  if (prompt.textContent !== text) prompt.textContent = text;
+  const options = element('vote-options', HTMLElement);
+  if (!options.childElementCount) {
+    for (const animal of session.board.animals) {
+      const choice = document.createElement('button');
+      choice.type = 'button';
+      choice.dataset.vote = animal.id;
+      choice.addEventListener('click', () => {
+        if (choice.getAttribute('aria-disabled') === 'true') {
+          if (choice.title) showVoteNotice(choice.title);
+          return;
+        }
+        void shared.vote(animal.id);
+      });
+      options.append(choice);
+    }
+  }
+  for (const choice of options.querySelectorAll<HTMLButtonElement>('button')) {
+    const animal = choice.dataset.vote;
+    if (!isAnimalId(animal)) continue;
+    const home = state.home.includes(animal);
+    choice.hidden = home;
+    const route = trace(session.board, state, animal);
+    const reason = route.obstacle?.reason ?? '';
+    const count = votes.tally[animal] ?? 0;
+    choice.textContent = titleCase(animal) + ' · ' + count;
+    choice.title = reason;
+    choice.setAttribute(
+      'aria-label',
+      `${titleCase(animal)}, ${count} ${count === 1 ? 'vote' : 'votes'}${reason ? `, ${reason}` : ''}`
+    );
+    choice.setAttribute('aria-pressed', String(votes.own === animal));
+    choice.setAttribute(
+      'aria-disabled',
+      String(!route.legal || !state.signedIn || shared.voting || busy)
+    );
+  }
+  if (state.moveNumber !== announcedVoteMove) {
+    announcedVoteMove = state.moveNumber;
+    if (state.voteOutcome)
+      showVoteNotice(
+        state.voteOutcome === 'chosen'
+          ? 'Community’s pick was chosen.'
+          : 'Player chose a different route.'
+      );
+    else element('vote-feedback', HTMLElement).hidden = true;
+  }
+  if (shared.voteFeedback) {
+    showVoteNotice(shared.voteFeedback);
+    shared.voteFeedback = '';
+  }
+}
+
+function showVoteNotice(text: string): void {
+  const notice = element('vote-feedback', HTMLElement);
+  notice.textContent = text;
+  notice.hidden = false;
+  clearTimeout(voteNoticeTimer);
+  voteNoticeTimer = window.setTimeout(() => {
+    notice.hidden = true;
+  }, 4000);
+}
+
 function applyShared(state: CommunityBoard): void {
+  if (replay) return;
+  button('watch-replay').hidden = !state.replayAvailable;
+  element('replay-empty', HTMLElement).hidden = !!state.replayAvailable;
   session = new Session(session.board);
   for (const animal of state.home) session.send(animal);
   selected = undefined;
@@ -294,9 +601,14 @@ function applyShared(state: CommunityBoard): void {
     : `Rescued together by ${state.lastRescue.map((name) => `u/${name}`).join(', ')}.`;
   refresh();
 }
-const shared = new CommunityRescue(api, applyShared, (message) => {
-  element('shared-status', HTMLElement).textContent = message;
-});
+const shared = new CommunityRescue(
+  api,
+  applyShared,
+  (message) => {
+    element('shared-status', HTMLElement).textContent = message;
+  },
+  renderSpectatorVote
+);
 button('community-tab').addEventListener('click', () => {
   if (busy || tourActive || shared.active || saving.has(epoch) || !edition)
     return;
@@ -318,7 +630,11 @@ button('community-tab').addEventListener('click', () => {
   selected = undefined;
   scene.blocked = [];
   document.querySelector('.animal-picker')?.removeAttribute('open');
+  button('watch-replay').hidden = true;
+  element('replay-empty', HTMLElement).hidden = true;
+  element('replay-feedback', HTMLElement).hidden = true;
   element('shared-rescue', HTMLElement).hidden = false;
+  announcedVoteMove = -1;
   shared.open();
   say(sharedRules);
   refresh();
@@ -343,9 +659,13 @@ button('shared-refresh').addEventListener('click', () => {
   void shared.refresh();
 });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) void shared.refresh();
+  if (!document.hidden) {
+    void shared.refresh();
+    void refreshDailyGoal();
+  }
 });
 function refresh(): void {
+  renderSpectatorVote();
   element('app', HTMLElement).classList.toggle('community-mode', shared.active);
   button('solo-tab').setAttribute('aria-pressed', String(!shared.active));
   button('community-tab').setAttribute('aria-pressed', String(shared.active));
@@ -354,7 +674,7 @@ function refresh(): void {
   element('app', HTMLElement).classList.toggle('touring', tourActive);
   element('app', HTMLElement).classList.toggle(
     'solved',
-    won(session.board, session.state) && !result.hidden
+    !replay && won(session.board, session.state) && !result.hidden
   );
   button('view-result').hidden =
     tourActive ||
@@ -486,6 +806,19 @@ function choose(id: AnimalId): void {
       .querySelector<HTMLButtonElement>(`[data-animal="${id}"]`)
       ?.focus({ preventScroll: true });
 }
+function rememberRecovery(evidence: RecoveryEvidence): void {
+  if (recovery && !recovery.blocked) return;
+  recovery = evidence;
+  try {
+    if (edition)
+      localStorage.setItem(
+        `loo-recovery:${edition.id}`,
+        JSON.stringify(evidence)
+      );
+  } catch {
+    /* Optional draft storage. */
+  }
+}
 async function send(): Promise<void> {
   if (busy || !selected || !trace(session.board, session.state, selected).legal)
     return;
@@ -526,6 +859,8 @@ async function send(): Promise<void> {
   say(`${titleCase(id)} is on the way home…`);
   await scene.animateHome(id, reduced || motionPreference.matches);
   session.send(id);
+  if (!tourActive && solve(session.board, session.state).length === 0)
+    rememberRecovery({ route: [...session.state.home] });
   if (
     session.board.animals.some(
       ({ id: friend }) =>
@@ -590,7 +925,8 @@ async function send(): Promise<void> {
         null,
         session.state.home,
         finishedSeconds,
-        hintUsed
+        hintUsed,
+        Boolean(recovery || openingTrap)
       );
       submission = {
         editionId: edition.id,
@@ -599,6 +935,7 @@ async function send(): Promise<void> {
         sequence: [...session.state.home],
         personalUndos: session.undos,
         hintUsed,
+        recovery,
         attemptId,
         ...(openingTrap ? { openingTrap } : {}),
         elapsedSeconds: finishedSeconds,
@@ -628,7 +965,14 @@ button('undo').addEventListener('click', () => {
     (!tourActive && won(session.board, session.state))
   )
     return;
+  const blockedChoice =
+    selected && trace(session.board, session.state, selected).obstacle
+      ? selected
+      : undefined;
+  const beforeUndo = [...session.state.home];
   if (!session.undo()) return;
+  if (!tourActive && blockedChoice)
+    rememberRecovery({ route: beforeUndo, blocked: blockedChoice });
   if (tourActive) {
     tourPhase = 'finish';
     selected = undefined;
@@ -810,6 +1154,10 @@ async function saveResult(): Promise<void> {
     );
     savingFlow.validated();
     if (current !== epoch) return;
+    if (saved.goal) {
+      displayDailyGoal(saved.goal);
+      if (saved.firstCompletion) showGoalToast(saved.goal);
+    }
     results.saved(saved.completion, saved.attemptStats, saved.firstCompletion);
     if (results.favorite !== saved.completion.favorite) await persistFavorite();
   } catch (error) {
@@ -860,10 +1208,20 @@ async function load(previewId?: string): Promise<void> {
       return;
     }
     edition = data.edition;
+    dailyGoalEnabled = data.dailyGoalEnabled === true;
+    const goalLabel = element('daily-goal', HTMLElement);
+    goalLabel.hidden = !dailyGoalEnabled;
+    if (dailyGoalEnabled) {
+      if (!dailyGoal) goalLabel.textContent = 'Loading today’s community goal…';
+      void refreshDailyGoal();
+    }
     element('rescue-modes', HTMLElement).hidden = !data.communityEnabled;
     startAttempt(true);
     openingTrap = undefined;
+    recovery = undefined;
     try {
+      const evidence = localStorage.getItem(`loo-recovery:${edition.id}`);
+      if (evidence) recovery = JSON.parse(evidence) as RecoveryEvidence;
       const trap = localStorage.getItem(`loo-trap:${edition.id}`);
       if (isAnimalId(trap)) openingTrap = trap;
     } catch {
@@ -924,7 +1282,8 @@ async function load(previewId?: string): Promise<void> {
         data.completion,
         session.state.home,
         finishedSeconds,
-        hintUsed
+        hintUsed,
+        Boolean(recovery || openingTrap)
       );
       results.sharing(data.shareStatus);
       if (data.community)
@@ -943,7 +1302,8 @@ async function load(previewId?: string): Promise<void> {
         null,
         session.state.home,
         finishedSeconds,
-        hintUsed
+        hintUsed,
+        Boolean(recovery || openingTrap)
       );
       submission = {
         editionId: edition.id,
@@ -952,6 +1312,7 @@ async function load(previewId?: string): Promise<void> {
         sequence: [...session.state.home],
         personalUndos: session.undos,
         hintUsed,
+        recovery,
         attemptId,
         ...(openingTrap ? { openingTrap } : {}),
         elapsedSeconds: finishedSeconds,

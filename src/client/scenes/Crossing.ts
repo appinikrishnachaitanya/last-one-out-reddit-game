@@ -390,7 +390,11 @@ export class Crossing extends Phaser.Scene {
     }
     return token;
   }
-  async animateHome(id: AnimalId, reduced: boolean): Promise<void> {
+  async animateHome(
+    id: AnimalId,
+    reduced: boolean,
+    replayDuration?: number
+  ): Promise<void> {
     const token = this.tokens.get(id),
       a = this.session.board.animals.find((a) => a.id === id);
     if (!token || !a) return;
@@ -470,7 +474,7 @@ export class Crossing extends Phaser.Scene {
       this.tweens.add({
         targets: clock,
         elapsed: duration,
-        duration,
+        duration: replayDuration ?? duration,
         ease: 'Linear',
         onUpdate: () => {
           const motion = Math.max(0, clock.elapsed - gait.ready);

@@ -1,3 +1,4 @@
+import { rescueIdentity } from '../shared/rescue-identity';
 import { cardStamp } from './card-stamp';
 import { boardById } from '../shared/boards';
 import { initialState, samePoint, trace } from '../shared/engine';
@@ -30,6 +31,7 @@ export class Results {
   private scarf: Scarf | undefined;
   undos = 0;
   hintUsed = false;
+  private identity: ReturnType<typeof rescueIdentity>;
   elapsedSeconds: number | undefined;
   collectionRequest = 0;
   url: string | null = null;
@@ -104,7 +106,8 @@ export class Results {
     saved: Completion | null,
     sequence: readonly AnimalId[],
     elapsedSeconds?: number,
-    hintUsed = false
+    hintUsed = false,
+    recovered = false
   ): void {
     this.edition = edition;
     this.undos = saved?.personalUndos ?? undos;
@@ -140,6 +143,10 @@ export class Results {
     el('community-details').removeAttribute('open');
     el('result-options').removeAttribute('open');
     el('comparison').hidden = true;
+    this.setIdentity(
+      saved?.sequence ?? sequence,
+      saved ? Boolean(saved.recovered || saved.openingTrap) : recovered
+    );
     this.renderRecap(saved?.sequence ?? sequence);
     el('retry-save').hidden = true;
     this.status(
@@ -159,7 +166,7 @@ export class Results {
       this.elapsedSeconds === undefined
         ? ''
         : `Time ${formatElapsed(this.elapsedSeconds)}`;
-    const rank = rescueRank(this.undos);
+    const rank = rescueRank(this.undos, this.hintUsed);
     el('clean-badge').hidden = false;
     el('clean-badge').textContent =
       rank === 'S' ? 'S Rank · Clean Crossing' : `${rank} Rank`;
@@ -204,6 +211,10 @@ export class Results {
       first
         ? 'Rescue validated and saved.'
         : 'Your first saved rescue is restored.'
+    );
+    this.setIdentity(
+      record.sequence,
+      Boolean(record.recovered || record.openingTrap)
     );
     this.renderRecap(record.sequence);
     this.community(stats, record.firstMove ?? record.opening);
@@ -298,6 +309,18 @@ export class Results {
     }
     note.hidden = false;
   }
+  private setIdentity(sequence: readonly AnimalId[], recovered: boolean): void {
+    if (!this.edition) return;
+    const board = boardById(this.edition.puzzleId, this.edition.boardVersion);
+    this.identity = rescueIdentity(board, sequence, { recovered });
+    el('result-title').textContent = this.identity?.title ?? 'Everyone home.';
+    el('identity-explanation').textContent = this.identity?.explanation ?? '';
+    const hero = this.identity?.hero;
+    el('rescue-hero').textContent = hero
+      ? `Hero Who Stayed: ${titleCase(hero.animal)} waited for ${hero.friends} ${hero.friends === 1 ? 'animal' : 'animals'}.`
+      : '';
+  }
+
   renderRecap(sequence: readonly AnimalId[]): void {
     if (!this.edition) return;
     const board = boardById(this.edition.puzzleId, this.edition.boardVersion);
@@ -328,7 +351,8 @@ export class Results {
       item.textContent = `${titleCase(bridge.holder)} kept the ${bridge.symbol} bridge open for ${names}.`;
       list.append(item);
     }
-    el('community-details').hidden = list.childElementCount === 0;
+    el('community-details').hidden =
+      !this.identity && list.childElementCount === 0;
   }
   community(stats: AttemptStats | undefined, ownOpening: AnimalId): void {
     this.opening = ownOpening;
@@ -413,6 +437,12 @@ export class Results {
         const day = document.createElement('small');
         day.textContent = `Day ${card.day}`;
         item.append(art, day, name, cardStamp(data.owner, card.earnedAt));
+        if (card.goldenLeaf === true) {
+          const mark = document.createElement('small');
+          mark.className = 'golden-leaf';
+          mark.textContent = '✦ Golden Leaf';
+          item.append(mark);
+        }
         grid.append(item);
       }
       collection.textContent = grid.childElementCount
@@ -476,8 +506,9 @@ export class Results {
     const edition = this.edition;
     if (!edition) return;
     const { favorite, elapsedSeconds, undos } = this;
-    const count = boardById(edition.puzzleId, edition.boardVersion).animals
-      .length;
+    const identity = this.identity?.title;
+    const scarf = this.scarf;
+    if (!identity) return;
     try {
       const art = new Image();
       art.src = '/art/animals.webp';
@@ -509,8 +540,8 @@ export class Results {
         332,
         332
       );
-      if (this.scarf) {
-        ctx.fillStyle = scarves[this.scarf];
+      if (scarf) {
+        ctx.fillStyle = scarves[scarf];
         ctx.beginPath();
         ctx.roundRect(730, 392, 162, 29, 14);
         ctx.roundRect(850, 410, 29, 41, 8);
@@ -518,26 +549,13 @@ export class Results {
       }
       ctx.restore();
       ctx.fillStyle = '#132f28';
-      ctx.font = 'bold 27px system-ui';
-      ctx.fillText('LAST ONE OUT · DAILY RESCUE', 72, 135);
-      ctx.font = 'bold 66px Georgia';
-      ctx.fillText('Everyone home.', 72, 232);
-      ctx.font = '30px system-ui';
-      ctx.fillText(
-        `Rank ${rescueRank(undos)} · Day ${edition.number} · ${edition.date}`,
-        72,
-        296
-      );
-      ctx.fillText(
-        `${count}/${count} rescued · ${undos} ${undos === 1 ? 'undo' : 'undos'}`,
-        72,
-        354
-      );
+      ctx.font = 'bold 58px Georgia';
+      ctx.fillText(identity, 72, 240, 540);
+      ctx.font = '32px system-ui';
+      ctx.fillText(`Puzzle ${edition.number}`, 72, 320, 540);
+      ctx.fillText(`${undos} ${undos === 1 ? 'undo' : 'undos'}`, 72, 376, 540);
       if (elapsedSeconds !== undefined)
-        ctx.fillText(`Time ${formatElapsed(elapsedSeconds)}`, 72, 402);
-      if (this.hintUsed) ctx.fillText('Hint used', 72, 446);
-      ctx.font = 'italic 27px Georgia';
-      ctx.fillText(`${titleCase(favorite)}’s lantern is lit.`, 72, 475);
+        ctx.fillText(`Time ${formatElapsed(elapsedSeconds)}`, 72, 432, 540);
       const image = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, 'image/png')
       );
@@ -561,13 +579,15 @@ export class Results {
       this.edition,
       this.undos,
       this.opening,
-      this.stats
+      this.stats,
+      this.hintUsed
     );
+    const shareText = this.identity ? `${this.identity.title}\n${text}` : text;
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Last One Out',
-          text,
+          text: shareText,
           ...(this.url ? { url: this.url } : {}),
         });
         return;
@@ -576,7 +596,7 @@ export class Results {
           return;
       }
     }
-    await this.copyText(text, 'Copied. No puzzle spoilers.');
+    await this.copyText(shareText, 'Copied. No puzzle spoilers.');
   }
 
   private async copyText(text: string, confirmation: string): Promise<void> {

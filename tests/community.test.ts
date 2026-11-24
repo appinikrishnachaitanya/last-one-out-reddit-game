@@ -10,8 +10,11 @@ import {
 } from '../src/server/core/attempts.ts';
 import { complete } from '../src/server/core/completions.ts';
 import {
+  communityReplayKey,
+  readCommunityReplay,
   readCommunity,
   submitCommunity,
+  submitCommunityVote,
 } from '../src/server/core/community-board.ts';
 import type { CommunityStorage } from '../src/server/core/community-board.ts';
 import { rescueShare } from '../src/shared/daily.ts';
@@ -80,9 +83,10 @@ test('community crossing handles failed moves, repeat turns, concurrent commits 
   const data = new Map<string, string>();
   const storage: CommunityStorage = {
     get: async (key) => data.get(key),
-    commit: async (key, expected, value) => {
+    commit: async (key, expected, value, archive) => {
       if (data.get(key) !== expected) return false;
       data.set(key, value);
+      if (archive) data.set(archive.key, archive.value);
       return true;
     },
   };
@@ -122,8 +126,104 @@ test('community crossing handles failed moves, repeat turns, concurrent commits 
     'playerE',
     'playerF',
   ]);
+  assert.equal(rescued.replayAvailable, true);
+  const key = communityReplayKey(post, edition, 5);
+  const raw = data.get(key)!;
+  const stored = JSON.parse(raw);
+  assert.equal(stored.boardVersion, edition.boardVersion);
+  assert.deepEqual(
+    stored.moves.map(({ userId }: { userId: string }) => userId),
+    [winner, 'playerD', 'playerE', 'playerF']
+  );
+  assert.ok(
+    stored.moves.every(({ timestamp }: { timestamp: string }) =>
+      Number.isFinite(Date.parse(timestamp))
+    )
+  );
+  for (let revision = 5; revision < 17; revision++) {
+    await turn(`later${revision}`, 'turtle', revision);
+  }
+  const replay = await readCommunityReplay(storage, post, edition);
+  assert.deepEqual(
+    replay?.moves.map(({ animal }) => animal),
+    sequence
+  );
+  assert.equal(data.get(key), raw);
+  assert.ok(replay?.moves.every((move) => !('userId' in move)));
+  data.set(key, 'invalid json');
+  await assert.rejects(readCommunityReplay(storage, post, edition));
+  assert.equal((await readCommunity(storage, post, edition)).moveNumber, 17);
   assert.equal(
     (await readCommunity(storage, 't3_other', edition)).moveNumber,
     0
   );
+});
+
+test('advisory votes replace atomically, reject blocked and stale choices, and clear after a move', async () => {
+  const data = new Map<string, string>();
+  const storage: CommunityStorage = {
+    get: async (key) => data.get(key),
+    commit: async (key, expected, value) => {
+      if (data.get(key) !== expected) return false;
+      data.set(key, value);
+      return true;
+    },
+  };
+  const post = 't3_vote';
+  let time = 10_000;
+  const vote = (
+    account: string,
+    animal: string,
+    moveNumber = 0,
+    attempts = 0
+  ) =>
+    submitCommunityVote(
+      storage,
+      post,
+      edition,
+      account,
+      { animal, moveNumber, attempts },
+      new Date(time)
+    );
+  await assert.rejects(vote('', 'fox'), { status: 403 });
+  await assert.rejects(
+    vote('spectator', 'badger'),
+    /Fox is still on this path/
+  );
+  const [first, second] = await Promise.all([
+    vote('spectator', 'fox'),
+    vote('another', 'fox'),
+  ]);
+  assert.equal(first.changed && second.changed, true);
+  assert.equal((await vote('spectator', 'fox')).changed, false);
+  await assert.rejects(vote('spectator', 'turtle'), { status: 429 });
+  time += 1_000;
+  const updated = await vote('spectator', 'turtle');
+  assert.deepEqual(updated.state.votes?.tally, { turtle: 1, fox: 1 });
+  assert.equal(updated.state.votes?.own, 'turtle');
+  assert.equal(
+    (await readCommunity(storage, post, edition, 'visitor')).votes?.own,
+    undefined
+  );
+  await vote('third', 'fox');
+  const moved = await submitCommunity(
+    storage,
+    post,
+    edition,
+    { id: 'player', username: 'Player' },
+    { animal: 'turtle', moveNumber: 0 }
+  );
+  assert.equal(moved.voteOutcome, 'different');
+  assert.deepEqual(moved.votes?.tally, {});
+  await assert.rejects(vote('spectator', 'fox'), { status: 409 });
+  await vote('spectator', 'fox', 1, 1);
+  const agreed = await submitCommunity(
+    storage,
+    post,
+    edition,
+    { id: 'next', username: 'Next' },
+    { animal: 'fox', moveNumber: 1 }
+  );
+  assert.equal(agreed.voteOutcome, 'chosen');
+  assert.deepEqual(agreed.votes?.tally, {});
 });

@@ -3,7 +3,7 @@ import { isT3 } from '@devvit/web/shared';
 import type { Edition } from '../shared/daily';
 import { bindingFor, editionFromPost } from './core/schedule';
 import { createOrRetrievePost, recoverPost } from './core/posts';
-export async function requireModerator(): Promise<void> {
+export async function requirePostModerator(): Promise<void> {
   if (!context.userId || !context.username)
     throw new Error('Sign in as a moderator to manage daily posts');
   const mods = await reddit
@@ -19,6 +19,9 @@ export async function requireModerator(): Promise<void> {
         mod.moderatorInfo.modPermissions.includes('posts'))
   );
   if (!authorized) throw new Error('Moderator post permissions are required');
+}
+export async function requireModerator(): Promise<void> {
+  await requirePostModerator();
   const info = await reddit.getSubredditInfoByName(context.subredditName);
   const smallPublicTest =
     info.type === 'public' &&

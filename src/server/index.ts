@@ -1,3 +1,4 @@
+import { validGoalTarget } from './core/daily-goal';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import {
@@ -7,10 +8,11 @@ import {
   redis,
   reddit,
   realtime,
+  settings,
 } from '@devvit/web/server';
 import { telemetry } from '@devvit/analytics/server/reddit';
 import { createApi } from './app';
-import { createPost, readBoundPost } from './platform';
+import { createPost, readBoundPost, requirePostModerator } from './platform';
 import { menu } from './routes/menu';
 import { telemetryRoutes } from './routes/telemetry';
 import { isT3 } from '@devvit/web/shared';
@@ -23,6 +25,11 @@ app.route(
   createApi({
     store: redis,
     mode: 'reddit',
+    canReviewRemix: async () => {
+      await requirePostModerator();
+      return true;
+    },
+    dailyGoalTarget: () => settings.get('dailyGoalTarget'),
     now: () => new Date(),
     getContext: async () => ({
       userId: context.userId,
@@ -32,7 +39,7 @@ app.route(
     readPost: readBoundPost,
     communityStorage: {
       get: (key) => redis.get(key),
-      commit: async (key, expected, value) => {
+      commit: async (key, expected, value, archive) => {
         const tx = await redis.watch(key);
         let started = false;
         try {
@@ -43,8 +50,12 @@ app.route(
           await tx.multi();
           started = true;
           await tx.set(key, value);
+          if (archive) await tx.set(archive.key, archive.value);
           const replies = await tx.exec();
-          return replies.length === 1 && replies[0] != null;
+          return (
+            replies.length === (archive ? 2 : 1) &&
+            replies.every((reply) => reply != null)
+          );
         } catch (error) {
           if (started) await tx.discard().catch(() => undefined);
           else await tx.unwatch().catch(() => undefined);
@@ -124,6 +135,18 @@ app.route(
 );
 app.route('/api/telemetry', telemetryRoutes);
 app.route('/internal/menu', menu);
+app.post('/internal/settings/daily-goal-target', async (c) => {
+  const payload: unknown = await c.req.json().catch(() => null);
+  const value =
+    payload && typeof payload === 'object' && 'value' in payload
+      ? payload.value
+      : undefined;
+  return c.json(
+    validGoalTarget(value)
+      ? { success: true }
+      : { success: false, error: 'Enter a whole number from 1 to 10,000.' }
+  );
+});
 app.post('/internal/cron/daily', async (c) => {
   try {
     const subreddit = await reddit.getSubredditInfoByName(

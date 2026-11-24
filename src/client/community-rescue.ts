@@ -3,7 +3,11 @@ import {
   disconnectRealtime,
   isRealtimeConnected,
 } from '@devvit/web/client';
-import type { CommunityBoard, CommunityMove } from '../shared/community-board';
+import type {
+  CommunityBoard,
+  CommunityMove,
+  CommunityVotes,
+} from '../shared/community-board';
 import { titleCase } from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
 import type { DailyApi } from './daily-api';
@@ -29,11 +33,14 @@ export class CommunityRescue {
   private generation = 0;
   private poll?: number;
   private channel: string | undefined;
+  private pendingVote?: { revision: number; animal: AnimalId };
+  voteFeedback = '';
 
   constructor(
     private api: DailyApi,
     private update: (state: CommunityBoard) => void,
-    private notice: (message: string) => void
+    private notice: (message: string) => void,
+    private updateVotes: () => void
   ) {}
 
   open(): void {
@@ -56,6 +63,8 @@ export class CommunityRescue {
     this.active = false;
     this.generation++;
     this.state = undefined;
+    delete this.pendingVote;
+    this.voteFeedback = '';
     this.reading = false;
     this.refreshQueued = false;
     this.lastRefresh = 0;
@@ -65,9 +74,17 @@ export class CommunityRescue {
   }
 
   private apply(state: CommunityBoard): void {
+    if (
+      this.state &&
+      (state.moveNumber < this.state.moveNumber ||
+        (state.moveNumber === this.state.moveNumber &&
+          (state.votes?.version ?? 0) < (this.state.votes?.version ?? 0)))
+    )
+      return;
     const changed =
       this.state?.moveNumber !== state.moveNumber ||
       this.state.canMove !== state.canMove;
+    if (changed) this.voteFeedback = '';
     this.state = state;
     if (!this.channel) {
       try {
@@ -87,6 +104,7 @@ export class CommunityRescue {
       }
     }
     if (changed) this.update(state);
+    this.updateVotes();
     this.notice(
       state.signedIn
         ? state.canMove
@@ -126,6 +144,61 @@ export class CommunityRescue {
       if (this.generation === current) {
         this.reading = false;
         if (this.refreshQueued && !this.moving) void this.refresh();
+      }
+    }
+  }
+
+  get voting(): boolean {
+    return (
+      this.pendingVote?.revision === this.state?.moveNumber &&
+      Boolean(this.pendingVote)
+    );
+  }
+
+  displayedVotes(): CommunityVotes | undefined {
+    const votes = this.state?.votes;
+    if (!votes || !this.voting || !this.pendingVote) return votes;
+    const { animal } = this.pendingVote;
+    if (animal === votes.own) return votes;
+    const tally = { ...votes.tally };
+    if (votes.own) tally[votes.own] = Math.max(0, (tally[votes.own] ?? 0) - 1);
+    tally[animal] = (tally[animal] ?? 0) + 1;
+    return { version: votes.version, tally, own: animal };
+  }
+
+  async vote(animal: AnimalId): Promise<void> {
+    const state = this.state;
+    if (
+      !this.active ||
+      this.moving ||
+      this.pendingVote ||
+      !state?.signedIn ||
+      !state.votes ||
+      state.votes.own === animal
+    )
+      return;
+    const current = this.generation;
+    this.pendingVote = { revision: state.moveNumber, animal };
+    this.voteFeedback = '';
+    this.updateVotes();
+    try {
+      const updated = (await this.api.request('community/vote', {
+        animal,
+        moveNumber: state.moveNumber,
+        attempts: state.attempts,
+      })) as CommunityBoard;
+      if (current === this.generation && !this.moving) this.apply(updated);
+    } catch (error) {
+      if (current === this.generation)
+        this.voteFeedback =
+          error instanceof Error
+            ? error.message
+            : 'Could not save your vote. Try again.';
+    } finally {
+      if (current === this.generation) {
+        delete this.pendingVote;
+        this.updateVotes();
+        void this.refresh();
       }
     }
   }

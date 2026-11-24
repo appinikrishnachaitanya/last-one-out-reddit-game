@@ -62,6 +62,17 @@
   "dev": {
     "subreddit": "last_one_out_app_dev"
   },
+  "settings": {
+    "subreddit": {
+      "dailyGoalTarget": {
+        "type": "number",
+        "label": "Daily rescue goal",
+        "defaultValue": 4,
+        "helpText": "Verified Solo rescues needed each day. A target stays fixed once the UTC daily goal opens.",
+        "validationEndpoint": "/internal/settings/daily-goal-target"
+      }
+    }
+  },
   "scheduler": {
     "tasks": {
       "daily": {

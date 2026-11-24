@@ -1,7 +1,11 @@
+import { remixRoutes } from './routes/remix.ts';
+import { goldenLeavesKey, readDailyGoal } from './core/daily-goal.ts';
 import {
   CommunityMoveError,
   readCommunity,
+  readCommunityReplay,
   submitCommunity,
+  submitCommunityVote,
 } from './core/community-board.ts';
 import type { CommunityStorage } from './core/community-board.ts';
 import {
@@ -37,6 +41,8 @@ export type Store = CompletionStore & {
 export type Dependencies = {
   store: Store;
   mode: 'demo' | 'reddit';
+  canReviewRemix?: () => Promise<boolean>;
+  dailyGoalTarget?: () => Promise<unknown>;
   now: () => Date;
   getContext: (c: HonoContext) => Promise<GameContext>;
   readPost: (postId: string) => Promise<unknown>;
@@ -61,6 +67,7 @@ function precedingEdition(edition: Edition): Edition | undefined {
 }
 export function createApi(deps: Dependencies) {
   const api = new Hono();
+  api.route('/remix', remixRoutes(deps));
   async function requestEdition(c: HonoContext) {
     const ctx = await deps.getContext(c);
     if (!ctx.postId) return { ctx, edition: undefined };
@@ -74,6 +81,25 @@ export function createApi(deps: Dependencies) {
       ? { ...saved, favorite: preference }
       : saved;
   };
+  function goalFor(edition: Edition, userId?: string) {
+    return readDailyGoal(deps.store, edition, deps.dailyGoalTarget, userId);
+  }
+  api.get('/daily-goal', async (c) => {
+    try {
+      if (deps.mode !== 'reddit' || !deps.dailyGoalTarget)
+        return c.json({ status: 'unavailable' }, 404);
+      const today = editionAt(deps.now());
+      if (!today) return c.json({ status: 'empty' });
+      const { userId } = await deps.getContext(c);
+      c.header('Cache-Control', 'private, no-store');
+      return c.json(await goalFor(today, userId));
+    } catch {
+      return c.json(
+        { error: 'The daily goal is temporarily unavailable.' },
+        503
+      );
+    }
+  });
   api.get('/crossings', async (c) => {
     const now = deps.now();
     const today = now.toISOString().slice(0, 10);
@@ -119,6 +145,12 @@ export function createApi(deps: Dependencies) {
         /* obsolete edition */
       }
     }
+    const leaves =
+      deps.dailyGoalTarget && userId
+        ? await deps.store
+            .hGetAll(goldenLeavesKey)
+            .catch(() => ({}) as Record<string, string>)
+        : {};
     const cards = userId
       ? await Promise.all(
           [...cardEditions.values()].map(async (edition) => {
@@ -131,6 +163,10 @@ export function createApi(deps: Dependencies) {
                   favorite: record.favorite,
                   puzzleId: edition.puzzleId,
                   earnedAt: record.completedAt,
+                  ...(leaves[edition.date] &&
+                  record.completedAt.slice(0, 10) === edition.date
+                    ? { goldenLeaf: true }
+                    : {}),
                 }
               : null;
           })
@@ -207,6 +243,8 @@ export function createApi(deps: Dependencies) {
         edition,
         completion,
         attemptStats: completion ? todayStats : undefined,
+        dailyGoalEnabled:
+          deps.mode === 'reddit' && Boolean(deps.dailyGoalTarget),
         communityEnabled:
           deps.mode === 'reddit' && Boolean(deps.communityStorage),
         ...(banner && !completion
@@ -277,12 +315,13 @@ export function createApi(deps: Dependencies) {
       if (!edition)
         return c.json({ error: 'This post has no scheduled edition' }, 400);
       const input: unknown = await c.req.json();
+      const now = deps.now();
       const result = await complete(
         deps.store,
         edition,
         ctx.userId,
         input,
-        deps.now(),
+        now,
         deps.mode === 'reddit' && isObject(input)
           ? await readFirstMove(
               deps.store,
@@ -333,7 +372,14 @@ export function createApi(deps: Dependencies) {
         deps.mode === 'reddit'
           ? await readAttemptStats(deps.store, edition).catch(() => undefined)
           : undefined;
-      return c.json({ ...result, completion, telemetry, attemptStats });
+      const goal =
+        deps.mode === 'reddit' &&
+        deps.dailyGoalTarget &&
+        edition.date === now.toISOString().slice(0, 10) &&
+        completion.completedAt.slice(0, 10) === edition.date
+          ? await goalFor(edition, ctx.userId).catch(() => undefined)
+          : undefined;
+      return c.json({ ...result, completion, telemetry, attemptStats, goal });
     } catch (error) {
       return c.json(
         {
@@ -461,6 +507,68 @@ export function createApi(deps: Dependencies) {
       );
     }
   });
+  api.get('/community/replay', async (c) => {
+    try {
+      const { ctx, edition } = await requestEdition(c);
+      if (
+        deps.mode !== 'reddit' ||
+        !deps.communityStorage ||
+        !ctx.postId ||
+        !edition
+      )
+        return c.json(
+          { error: 'Open the Reddit daily to watch a replay.' },
+          404
+        );
+      const replay = await readCommunityReplay(
+        deps.communityStorage,
+        ctx.postId,
+        edition
+      );
+      if (!replay)
+        return c.json({ error: 'No shared rescue has finished yet.' }, 404);
+      c.header('Cache-Control', 'private, no-store');
+      return c.json(replay);
+    } catch {
+      return c.json(
+        {
+          error:
+            'This replay is unavailable. You can still play the shared crossing.',
+        },
+        503
+      );
+    }
+  });
+  api.post('/community/vote', async (c) => {
+    try {
+      const { ctx, edition } = await requestEdition(c);
+      if (
+        deps.mode !== 'reddit' ||
+        !deps.communityStorage ||
+        !ctx.postId ||
+        !edition
+      )
+        return c.json({ error: 'Open the Reddit daily to vote.' }, 404);
+      if (!ctx.userId) return c.json({ error: 'Sign in to vote.' }, 403);
+      const { state, changed } = await submitCommunityVote(
+        deps.communityStorage,
+        ctx.postId,
+        edition,
+        ctx.userId,
+        await c.req.json(),
+        deps.now()
+      );
+      if (changed)
+        await deps
+          .notifyCommunity?.(state.channel, state.moveNumber)
+          .catch(() => undefined);
+      return c.json(state);
+    } catch (error) {
+      if (error instanceof CommunityMoveError)
+        return c.json({ error: error.message }, error.status);
+      return c.json({ error: 'Could not save your vote. Try again.' }, 503);
+    }
+  });
   api.post('/community', async (c) => {
     try {
       const { ctx, edition } = await requestEdition(c);
@@ -481,7 +589,8 @@ export function createApi(deps: Dependencies) {
         ctx.postId,
         edition,
         { id: ctx.userId, username: ctx.username },
-        await c.req.json()
+        await c.req.json(),
+        deps.now()
       );
       await deps
         .notifyCommunity?.(state.channel, state.moveNumber)
@@ -511,7 +620,8 @@ export function createApi(deps: Dependencies) {
         edition,
         saved.personalUndos,
         saved.firstMove ?? saved.opening,
-        stats
+        stats,
+        saved.hintUsed === true
       );
       if ((await deps.store.hSetNX(key, ctx.userId, 'pending')) !== 1) {
         const status = await deps.store.hGet(key, ctx.userId);

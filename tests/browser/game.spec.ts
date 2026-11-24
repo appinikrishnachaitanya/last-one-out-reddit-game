@@ -227,6 +227,15 @@ test('all first three editions solve, favorite art changes, saved result survive
     );
     await page.reload();
     await expect(page.locator('#result')).toBeVisible();
+    if (title === 'Moonroot Crossing') {
+      await expect(page.locator('#result-title')).toHaveText('Bridge Keeper');
+      await page.locator('#community-details summary').click();
+      await expect(page.locator('#identity-explanation')).toBeVisible();
+      await expect(page.locator('#rescue-hero')).toContainText(
+        'Hero Who Stayed'
+      );
+      await page.locator('#community-details summary').click();
+    }
     await expect(page.locator('#board-title')).toHaveText(title);
     await expect(page.locator('#rescue-count')).toHaveText('4 / 4');
     await expect(page.locator('#card-animal')).toContainText('Rabbit');
@@ -245,6 +254,7 @@ test('all first three editions solve, favorite art changes, saved result survive
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     expect(copied).toContain('Rescued: 4/4');
     expect(copied).not.toContain('→');
+    expect(copied).not.toContain('Hero Who Stayed');
     expect(copied).toMatch(/First move: (Fox|Rabbit)/);
     await page.screenshot({
       path: `artifacts/${id}-saved.png`,
@@ -495,7 +505,8 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
     createApi({
       store,
       mode: 'reddit',
-      now: () => new Date('2026-11-19T00:01:00Z'),
+      now: () => new Date('2026-11-18T23:01:00Z'),
+      dailyGoalTarget: async () => 1,
       getContext: async () => ({ userId: 't2_judge', postId: 't3_judgepost' }),
       readPost: async () => bindingFor(edition),
       endJourney: async () => {
@@ -553,6 +564,7 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   await page.goto('http://127.0.0.1:5175/game.html');
   await expect(page.locator('#board-title')).toHaveText('Moonroot Crossing');
   await expect(page.locator('[data-animal=turtle]')).toBeEnabled();
+  await expect(page.locator('#daily-goal')).toContainText('0/1');
   await expect(page.locator('#preview-picker')).toBeHidden();
   await expect(page.locator('#comparison')).toBeHidden();
   await send(page, 'turtle');
@@ -565,6 +577,12 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   for (const id of ['fox', 'rabbit', 'turtle', 'badger']) await send(page, id);
   await expect(page.locator('#save-status')).toContainText(
     'validated and saved'
+  );
+  await expect(page.locator('#daily-goal')).toContainText(
+    '1/1 · Streak: 1 day'
+  );
+  await expect(page.locator('#goal-toast')).toContainText(
+    'You were rescuer #1 · Goal complete!'
   );
   await expect(page.locator('#card-undos')).toHaveText('1 undo');
   await expect(page.locator('#clean-badge')).toHaveText('A Rank');
@@ -585,6 +603,9 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   await page.reload();
   await expect(page.locator('#result')).toBeVisible();
   await expect(page.locator('#card-animal')).toContainText('Badger');
+  await page.locator('#past-crossings summary').click();
+  await expect(page.locator('#card-collection')).toContainText('Golden Leaf');
+  await page.locator('#past-crossings summary').click();
   expect(completionRequests).toBe(1);
   await page.locator('#copy-result').click();
   await expect(page.locator('#copy-status')).toContainText('Copied');
@@ -1068,9 +1089,10 @@ test('Community Rescue shows yesterday, prevents a repeat turn, and preserves th
       store: new MemoryStore(),
       communityStorage: {
         get: async (key) => sharedRows.get(key),
-        commit: async (key, previous, next) => {
+        commit: async (key, previous, next, archive) => {
           if (sharedRows.get(key) !== previous) return false;
           sharedRows.set(key, next);
+          if (archive) sharedRows.set(archive.key, archive.value);
           return true;
         },
       },
@@ -1131,6 +1153,29 @@ test('Community Rescue shows yesterday, prevents a repeat turn, and preserves th
     'Rabbit lost their way home. A fresh attempt is ready!'
   );
   await expect(page.locator('#shared-status')).toContainText('Waiting');
+  const blockedVote = page.locator('[data-vote=badger]');
+  await expect(blockedVote).toHaveAttribute('aria-disabled', 'true');
+  await expect(blockedVote).toHaveAttribute(
+    'title',
+    'Fox is still on this path'
+  );
+  let releaseVote = () => {};
+  const pausedVote = new Promise<void>((resolve) => {
+    releaseVote = resolve;
+  });
+  await page.route('**/api/community/vote', async (route) => {
+    await pausedVote;
+    await route.fallback();
+  });
+  const response = page.waitForResponse('**/api/community/vote');
+  const foxVote = page.locator('[data-vote=fox]');
+  // A signed-in player whose turn is over can vote while the request is pending.
+  await foxVote.click();
+  await expect(foxVote).toHaveAttribute('aria-pressed', 'true');
+  await expect(foxVote).toContainText('1');
+  releaseVote();
+  expect((await response).ok()).toBe(true);
+
   await page.locator('#shared-history summary').click();
   await expect(page.locator('#shared-log')).toContainText('u/Alder');
   await app.request('/api/community', {
@@ -1142,6 +1187,80 @@ test('Community Rescue shows yesterday, prevents a repeat turn, and preserves th
   await expect(page.locator('#feedback')).toContainText(
     'u/Birch brought Fox home'
   );
+  await expect(page.locator('#vote-feedback')).toContainText(
+    'Community’s pick was chosen.'
+  );
+  await expect(foxVote).toBeHidden();
+  await expect(page.locator('#replay-empty')).toBeVisible();
+  for (const [animal, moveNumber, player] of [
+    ['rabbit', 2, 'Cedar'],
+    ['turtle', 3, 'Dawn'],
+    ['badger', 4, 'Elm'],
+  ] as const) {
+    const response = await app.request('/api/community', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-test-player': player },
+      body: JSON.stringify({ animal, moveNumber }),
+    });
+    expect(response.ok).toBe(true);
+  }
+  await page.locator('#shared-refresh').click();
+  await page.locator('#watch-replay').click();
+  await expect(page.locator('#replay-warning')).toBeVisible();
+  await expect(page.locator('#replay-controls')).toBeHidden();
+  await page.locator('#replay-warning button[value=cancel]').click();
+  await expect(page.locator('#replay-controls')).toBeHidden();
+  await page.locator('#watch-replay').click();
+  await page.locator('#replay-warning button[value=watch]').click();
+  await expect(page.locator('#replay-controls')).toBeVisible();
+  await expect(page.locator('#replay-play')).toBeHidden();
+  await expect(page.locator('#replay-progress')).toHaveAttribute('value', '0');
+  await page.locator('#replay-next').click();
+  await expect(page.locator('#replay-caption')).toContainText(
+    '1/4 · u/Birch moved Fox home'
+  );
+  await page.locator('#replay-prev').click();
+  await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
+  const live = await app.request('/api/community', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-test-player': 'Fawn' },
+    body: JSON.stringify({ animal: 'fox', moveNumber: 5 }),
+  });
+  expect(live.ok).toBe(true);
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event('visibilitychange'))
+  );
+  for (let move = 0; move < 4; move++)
+    await page.locator('#replay-next').click();
+  await expect(page.locator('#replay-caption')).toContainText(
+    'Rescued together by 4 Redditors in 4 moves'
+  );
+  await expect(page.locator('#replay-caption')).toContainText('u/Elm');
+  await page.locator('#replay-close').click();
+  await expect(page.locator('#replay-controls')).toBeHidden();
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.locator('#watch-replay').click();
+  await page.locator('#replay-warning button[value=watch]').click();
+  await expect(page.locator('#replay-play')).toHaveText('Pause');
+  await page.locator('#replay-play').click();
+  await expect(page.locator('#replay-play')).toHaveText('Play');
+  await page.locator('#replay-play').click();
+  await expect(page.locator('#replay-caption')).toContainText(
+    'Rescued together by 4 Redditors',
+    { timeout: 7000 }
+  );
+  await page.locator('#replay-close').click();
+  const replayKey = [...sharedRows.keys()].find((key) =>
+    key.endsWith(':replay:5')
+  )!;
+  sharedRows.set(replayKey, 'corrupted');
+  await page.locator('#watch-replay').click();
+  await page.locator('#replay-warning button[value=watch]').click();
+  await expect(page.locator('#replay-feedback')).toContainText(
+    'You can still play the shared crossing'
+  );
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
   await page.getByRole('button', { name: 'Solo Rescue' }).click();
   await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
   await expect(page.locator('#undo')).toBeEnabled();
@@ -1205,4 +1324,84 @@ test('a Challenge edition fits the inline frame and can be completed', async ({
   await expect(page.locator('#save-status')).toContainText(
     'validated and saved'
   );
+});
+
+test('Remix Sunday rejects a broken crossing and lets a moderator test and export an approved draft', async ({
+  page,
+}) => {
+  const { createApi } = await import('../../src/server/app.ts');
+  const { MemoryStore } = await import('../../src/server/core/memory-store.ts');
+  const { Hono } = await import('hono');
+  const drafts = new Map<string, string>();
+  const api = new Hono().route(
+    '/api',
+    createApi({
+      mode: 'reddit',
+      store: new MemoryStore(),
+      now: () => new Date('2026-11-24'),
+      readPost: async () => undefined,
+      getContext: async () => ({
+        userId: 't2_creator',
+        username: 'creator',
+        postId: 't3_daily',
+      }),
+      canReviewRemix: async () => true,
+      communityStorage: {
+        get: async (key) => drafts.get(key),
+        commit: async (key, expected, value) => {
+          if (drafts.get(key) !== expected) return false;
+          drafts.set(key, value);
+          return true;
+        },
+      },
+    })
+  );
+  await page.setViewportSize({ width: 320, height: 512 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.route('**/api/remix**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const result = await api.request(url.pathname + url.search, {
+      method: request.method(),
+      body: request.postData(),
+    });
+    await route.fulfill({ status: result.status, json: await result.json() });
+  });
+  await open(page);
+  await page.locator('#help').click();
+  await page.getByRole('button', { name: 'Remix Sunday' }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'Remix Sunday' })
+  ).toBeVisible();
+  await page.getByLabel('Slot 1 direction').selectOption('N');
+  await page.locator('#remix-submit').click();
+  await expect(page.locator('#remix-status')).toContainText('Try changing');
+  await page.getByLabel('Slot 1 direction').selectOption('W');
+  await page.locator('#remix-submit').click();
+  await expect(page.locator('#remix-status')).toContainText('Draft submitted');
+  await page.getByRole('button', { name: 'Load review queue' }).click();
+  await page.getByRole('button', { name: /Preview u\/creator/ }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Sunday Remix by u/creator' })
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Test play', exact: true }).click();
+  for (const animal of ['Fox', 'Rabbit', 'Turtle', 'Badger'])
+    await page
+      .getByRole('button', { name: new RegExp(`^Send ${animal}`) })
+      .click();
+  await expect(page.locator('#remix-status')).toHaveText(
+    'Everyone home. Test play complete.'
+  );
+  await page.getByRole('button', { name: 'Exit test play' }).click();
+  await page.getByRole('button', { name: 'Approve', exact: true }).click();
+  await expect(page.locator('#remix-status')).toHaveText(
+    'Approved for manual publication.'
+  );
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download approved board' }).click();
+  expect((await download).suggestedFilename()).toMatch(
+    /^remix-[a-f0-9]{64}\.json$/
+  );
+  await page.getByRole('button', { name: '← Close' }).click();
+  await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
 });

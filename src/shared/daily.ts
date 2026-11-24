@@ -1,3 +1,4 @@
+import { rescueIdentity } from './rescue-identity.ts';
 import { boardById } from './boards.ts';
 import { isAnimalId, titleCase, validateSolution } from './engine.ts';
 import type { AnimalId } from './engine.ts';
@@ -17,6 +18,8 @@ export type Completion = Readonly<{
   firstMove?: AnimalId;
   personalUndos: number;
   hintUsed?: boolean;
+  recovered?: boolean;
+  identity?: ReturnType<typeof rescueIdentity>;
   elapsedSeconds?: number;
   openingTrap?: AnimalId;
   favorite: AnimalId;
@@ -35,21 +38,23 @@ export type AttemptStats = {
   totalSolves: number;
   perfectRuns: number;
 };
-export function rescueRank(undos: number): 'S' | 'A' | 'B' {
-  return undos === 0 ? 'S' : undos <= 2 ? 'A' : 'B';
+export function rescueRank(undos: number, hintUsed = false): 'S' | 'A' | 'B' {
+  const assists = undos + Number(hintUsed);
+  return assists === 0 ? 'S' : assists <= 2 ? 'A' : 'B';
 }
 export function rescueShare(
   edition: Edition,
   undos: number,
   opening?: AnimalId,
-  stats?: AttemptStats
+  stats?: AttemptStats,
+  hintUsed = false
 ): string {
   const total = boardById(edition.puzzleId, edition.boardVersion).animals
     .length;
   const percent = opening && openingPercent(stats, opening);
   const club =
     typeof percent === 'number' && percent > 0 ? ` (${percent}% club)` : '';
-  return `Last One Out - ${edition.date} · Rank ${rescueRank(undos)}\nRescued: ${total}/${total} | Undos: ${undos} | First move: ${opening ? titleCase(opening) : '—'}${club}\nCan Reddit rescue today's Community Crossing?`;
+  return `Last One Out - ${edition.date} · Rank ${rescueRank(undos, hintUsed)}\nRescued: ${total}/${total} | Undos: ${undos} | First move: ${opening ? titleCase(opening) : '—'}${club}\nCan Reddit rescue today's Community Crossing?`;
 }
 export type PreviousRescues = Pick<
   AttemptStats,
@@ -93,6 +98,7 @@ export type Init =
       previousRescues?: PreviousRescues;
       attemptStats?: AttemptStats | undefined;
       communityEnabled?: boolean;
+      dailyGoalEnabled?: boolean;
       shareStatus?: string;
       refillAt?: number;
       hintSync?: boolean;
@@ -101,12 +107,44 @@ export type Init =
       mode: 'reddit' | 'demo';
     }
   | { status: 'empty'; message: string; mode: 'reddit' | 'demo' };
+export type DailyGoal = {
+  date: string;
+  count: number;
+  target: number;
+  reached: boolean;
+  position: number;
+  streak: number;
+  best: number;
+};
+export function parseDailyGoal(value: unknown): DailyGoal | undefined {
+  if (
+    !isObject(value) ||
+    typeof value.date !== 'string' ||
+    typeof value.count !== 'number' ||
+    typeof value.target !== 'number' ||
+    typeof value.position !== 'number' ||
+    typeof value.streak !== 'number' ||
+    typeof value.best !== 'number' ||
+    typeof value.reached !== 'boolean'
+  )
+    return undefined;
+  return {
+    date: value.date,
+    count: value.count,
+    target: value.target,
+    position: value.position,
+    streak: value.streak,
+    best: value.best,
+    reached: value.reached,
+  };
+}
 export type SaveResult = {
   validated: true;
   firstCompletion: boolean;
   completion: Completion;
   community: Community;
   attemptStats?: AttemptStats | undefined;
+  goal?: DailyGoal | undefined;
   telemetry: 'not-requested' | 'attempted' | 'unavailable';
 };
 export const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -170,6 +208,14 @@ export function parseCompletion(value: unknown, edition: Edition): Completion {
     opening: value.opening,
     ...(isAnimalId(value.firstMove) ? { firstMove: value.firstMove } : {}),
     personalUndos: value.personalUndos,
+    ...(value.recovered === true ? { recovered: true } : {}),
+    identity: rescueIdentity(
+      boardById(edition.puzzleId, edition.boardVersion),
+      value.sequence,
+      {
+        recovered: value.recovered === true || isAnimalId(value.openingTrap),
+      }
+    ),
     ...(value.hintUsed === true ? { hintUsed: true } : {}),
     ...(validElapsed(value.elapsedSeconds)
       ? { elapsedSeconds: value.elapsedSeconds }
@@ -285,6 +331,7 @@ export function parseInit(value: unknown): Init {
       : {}),
     ...(typeof value.refillAt === 'number' ? { refillAt: value.refillAt } : {}),
     hintSync: value.hintSync === true,
+    dailyGoalEnabled: value.dailyGoalEnabled === true,
     commentsUrl:
       typeof value.commentsUrl === 'string' ? value.commentsUrl : null,
   };
@@ -302,6 +349,7 @@ export function parseSave(value: unknown, edition: Edition): SaveResult {
     completion: parseCompletion(value.completion, edition),
     community: parseCommunity(value.community),
     attemptStats: parseAttemptStats(value.attemptStats),
+    goal: parseDailyGoal(value.goal),
     telemetry:
       value.telemetry === 'attempted'
         ? 'attempted'
