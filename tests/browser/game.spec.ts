@@ -1332,6 +1332,8 @@ test('Remix Sunday rejects a broken crossing and lets a moderator test and expor
   const { createApi } = await import('../../src/server/app.ts');
   const { MemoryStore } = await import('../../src/server/core/memory-store.ts');
   const { Hono } = await import('hono');
+  const { bindingFor, EDITIONS } =
+    await import('../../src/server/core/schedule.ts');
   const drafts = new Map<string, string>();
   const api = new Hono().route(
     '/api',
@@ -1339,7 +1341,7 @@ test('Remix Sunday rejects a broken crossing and lets a moderator test and expor
       mode: 'reddit',
       store: new MemoryStore(),
       now: () => new Date('2026-11-24'),
-      readPost: async () => undefined,
+      readPost: async () => bindingFor(EDITIONS[0]!),
       getContext: async () => ({
         userId: 't2_creator',
         username: 'creator',
@@ -1358,17 +1360,18 @@ test('Remix Sunday rejects a broken crossing and lets a moderator test and expor
   );
   await page.setViewportSize({ width: 320, height: 512 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.route('**/api/remix**', async (route) => {
+  await page.route('**/api/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const result = await api.request(url.pathname + url.search, {
       method: request.method(),
       body: request.postData(),
     });
-    await route.fulfill({ status: result.status, json: await result.json() });
+    await route.fulfill({ status: result.status, body: await result.text() });
   });
-  await open(page);
-  const dailyProgress = await page.locator('#rescue-count').innerText();
+  await page.goto('http://127.0.0.1:5175/game.html');
+  await send(page, 'fox');
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
   await page.locator('#help').click();
   await page.getByRole('button', { name: 'Remix Sunday' }).click();
   await expect(
@@ -1404,5 +1407,5 @@ test('Remix Sunday rejects a broken crossing and lets a moderator test and expor
     /^remix-[a-f0-9]{64}\.json$/
   );
   await page.getByRole('button', { name: '← Close' }).click();
-  await expect(page.locator('#rescue-count')).toHaveText(dailyProgress);
+  await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
 });

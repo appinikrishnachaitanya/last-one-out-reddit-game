@@ -765,6 +765,7 @@ function refresh(): void {
   game.scale.updateBounds();
 }
 function choose(id: AnimalId): void {
+  if (document.querySelector('#remix-dialog[open]')) return;
   if (
     tourActive &&
     (id !== 'turtle' || tourPhase === 'undo' || tourPhase === 'finish')
@@ -820,7 +821,12 @@ function rememberRecovery(evidence: RecoveryEvidence): void {
   }
 }
 async function send(): Promise<void> {
-  if (busy || !selected || !trace(session.board, session.state, selected).legal)
+  if (
+    busy ||
+    document.querySelector('#remix-dialog[open]') ||
+    !selected ||
+    !trace(session.board, session.state, selected).legal
+  )
     return;
   const id = selected;
   if (shared.active) {
