@@ -1368,6 +1368,7 @@ test('Remix Sunday rejects a broken crossing and lets a moderator test and expor
     await route.fulfill({ status: result.status, json: await result.json() });
   });
   await open(page);
+  const dailyProgress = await page.locator('#rescue-count').innerText();
   await page.locator('#help').click();
   await page.getByRole('button', { name: 'Remix Sunday' }).click();
   await expect(
@@ -1403,5 +1404,5 @@ test('Remix Sunday rejects a broken crossing and lets a moderator test and expor
     /^remix-[a-f0-9]{64}\.json$/
   );
   await page.getByRole('button', { name: '← Close' }).click();
-  await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
+  await expect(page.locator('#rescue-count')).toHaveText(dailyProgress);
 });
