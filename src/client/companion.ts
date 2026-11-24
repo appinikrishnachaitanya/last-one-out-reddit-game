@@ -5,7 +5,6 @@ import {
   companions,
   defaultCompanion,
   parseCompanion,
-  scarfColors,
 } from '../shared/companion';
 import type { CompanionProfile } from '../shared/companion';
 
@@ -14,7 +13,7 @@ export function companionProfile(): CompanionProfile {
   return current;
 }
 export function avatarPortrait(profile: CompanionProfile): string {
-  const base = portrait(profile.animal, scarfColors[profile.scarf]);
+  const base = portrait(profile.animal);
   const accessory =
     profile.accessory === 'lantern'
       ? '<g fill="#ffd175" stroke="#80592c" stroke-width="1.5"><path fill="none" d="M77 69v-6a5 5 0 0 1 10 0v6"/><rect x="74" y="68" width="16" height="23" rx="4"/><path d="M77 73h10v13H77z" fill="#fff2bf"/></g>'
@@ -39,19 +38,20 @@ export function setupCompanionEditor(
   api: DailyApi,
   container: HTMLElement
 ): void {
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.textContent = '← Settings';
+  back.addEventListener('click', () => {
+    const section = container.closest('details');
+    section?.removeAttribute('open');
+    section?.querySelector('summary')?.focus();
+  });
   const preview = document.createElement('div');
   preview.className = 'companion-preview';
   const options = document.createElement('div');
   options.className = 'companion-options';
   options.setAttribute('role', 'group');
   options.setAttribute('aria-label', 'Favorite animal avatar');
-  const scarfLabel = document.createElement('label');
-  scarfLabel.textContent = 'Scarf ';
-  const scarf = document.createElement('select');
-  scarf.setAttribute('aria-label', 'Avatar scarf');
-  for (const color of Object.keys(scarfColors))
-    scarf.add(new Option(color[0]!.toUpperCase() + color.slice(1), color));
-  scarfLabel.append(scarf);
   const accessoryLabel = document.createElement('label');
   accessoryLabel.textContent = 'Accessory ';
   const accessory = document.createElement('select');
@@ -61,6 +61,7 @@ export function setupCompanionEditor(
   status.setAttribute('role', 'status');
   const save = document.createElement('button');
   save.type = 'button';
+  save.className = 'companion-save';
   save.textContent = 'Save my animal';
   let rescues = 0;
   let draft = { ...current };
@@ -89,7 +90,6 @@ export function setupCompanionEditor(
         return choice;
       })
     );
-    scarf.value = draft.scarf;
     accessory.replaceChildren(
       ...[
         ['none', 'None', 0],
@@ -106,10 +106,6 @@ export function setupCompanionEditor(
     );
     accessory.value = draft.accessory;
   }
-  scarf.addEventListener('change', () => {
-    draft.scarf = scarf.value as CompanionProfile['scarf'];
-    render();
-  });
   accessory.addEventListener('change', () => {
     draft.accessory = accessory.value as CompanionProfile['accessory'];
     render();
@@ -120,13 +116,12 @@ export function setupCompanionEditor(
     save.disabled = true;
     status.textContent = 'Saving your animal…';
     try {
-      const data = await api.request('companion', draft);
+      const data = await api.request('companion', { ...draft, scarf: 'none' });
       const profile = parseCompanion(data);
       if (!profile) throw new Error('Could not confirm your animal.');
       current = profile;
       window.dispatchEvent(new Event('companion-change'));
-      status.textContent =
-        'Your animal is saved for your next rescue and share card.';
+      status.textContent = 'Animal saved.';
     } catch (error) {
       status.textContent =
         error instanceof Error ? error.message : 'Could not save. Try again.';
@@ -141,11 +136,11 @@ export function setupCompanionEditor(
     try {
       const data = await loadCompanion(api);
       rescues = data.rescues;
-      draft = { ...data.profile };
+      draft = { ...data.profile, scarf: 'none' };
       render();
       save.disabled = !data.signedIn;
       status.textContent = data.signedIn
-        ? `${rescues} rescues · New friends unlock at 2, 5, 10, and 20 rescues.`
+        ? `${rescues} rescues · Locked friends show their unlock goal.`
         : 'Sign in to Reddit to save your avatar.';
     } catch {
       status.textContent = 'Your animal could not load.';
@@ -156,13 +151,6 @@ export function setupCompanionEditor(
       status.append(retry);
     }
   };
-  container.replaceChildren(
-    preview,
-    options,
-    scarfLabel,
-    accessoryLabel,
-    save,
-    status
-  );
+  container.replaceChildren(back, preview, options, accessoryLabel, save, status);
   void refresh();
 }

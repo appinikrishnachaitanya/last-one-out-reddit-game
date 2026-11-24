@@ -52,8 +52,7 @@ const daily = api
     completion = data.completion;
     if (!completion) return;
     play.textContent = 'View Your Rescue';
-    badge.textContent = `Everyone home · ${titleCase(completion.favorite)} card earned`;
-    badge.hidden = false;
+    badge.hidden = true;
   })
   .catch(() => {
     // The board can still be opened if the welcome screen cannot fetch progress.
@@ -302,6 +301,8 @@ for (const control of document.querySelectorAll<HTMLButtonElement>(
       document.querySelector<HTMLElement>('#welcome-companion-editor')!
     );
     settingsStatus.textContent = '';
+    document.querySelector<HTMLDetailsElement>('#welcome-my-animal')!.open =
+      false;
     settingsPanel.showModal();
   });
 motion.addEventListener('change', readSettings);

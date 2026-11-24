@@ -18,8 +18,6 @@ import { isAnimalId, titleCase } from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
 import { DailyApi } from './daily-api';
 import { portrait, portraitOffsets } from './portraits';
-const scarves = { moss: '#486d44', berry: '#96344d', gold: '#bd7518' } as const;
-
 function el(id: string): HTMLElement {
   const e = document.getElementById(id);
   if (!e) throw new Error(`Missing ${id}`);
@@ -469,7 +467,6 @@ export class Results {
     const profile = companionProfile();
     const favorite = profile.animal;
     const identity = this.identity?.title;
-    const scarf = profile.scarf === 'none' ? undefined : profile.scarf;
     if (!identity) return;
     try {
       const art = new Image();
@@ -504,13 +501,6 @@ export class Results {
         332,
         332
       );
-      if (scarf) {
-        ctx.fillStyle = scarves[scarf];
-        ctx.beginPath();
-        ctx.roundRect(730, 392, 162, 29, 14);
-        ctx.roundRect(850, 410, 29, 41, 8);
-        ctx.fill();
-      }
       if (profile.accessory === 'lantern') {
         ctx.fillStyle = '#ffd175';
         ctx.fillRect(898, 368, 48, 68);

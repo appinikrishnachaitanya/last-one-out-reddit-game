@@ -102,3 +102,55 @@
   width: 56px;
   flex: 0 0 56px;
 }
+
+.companion-preview {
+  width: 72px;
+  margin: 6px auto;
+}
+.companion-options {
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.companion-options svg {
+  max-width: 42px;
+}
+.companion-options button {
+  padding: 3px;
+  font-size: 11px;
+}
+:is(#game-companion-editor, #welcome-companion-editor) > p {
+  font-size: 12px;
+  margin: 6px 0;
+}
+.companion-save {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #244c3b;
+  color: #fff1d6;
+}
+#help-dialog:has(#my-animal[open]) > :not(#close-help, h2, #my-animal),
+#welcome-settings:has(#welcome-my-animal[open])
+  > :not(header, #welcome-my-animal) {
+  display: none;
+}
+#my-animal > summary,
+#welcome-my-animal > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+@media (max-height: 620px) {
+  .companion-preview {
+    display: none;
+  }
+  #my-animal[open] > summary,
+  #welcome-my-animal[open] > summary {
+    display: none;
+  }
+  .companion-options svg {
+    max-width: 36px;
+  }
+}

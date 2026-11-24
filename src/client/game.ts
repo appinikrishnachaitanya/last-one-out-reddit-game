@@ -1040,6 +1040,7 @@ button('motion-dialog').addEventListener('click', () => {
 });
 const help = element('help-dialog', HTMLDialogElement);
 button('help').addEventListener('click', () => {
+  element('my-animal', HTMLDetailsElement).open = false;
   help.showModal();
   setupCompanionEditor(api, element('game-companion-editor', HTMLElement));
 });

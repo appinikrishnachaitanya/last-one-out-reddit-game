@@ -221,10 +221,9 @@ test('all first three editions solve, favorite art changes, saved result survive
       .locator('#game-companion-editor button')
       .filter({ hasText: /^Rabbit$/ })
       .click();
-    await page.getByLabel('Avatar scarf', { exact: true }).selectOption('moss');
     await page.getByRole('button', { name: 'Save my animal' }).click();
     await expect(page.locator('#game-companion-editor')).toContainText(
-      'Your animal is saved'
+      'Animal saved'
     );
     await page.locator('#close-help').click();
     await page.reload();
@@ -241,9 +240,8 @@ test('all first three editions solve, favorite art changes, saved result survive
     await expect(page.locator('#board-title')).toHaveText(title);
     await expect(page.locator('#rescue-count')).toHaveText('4 / 4');
     await expect(page.locator('#card-animal')).toContainText('Rabbit');
-    await expect(page.locator('#card-portrait path').first()).toHaveAttribute(
-      'fill',
-      '#486d44'
+    await expect(page.getByLabel('Avatar scarf', { exact: true })).toHaveCount(
+      0
     );
     await page.locator('#copy-result').click();
     await expect(page.locator('#result-share')).toBeVisible();
@@ -422,7 +420,7 @@ test('production-shaped response hides the preview picker, restores a saved post
   );
   await page.reload();
   await expect(page.locator('#play')).toHaveText('View Your Rescue');
-  await expect(page.locator('#badge')).toContainText('Badger card earned');
+  await expect(page.locator('#badge')).toBeHidden();
   await page.getByRole('button', { name: 'My Map →' }).click();
   await expect(page.locator('.score-grid')).toContainText('Crossings rescued');
   await expect(page.locator('#panel-status')).toContainText('1 undo');
