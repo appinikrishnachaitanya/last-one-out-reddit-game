@@ -1,0 +1,104 @@
+.companion-preview {
+  width: 140px;
+  margin: 12px auto;
+}
+.companion-preview svg,
+.home-companion svg {
+  width: 100%;
+  display: block;
+}
+.home-companion {
+  width: 64px;
+}
+.companion-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.companion-options button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 5px;
+  display: grid;
+  justify-items: center;
+  font-size: 12px;
+}
+.companion-options svg {
+  width: 100%;
+  max-width: 64px;
+}
+.companion-options small {
+  font-size: 10px;
+}
+.companion-options [aria-pressed='true'] {
+  outline: 2px solid #c99136;
+  outline-offset: 1px;
+}
+.companion-options button:disabled {
+  opacity: 0.55;
+}
+:is(#game-companion-editor, #welcome-companion-editor) > label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-block: 8px;
+}
+:is(#game-companion-editor, #welcome-companion-editor) select {
+  min-height: 44px;
+  font: inherit;
+  max-width: 65%;
+}
+:is(#game-companion-editor, #welcome-companion-editor) > button {
+  min-height: 44px;
+  width: 100%;
+}
+.forest-map {
+  list-style: none;
+  padding: 24px 12px;
+  display: grid;
+  gap: 20px;
+  border-radius: 12px;
+  background:
+    linear-gradient(#0b302fcc, #0b302fee),
+    url('/art/feed-river.webp') center/cover;
+}
+.forest-map li {
+  max-width: 84%;
+  padding-left: 12px;
+  border-left: 3px solid #9ba879;
+}
+.forest-map li:nth-child(even) {
+  margin-left: 12%;
+}
+.forest-map a,
+.forest-map button {
+  display: block;
+  padding: 12px;
+  min-height: 44px;
+  border-radius: 12px;
+  background: #193e35;
+  color: #fff0d5;
+  text-decoration: none;
+  font-weight: 650;
+}
+#result-share {
+  width: min(400px, calc(100% - 24px));
+}
+#result-share > button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+}
+
+.forest-map .map-reward {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff0d5;
+}
+.map-reward svg {
+  width: 56px;
+  flex: 0 0 56px;
+}

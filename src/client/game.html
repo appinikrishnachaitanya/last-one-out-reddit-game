@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="game.css" />
     <link rel="stylesheet" href="version-four.css" />
     <title>Last One Out · Moonroot Crossing</title>
+    <link rel="stylesheet" href="companion.css" />
   </head>
   <body>
     <main id="app">
@@ -187,6 +188,7 @@
         </form>
       </dialog>
       <section id="result" class="result" hidden aria-labelledby="result-title">
+        <button id="result-home" class="secondary">Home</button>
         <button id="back-to-board" class="secondary">← Back to board</button>
         <div class="result-top">
           <img
@@ -215,31 +217,22 @@
           <button id="copy-result" class="primary">Share result</button>
           <button id="comments" class="secondary">Reddit comments</button>
         </div>
-        <details id="result-options">
-          <summary>Customize card &amp; more ways to share</summary>
-          <fieldset>
-            <legend>Favorite animal</legend>
-            <div id="favorites"></div>
-            <label for="companion-scarf">Scarf color</label>
-            <select id="companion-scarf">
-              <option value="none">None</option>
-              <option value="moss">Moss</option>
-              <option value="berry">Berry</option>
-              <option value="gold">Gold</option>
-            </select>
-          </fieldset>
-          <button id="save-image" class="secondary">
-            Download result image
-          </button>
+        <dialog id="result-share" aria-labelledby="share-title">
+          <form method="dialog">
+            <button aria-label="Close sharing">×</button>
+          </form>
+          <h2 id="share-title">Share your rescue</h2>
+          <button id="save-image" class="primary">Download image</button>
           <button id="post-rescue" class="secondary" hidden>
             Post Rescue to Comments
           </button>
           <button id="copy-result-link" class="secondary" hidden>
             Copy result link
           </button>
+          <p id="copy-status" role="status"></p>
           <p id="post-status" role="status" hidden></p>
-          <p id="favorite-status" role="status"></p>
-        </details>
+        </dialog>
+        <p id="favorite-status" role="status" hidden></p>
         <section
           id="comparison"
           aria-label="Community opening moves"
@@ -248,7 +241,6 @@
         ></section>
         <p id="save-status" role="status"></p>
         <button id="retry-save" hidden>Retry saving · no replay needed</button>
-        <p id="copy-status" role="status"></p>
         <pre id="copy-fallback" hidden tabindex="0"></pre>
         <details id="community-details" hidden>
           <summary>See how Reddit solved it</summary>
@@ -261,7 +253,7 @@
           </p>
         </details>
         <p id="next-crossing" hidden></p>
-        <details id="past-crossings">
+        <details id="past-crossings" hidden>
           <summary>Card collection &amp; past crossings</summary>
           <div id="card-collection"></div>
           <div id="archive-result"></div>
@@ -294,6 +286,10 @@
         </button>
 
         <h2>Settings</h2>
+        <details id="my-animal">
+          <summary>My Animal</summary>
+          <div id="game-companion-editor"></div>
+        </details>
         <fieldset class="atmosphere">
           <legend>Scenery and sound</legend>
           <label for="scenery">Background</label>

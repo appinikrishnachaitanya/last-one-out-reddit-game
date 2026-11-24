@@ -1,3 +1,5 @@
+import { avatarPortrait, companionProfile, loadCompanion } from './companion';
+import { companions } from '../shared/companion';
 import { rescueIdentity } from '../shared/rescue-identity';
 import { cardStamp } from './card-stamp';
 import { boardById } from '../shared/boards';
@@ -8,7 +10,6 @@ import {
   isObject,
   openingPercent,
   parseAttemptStats,
-  rescueShare,
   rescueRank,
 } from '../shared/daily';
 import { navigateTo, showShareSheet } from '@devvit/web/client';
@@ -18,8 +19,7 @@ import type { AnimalId } from '../shared/engine';
 import { DailyApi } from './daily-api';
 import { portrait, portraitOffsets } from './portraits';
 const scarves = { moss: '#486d44', berry: '#96344d', gold: '#bd7518' } as const;
-type Scarf = keyof typeof scarves;
-const animals: readonly AnimalId[] = ['turtle', 'rabbit', 'fox', 'badger'];
+
 function el(id: string): HTMLElement {
   const e = document.getElementById(id);
   if (!e) throw new Error(`Missing ${id}`);
@@ -28,7 +28,6 @@ function el(id: string): HTMLElement {
 export class Results {
   edition: Edition | undefined;
   favorite: AnimalId = 'fox';
-  private scarf: Scarf | undefined;
   undos = 0;
   hintUsed = false;
   private identity: ReturnType<typeof rescueIdentity>;
@@ -54,36 +53,12 @@ export class Results {
     this.demo = demo;
     this.onFavorite = onFavorite;
     this.onRetry = onRetry;
-    const favorites = el('favorites');
-    for (const id of animals) {
-      const b = document.createElement('button');
-      b.textContent = titleCase(id);
-      b.dataset.favorite = id;
-      b.addEventListener('click', () => {
-        this.favorite = id;
-        try {
-          localStorage.setItem('loo-companion', id);
-        } catch {
-          /* Optional preference. */
-        }
-        this.renderCard();
-        this.onFavorite(id);
-      });
-      favorites.append(b);
-    }
-    el('companion-scarf').addEventListener('change', (event) => {
-      const value = (event.currentTarget as HTMLSelectElement).value;
-      this.scarf = Object.hasOwn(scarves, value) ? (value as Scarf) : undefined;
-      try {
-        localStorage.setItem('loo-companion-scarf', value);
-      } catch {
-        /* Optional preference. */
-      }
-      this.renderCard();
+    window.addEventListener('companion-change', () => {
+      if (this.edition) this.renderCard();
     });
     el('retry-save').addEventListener('click', () => this.onRetry());
     el('copy-result').addEventListener('click', () => {
-      void this.copy();
+      (el('result-share') as HTMLDialogElement).showModal();
     });
     el('save-image').addEventListener('click', () => void this.saveImage());
     el('copy-result-link').addEventListener('click', () => {
@@ -122,10 +97,6 @@ export class Results {
       const local =
         localStorage.getItem(`loo-card:${edition.id}`) ??
         localStorage.getItem('loo-companion');
-      const scarf = localStorage.getItem('loo-companion-scarf');
-      this.scarf =
-        scarf && Object.hasOwn(scarves, scarf) ? (scarf as Scarf) : undefined;
-      (el('companion-scarf') as HTMLSelectElement).value = this.scarf ?? 'none';
       if (!saved && isAnimalId(local)) this.favorite = local;
     } catch {
       /* storage is optional */
@@ -141,7 +112,8 @@ export class Results {
     el('favorite-status').textContent = '';
     el('comments').hidden = !url;
     el('community-details').removeAttribute('open');
-    el('result-options').removeAttribute('open');
+    (el('result-share') as HTMLDialogElement).close();
+    void loadCompanion(this.api).catch(() => undefined);
     el('comparison').hidden = true;
     this.setIdentity(
       saved?.sequence ?? sequence,
@@ -170,22 +142,12 @@ export class Results {
     el('clean-badge').hidden = false;
     el('clean-badge').textContent =
       rank === 'S' ? 'S Rank · Clean Crossing' : `${rank} Rank`;
-    el('card-portrait').innerHTML = portrait(
-      this.favorite,
-      this.scarf && scarves[this.scarf]
-    );
+    el('card-portrait').innerHTML = avatarPortrait(companionProfile());
     el('card-day').textContent = `DAY ${edition.number} · ${edition.date} UTC`;
     el('card-undos').textContent =
       `${this.undos} undo${this.undos === 1 ? '' : 's'}${this.hintUsed ? ' · Hint used' : ''}`;
     el('card-animal').textContent =
-      `${titleCase(this.favorite)}’s lantern is lit.`;
-    for (const b of el('favorites').querySelectorAll<HTMLButtonElement>(
-      'button'
-    ))
-      b.setAttribute(
-        'aria-pressed',
-        String(b.dataset.favorite === this.favorite)
-      );
+      `${companions.find(({ id }) => id === companionProfile().animal)!.name}’s lantern is lit.`;
     try {
       localStorage.setItem(`loo-card:${edition.id}`, this.favorite);
     } catch {
@@ -398,10 +360,8 @@ export class Results {
     clearInterval(this.countdown);
     const next = el('next-crossing');
     const archive = el('archive-result');
-    const details = el('past-crossings');
     el('card-streak').hidden = true;
     next.hidden = true;
-    details.hidden = false;
     archive.textContent = 'Loading past crossings…';
     el('card-collection').textContent = 'Loading collection…';
     try {
@@ -505,13 +465,17 @@ export class Results {
   private async saveImage(): Promise<void> {
     const edition = this.edition;
     if (!edition) return;
-    const { favorite, elapsedSeconds, undos } = this;
+    const { elapsedSeconds, undos } = this;
+    const profile = companionProfile();
+    const favorite = profile.animal;
     const identity = this.identity?.title;
-    const scarf = this.scarf;
+    const scarf = profile.scarf === 'none' ? undefined : profile.scarf;
     if (!identity) return;
     try {
       const art = new Image();
-      art.src = '/art/animals.webp';
+      art.src = ['owl', 'deer', 'panda', 'otter'].includes(favorite)
+        ? '/art/companion-unlocks.webp'
+        : '/art/animals.webp';
       await art.decode();
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
@@ -547,6 +511,20 @@ export class Results {
         ctx.roundRect(850, 410, 29, 41, 8);
         ctx.fill();
       }
+      if (profile.accessory === 'lantern') {
+        ctx.fillStyle = '#ffd175';
+        ctx.fillRect(898, 368, 48, 68);
+        ctx.fillStyle = '#fff2bf';
+        ctx.fillRect(908, 380, 28, 42);
+        ctx.strokeStyle = '#80592c';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(898, 368, 48, 68);
+      } else if (profile.accessory === 'leaf') {
+        ctx.fillStyle = '#dcb855';
+        ctx.beginPath();
+        ctx.ellipse(902, 173, 18, 30, 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
       ctx.fillStyle = '#132f28';
       ctx.font = 'bold 58px Georgia';
@@ -571,32 +549,6 @@ export class Results {
       el('copy-status').textContent =
         'Could not download the image. You can still copy your result.';
     }
-  }
-
-  async copy(): Promise<void> {
-    if (!this.edition) return;
-    const text = rescueShare(
-      this.edition,
-      this.undos,
-      this.opening,
-      this.stats,
-      this.hintUsed
-    );
-    const shareText = this.identity ? `${this.identity.title}\n${text}` : text;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Last One Out',
-          text: shareText,
-          ...(this.url ? { url: this.url } : {}),
-        });
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError')
-          return;
-      }
-    }
-    await this.copyText(shareText, 'Copied. No puzzle spoilers.');
   }
 
   private async copyText(text: string, confirmation: string): Promise<void> {

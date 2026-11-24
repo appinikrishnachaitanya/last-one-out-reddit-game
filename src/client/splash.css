@@ -257,3 +257,68 @@ dialog form button {
 .card-stamp:empty {
   display: none;
 }
+
+.welcome-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.welcome-toolbar span {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #e5fa78;
+}
+.welcome-toolbar button {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.welcome-links {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.welcome-links button {
+  padding-inline: 5px;
+  font-size: 12px;
+  background: transparent;
+}
+.welcome-links [aria-current] {
+  background: #254c3e;
+  border-color: #e5fa78;
+}
+.progress-link {
+  background: transparent;
+  border: 0;
+  justify-self: start;
+  padding-inline: 0;
+  color: #dfedbc;
+}
+.settings-intro {
+  margin-bottom: 12px;
+  color: #dfedbc;
+  font-size: 14px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  border-bottom: 1px solid #678675;
+  font-size: 14px;
+}
+.setting-row input {
+  width: 44px;
+  height: 44px;
+  accent-color: #e5fa78;
+}
+.setting-row select {
+  min-height: 44px;
+  max-width: 60%;
+  padding: 6px;
+  font: inherit;
+}
+#welcome-settings-status {
+  margin-top: 10px;
+  font-size: 12px;
+}

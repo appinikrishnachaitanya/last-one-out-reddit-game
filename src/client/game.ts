@@ -1,3 +1,4 @@
+import { setupCompanionEditor } from './companion';
 import { setupRemix } from './remix';
 import { parseCommunityReplay } from '../shared/community-replay';
 import type { CommunityReplay } from '../shared/community-replay';
@@ -951,6 +952,10 @@ async function send(): Promise<void> {
     }
   } else button('undo').focus({ preventScroll: true });
 }
+button('result-home').addEventListener('click', () => {
+  rememberRun();
+  window.location.assign('/splash.html');
+});
 button('back-to-board').addEventListener('click', () => {
   result.hidden = true;
   refresh();
@@ -1034,7 +1039,10 @@ button('motion-dialog').addEventListener('click', () => {
   refresh();
 });
 const help = element('help-dialog', HTMLDialogElement);
-button('help').addEventListener('click', () => help.showModal());
+button('help').addEventListener('click', () => {
+  help.showModal();
+  setupCompanionEditor(api, element('game-companion-editor', HTMLElement));
+});
 button('archive-open').addEventListener('click', async () => {
   const archive = element('settings-archive', HTMLElement);
   archive.hidden = !archive.hidden;

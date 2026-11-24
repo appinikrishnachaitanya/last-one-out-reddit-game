@@ -79,3 +79,9 @@ Open **Settings → Remix Sunday** inside a signed-in Reddit post. Pick one of t
 A moderator with post permissions can open the review queue in the same dialog, preview and test play a draft, then approve it or reject it with a note. Difficulty uses the minimum number of forced decisions across winning routes, excluding the final move. Approval enables a JSON download with a stable ID, version, and creator credit.
 
 Publication is manual. Register the approved JSON in the versioned board catalog and schedule its edition through the normal release process. Preserve the exported ID, version, and credited title. The app has no automatic draft publication route.
+
+### My Animal and My Map
+
+Home opens My Map, Collection, and Settings. My Map shows today’s crossing and previously posted crossings on a forest trail. Settings → My Animal saves the account’s avatar, scarf, and accessory in Redis. All four puzzle animals are available immediately. Owl unlocks after 2 saved rescues, Deer after 5, Red panda after 10, and Otter after 20. Lantern and Golden leaf accessories unlock after 1 and 3 rescues. Unlocks count distinct saved editions and are validated on the server. Avatar choices appear on Home, the result, and the downloaded image.
+
+Share result opens Download image and Post Rescue to Comments. Collection and customization are accessed from Home and Settings.

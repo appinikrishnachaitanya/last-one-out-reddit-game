@@ -89,7 +89,7 @@ test('Moonroot tempting exit, exact blocked route feedback, Undo, real animation
     fullPage: true,
   });
   await expect(page.locator('#card-time')).toHaveText(/^Time \d+:\d{2}$/);
-  await page.locator('#past-crossings summary').click();
+  await expect(page.locator('#past-crossings')).toBeHidden();
   await expect(page.locator('#card-collection')).toContainText(
     'Moonroot Crossing'
   );
@@ -215,16 +215,18 @@ test('all first three editions solve, favorite art changes, saved result survive
     await expect(page.locator('#save-status')).toContainText(
       'validated and saved'
     );
-    await page.locator('#result-options summary').click();
-    await page.locator('[data-favorite=rabbit]').click();
-    await page.locator('#companion-scarf').selectOption('moss');
-    await expect(page.locator('#card-portrait svg')).toHaveAttribute(
-      'aria-label',
-      'rabbit by a lantern'
+    await page.locator('#help').click();
+    await page.locator('#my-animal summary').click();
+    await page
+      .locator('#game-companion-editor button')
+      .filter({ hasText: /^Rabbit$/ })
+      .click();
+    await page.getByLabel('Avatar scarf', { exact: true }).selectOption('moss');
+    await page.getByRole('button', { name: 'Save my animal' }).click();
+    await expect(page.locator('#game-companion-editor')).toContainText(
+      'Your animal is saved'
     );
-    await expect(page.locator('#favorite-status')).toContainText(
-      'Card art saved'
-    );
+    await page.locator('#close-help').click();
     await page.reload();
     await expect(page.locator('#result')).toBeVisible();
     if (title === 'Moonroot Crossing') {
@@ -239,23 +241,18 @@ test('all first three editions solve, favorite art changes, saved result survive
     await expect(page.locator('#board-title')).toHaveText(title);
     await expect(page.locator('#rescue-count')).toHaveText('4 / 4');
     await expect(page.locator('#card-animal')).toContainText('Rabbit');
-    await expect(page.locator('#card-portrait path')).toHaveAttribute(
+    await expect(page.locator('#card-portrait path').first()).toHaveAttribute(
       'fill',
       '#486d44'
     );
     await page.locator('#copy-result').click();
-    await expect(page.locator('#copy-status')).toContainText('Copied');
-    await page.locator('#result-options summary').click();
+    await expect(page.locator('#result-share')).toBeVisible();
     const download = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Download result image' }).click();
+    await page.getByRole('button', { name: 'Download image' }).click();
     const image = await download;
     expect(image.suggestedFilename()).toMatch(/^last-one-out-.*\.png$/);
     expect(await image.failure()).toBeNull();
-    const copied = await page.evaluate(() => navigator.clipboard.readText());
-    expect(copied).toContain('Rescued: 4/4');
-    expect(copied).not.toContain('→');
-    expect(copied).not.toContain('Hero Who Stayed');
-    expect(copied).toMatch(/First move: (Fox|Rabbit)/);
+    await page.getByRole('button', { name: 'Close sharing' }).click();
     await page.screenshot({
       path: `artifacts/${id}-saved.png`,
       fullPage: true,
@@ -426,7 +423,7 @@ test('production-shaped response hides the preview picker, restores a saved post
   await page.reload();
   await expect(page.locator('#play')).toHaveText('View Your Rescue');
   await expect(page.locator('#badge')).toContainText('Badger card earned');
-  await page.getByRole('button', { name: 'My progress' }).click();
+  await page.getByRole('button', { name: 'My Map →' }).click();
   await expect(page.locator('.score-grid')).toContainText('Crossings rescued');
   await expect(page.locator('#panel-status')).toContainText('1 undo');
   await expect(page.locator('.score-grid')).toContainText('3 / 10');
@@ -470,15 +467,16 @@ test('production-shaped response hides the preview picker, restores a saved post
   await expect(page.locator('#comparison')).toContainText(
     "You're among the first rescuers today"
   );
-  await expect(page.locator('#card-animal')).toContainText('Badger');
+  await expect(page.locator('#card-animal')).toContainText('Fox');
   expect(posts).toBe(0);
-  await page.locator('#result-options summary').click();
+  await page.locator('#copy-result').click();
   await page.locator('#post-rescue').click();
   await expect(
     page.getByRole('button', { name: 'Copy result link' })
   ).toBeVisible();
   await expect(page.locator('#post-rescue')).toHaveText('Shared to Comments ✓');
   await expect(page.locator('#post-rescue')).toBeDisabled();
+  await page.getByRole('button', { name: 'Close sharing' }).click();
   expect(posts).toBe(1);
   await page.locator('#comments').click();
   await expect(page.locator('html')).toHaveAttribute(
@@ -595,25 +593,16 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   expect(completedJourneys).toBe(1);
   expect(events.filter((e) => e === 'start')).toHaveLength(1);
   expect(events.filter((e) => e === 'progress')).toHaveLength(3);
-  await page.locator('#result-options summary').click();
-  await page.locator('[data-favorite=badger]').click();
-  await expect(page.locator('#favorite-status')).toContainText(
-    'Card art saved'
-  );
   await page.reload();
   await expect(page.locator('#result')).toBeVisible();
-  await expect(page.locator('#card-animal')).toContainText('Badger');
-  await page.locator('#past-crossings summary').click();
+  await expect(page.locator('#card-animal')).toContainText('Fox');
+  await expect(page.locator('#past-crossings')).toBeHidden();
   await expect(page.locator('#card-collection')).toContainText('Golden Leaf');
-  await page.locator('#past-crossings summary').click();
+  await expect(page.locator('#past-crossings')).toBeHidden();
   expect(completionRequests).toBe(1);
   await page.locator('#copy-result').click();
-  await expect(page.locator('#copy-status')).toContainText('Copied');
-  const text = await page.evaluate(() => navigator.clipboard.readText());
-  expect(text).toContain('Last One Out - 2026-11-18');
-  expect(text).toContain('Undos: 1');
-  expect(text).not.toContain('→');
-  expect(text).not.toContain('Rabbit');
+  await expect(page.locator('#result-share')).toBeVisible();
+  await page.getByRole('button', { name: 'Close sharing' }).click();
   await page.locator('#comments').click();
   await expect(page.locator('html')).toHaveAttribute(
     'data-navigation',
@@ -854,10 +843,10 @@ test('the compact saved result keeps copy and comments inside one short frame', 
   }
   await expect(page.locator('#clean-badge')).toBeVisible();
   await expect(page.locator('#next-crossing')).toContainText('1h');
-  await page.locator('#past-crossings summary').click();
+  await expect(page.locator('#past-crossings')).toBeHidden();
   await expect(
-    page.getByRole('link', { name: 'Earlier crossing · Completed' })
-  ).toBeVisible();
+    page.locator('#archive-result a').filter({ hasText: 'Earlier crossing' })
+  ).toBeHidden();
   await page.locator('#community-details summary').click();
   await expect(page.locator('#comparison')).toContainText(
     "You're among the first rescuers today"
@@ -1058,7 +1047,7 @@ test('Version 4 captures the playable screens and keeps scenery and sound prefer
   await production.setViewportSize({ width: 390, height: 720 });
   await production.goto('http://127.0.0.1:5175/game.html');
   await expect(production.locator('#result')).toBeVisible({ timeout: 15000 });
-  await production.locator('#result-options summary').click();
+  await production.locator('#copy-result').click();
   await expect(production.locator('#post-rescue')).toBeVisible();
   await production.screenshot({ path: 'artifacts/version4/07-result.png' });
   await production.close();

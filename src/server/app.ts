@@ -1,3 +1,8 @@
+import {
+  defaultCompanion,
+  parseCompanion,
+  canWear,
+} from '../shared/companion.ts';
 import { remixRoutes } from './routes/remix.ts';
 import { goldenLeavesKey, readDailyGoal } from './core/daily-goal.ts';
 import {
@@ -98,6 +103,68 @@ export function createApi(deps: Dependencies) {
         { error: 'The daily goal is temporarily unavailable.' },
         503
       );
+    }
+  });
+  async function companionRescues(userId: string) {
+    const indexed = await deps.store.hGetAll(`rescue-cards:v1:${userId}`);
+    const editions = new Map(EDITIONS.map((edition) => [edition.id, edition]));
+    for (const id of Object.keys(indexed)) {
+      try {
+        editions.set(id, editionById(id));
+      } catch {
+        /* Obsolete edition. */
+      }
+    }
+    const saved = await Promise.all(
+      [...editions.values()].map((edition) =>
+        loadCompletion(deps.store, edition, userId)
+      )
+    );
+    return saved.filter(Boolean).length;
+  }
+  api.get('/companion', async (c) => {
+    try {
+      const { userId } = await deps.getContext(c);
+      if (!userId)
+        return c.json({
+          profile: defaultCompanion,
+          rescues: 0,
+          signedIn: false,
+        });
+      const raw = await deps.store.hGet('companions:v1', userId);
+      const profile = raw ? parseCompanion(JSON.parse(raw)) : defaultCompanion;
+      c.header('Cache-Control', 'private, no-store');
+      return c.json({
+        profile: profile ?? defaultCompanion,
+        rescues: await companionRescues(userId),
+        signedIn: true,
+      });
+    } catch {
+      return c.json({ error: 'Could not load your animal.' }, 503);
+    }
+  });
+  api.post('/companion', async (c) => {
+    try {
+      const { userId } = await deps.getContext(c);
+      if (!userId)
+        return c.json({ error: 'Sign in to save your animal.' }, 403);
+      const profile = parseCompanion(await c.req.json());
+      if (!profile)
+        return c.json(
+          { error: 'Choose an animal, scarf, and accessory.' },
+          400
+        );
+      if (!canWear(profile, await companionRescues(userId)))
+        return c.json(
+          { error: 'Finish more rescues to unlock this reward.' },
+          403
+        );
+      await deps.store.hSet('companions:v1', {
+        [userId]: JSON.stringify(profile),
+      });
+      return c.json(profile);
+    } catch {
+      return c.json({ error: 'Could not save your animal. Try again.' }, 503);
     }
   });
   api.get('/crossings', async (c) => {
