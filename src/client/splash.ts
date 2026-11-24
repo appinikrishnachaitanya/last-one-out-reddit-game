@@ -1,17 +1,17 @@
+import { createForestMap } from './forest-map';
+import type { Edition } from '../shared/daily';
 import {
   avatarPortrait,
   companionProfile,
   loadCompanion,
   setupCompanionEditor,
 } from './companion';
-import { navigateTo } from '@devvit/web/client';
-import { companions } from '../shared/companion';
 import { cardStamp } from './card-stamp';
 import { requestExpandedMode } from '@devvit/web/client';
 import { DailyApi } from './daily-api';
 import { boardById } from '../shared/boards';
 import { isAnimalId, titleCase } from '../shared/engine';
-import { formatElapsed, isObject } from '../shared/daily';
+import { isObject } from '../shared/daily';
 import type { Completion } from '../shared/daily';
 import { portrait } from './portraits';
 
@@ -27,6 +27,7 @@ const status = document.querySelector<HTMLElement>('#panel-status')!;
 const content = document.querySelector<HTMLElement>('#panel-content')!;
 let title = 'Last One Out';
 let completion: Completion | null = null;
+let mapEdition: Edition | undefined;
 let request = 0;
 
 play.addEventListener('click', (event) => {
@@ -50,6 +51,7 @@ const daily = api
     title = boardById(data.edition.puzzleId, data.edition.boardVersion).title;
     edition.textContent = `Day ${data.edition.number} · ${title}`;
     completion = data.completion;
+    mapEdition = data.edition;
     if (!completion) return;
     play.textContent = 'View Your Rescue';
     badge.hidden = true;
@@ -61,6 +63,9 @@ const daily = api
 async function show(view: 'progress' | 'collection'): Promise<void> {
   const current = ++request;
   panelTitle.textContent = view === 'progress' ? 'My Map' : 'Card collection';
+  panel.classList.toggle('map-panel', view === 'progress');
+  panel.querySelector('form button')!.textContent =
+    view === 'progress' ? '← Back' : '×';
   content.replaceChildren();
   status.textContent = 'Loading your rescues…';
   if (!panel.open) panel.showModal();
@@ -111,80 +116,27 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
         ).size
       : cards.filter(({ day }) => day <= launchTotal).length;
     if (view === 'progress') {
-      const scores = document.createElement('dl');
-      scores.className = 'score-grid';
-      const score = (label: string, value: number | string) => {
-        const item = document.createElement('div');
-        const term = document.createElement('dt');
-        term.textContent = label;
-        const amount = document.createElement('dd');
-        amount.textContent = String(value);
-        item.append(term, amount);
-        scores.append(item);
-      };
-      score('Crossings rescued', cards.length);
-      if (setTotal)
-        score(
-          challengeTotal ? 'Challenge set' : 'Launch cards',
-          `${setCount} / ${setTotal}`
-        );
-      score(
-        'Day streak',
-        typeof payload.streak === 'number' ? payload.streak : 0
+      status.textContent = '';
+      content.append(
+        createForestMap({
+          edition: mapEdition,
+          title,
+          completed: Boolean(completion),
+          past: payload.past,
+          rescues: cards.length,
+          onContinue: () => {
+            panel.close();
+            play.click();
+          },
+          onHome: () => {
+            panel.close();
+            play.focus();
+          },
+          onCollection: () => {
+            void show('collection');
+          },
+        })
       );
-      content.append(scores);
-      const map = document.createElement('ol');
-      map.className = 'forest-map';
-      map.setAttribute('aria-label', 'Rescue trail');
-      const past = Array.isArray(payload.past) ? payload.past : [];
-      const today = document.createElement('li');
-      const playToday = document.createElement('button');
-      playToday.textContent = completion
-        ? 'Today · Everyone home ✓'
-        : 'Today · Continue the crossing';
-      playToday.addEventListener('click', () => {
-        panel.close();
-        play.click();
-      });
-      today.append(playToday);
-      map.append(today);
-      for (const crossing of past) {
-        if (
-          !isObject(crossing) ||
-          typeof crossing.url !== 'string' ||
-          !/^https:\/\/www\.reddit\.com\/comments\/[a-z0-9]+\/$/.test(
-            crossing.url
-          ) ||
-          typeof crossing.title !== 'string'
-        )
-          continue;
-        const row = document.createElement('li');
-        const link = document.createElement('a');
-        link.href = crossing.url;
-        link.textContent = `${crossing.completed ? '✓' : '○'} ${crossing.title}`;
-        link.addEventListener('click', (event) => {
-          event.preventDefault();
-          navigateTo(link.href);
-        });
-        row.append(link);
-        map.append(row);
-      }
-      const next = document.createElement('li');
-      next.textContent = 'Next crossing · Tomorrow';
-      map.append(next);
-      for (const animal of companions.filter(({ rescues }) => rescues > 0)) {
-        const reward = document.createElement('li');
-        reward.className = 'map-reward';
-        reward.innerHTML = portrait(animal.id);
-        const label = document.createElement('span');
-        label.textContent = `${animal.name} · ${cards.length >= animal.rescues ? 'Unlocked' : `${cards.length}/${animal.rescues} rescues`}`;
-        reward.append(label);
-        map.append(reward);
-      }
-      content.append(map);
-      status.textContent = completion
-        ? `This crossing · ${completion.personalUndos} ${completion.personalUndos === 1 ? 'undo' : 'undos'}${completion.elapsedSeconds === undefined ? '' : ` · ${formatElapsed(completion.elapsedSeconds)}`}`
-        : 'Finish a rescue to see your time and undos here.';
       return;
     }
 

@@ -421,15 +421,18 @@ test('production-shaped response hides the preview picker, restores a saved post
   await page.reload();
   await expect(page.locator('#play')).toHaveText('View Your Rescue');
   await expect(page.locator('#badge')).toBeHidden();
-  await page.getByRole('button', { name: 'My Map →' }).click();
-  await expect(page.locator('.score-grid')).toContainText('Crossings rescued');
-  await expect(page.locator('#panel-status')).toContainText('1 undo');
-  await expect(page.locator('.score-grid')).toContainText('3 / 10');
+  await page.getByRole('button', { name: 'My Map', exact: true }).click();
+  await expect(page.locator('.journey-heading')).toContainText('3 rescued');
+  await expect(page.locator('.journey-node[aria-current=step]')).toContainText(
+    'Moonroot Crossing'
+  );
+  await expect(page.locator('.journey-avatar svg')).toBeVisible();
+  await expect(page.locator('.journey-here')).toHaveText('You are here');
   await page.screenshot({
     path: 'artifacts/welcome-preview/02-my-progress.png',
   });
   await page.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: 'Card collection' }).click();
+  await page.getByRole('button', { name: 'Collection', exact: true }).click();
   await expect(page.locator('.card-gallery li')).toHaveCount(3);
   await expect(page.locator('.card-gallery time')).toHaveAttribute(
     'datetime',
@@ -1395,4 +1398,85 @@ test('Remix Sunday rejects a broken crossing and lets a moderator test and expor
   );
   await page.getByRole('button', { name: '← Close' }).click();
   await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
+});
+
+test('forest map locates the chosen avatar, pages old crossings, and fits the Reddit frame', async ({
+  page,
+}) => {
+  const { EDITIONS } = await import('../../src/server/core/schedule.ts');
+  await page.route('**/api/init', (route) =>
+    route.fulfill({
+      json: {
+        status: 'ready',
+        mode: 'demo',
+        edition: EDITIONS[9],
+        completion: null,
+        community: null,
+        commentsUrl: null,
+      },
+    })
+  );
+  await page.route('**/api/companion', (route) =>
+    route.fulfill({
+      json: {
+        signedIn: true,
+        rescues: 12,
+        profile: { animal: 'owl', scarf: 'none', accessory: 'none' },
+      },
+    })
+  );
+  await page.route('**/api/crossings', (route) =>
+    route.fulfill({
+      json: {
+        signedIn: true,
+        cards: [],
+        past: Array.from({ length: 9 }, (_, index) => ({
+          day: index + 1,
+          title: `Earlier crossing ${index + 1}`,
+          url: `https://www.reddit.com/comments/post${index + 1}/`,
+          completed: true,
+        })),
+      },
+    })
+  );
+  await page.goto('/splash.html');
+  await page.getByRole('button', { name: 'My Map', exact: true }).click();
+  const marker = page.locator('.journey-node[aria-current=step]');
+  await expect(marker).toContainText('You are here');
+  await expect(marker.locator('svg')).toHaveAttribute(
+    'aria-label',
+    'owl by a lantern'
+  );
+  for (const size of [
+    { width: 320, height: 512 },
+    { width: 390, height: 512 },
+    { width: 390, height: 844 },
+    { width: 1280, height: 800 },
+  ]) {
+    await page.setViewportSize(size);
+    const continueButton = await page
+      .locator('.journey-continue')
+      .boundingBox();
+    expect(continueButton).not.toBeNull();
+    expect(continueButton!.y + continueButton!.height).toBeLessThanOrEqual(
+      size.height
+    );
+    const footer = await page.locator('.journey-nav').boundingBox();
+    expect(footer!.y + footer!.height).toBeLessThanOrEqual(size.height);
+    await expectNoHorizontalOverflow(page);
+  }
+  await page.getByRole('button', { name: '← Earlier', exact: true }).click();
+  await expect(page.locator('.journey-node').first()).toContainText(
+    'Earlier crossing 1'
+  );
+  await page.getByRole('button', { name: 'Later →', exact: true }).click();
+  await expect(marker).toBeVisible();
+  await expect(
+    page.locator('.journey-node[aria-disabled=true]').first()
+  ).toHaveAttribute('aria-label', /upcoming/);
+  await page
+    .locator('.journey-nav')
+    .getByRole('button', { name: 'Home', exact: true })
+    .click();
+  await expect(page.locator('#personal-panel')).toBeHidden();
 });
