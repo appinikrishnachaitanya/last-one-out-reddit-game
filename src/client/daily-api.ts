@@ -8,7 +8,7 @@ export class DailyApi {
     journeyId?: string
   ): Promise<unknown> {
     const query = this.previewId
-      ? `?edition=${encodeURIComponent(this.previewId)}`
+      ? `${path.includes('?') ? '&' : '?'}edition=${encodeURIComponent(this.previewId)}`
       : '';
     const controller = new AbortController(),
       timer = setTimeout(() => controller.abort(), 12000);
