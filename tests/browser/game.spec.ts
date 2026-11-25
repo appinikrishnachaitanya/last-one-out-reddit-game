@@ -1477,3 +1477,51 @@ test('forest map locates the chosen avatar, pages old crossings, and fits the Re
     .click();
   await expect(page.locator('#personal-panel')).toBeHidden();
 });
+
+test('animal decorations offer natural styles for each species and save the chosen look', async ({
+  page,
+}) => {
+  let profile = { animal: 'fox', scarf: 'none', accessory: 'none' };
+  await page.route('**/api/companion*', async (route) => {
+    if (route.request().method() === 'POST') {
+      profile = route.request().postDataJSON();
+      await route.fulfill({ json: profile });
+    } else
+      await route.fulfill({ json: { profile, rescues: 5, signedIn: true } });
+  });
+  await page.setViewportSize({ width: 390, height: 512 });
+  await open(page);
+  await page.locator('#help').click();
+  await page.locator('#my-animal summary').click();
+  const decorations = page.getByRole('group', { name: 'Animal decorations' });
+  await expect(
+    decorations.getByRole('button', { name: 'Full tail' })
+  ).toBeVisible();
+  await expect(
+    decorations.getByRole('button', { name: 'Spread wings' })
+  ).toHaveCount(0);
+  await decorations.getByRole('button', { name: 'Silver coat' }).click();
+  await expect(page.locator('.companion-preview image')).toHaveAttribute(
+    'filter',
+    'url(#fox-coat)'
+  );
+  await page
+    .locator('#game-companion-editor .companion-options button')
+    .filter({ hasText: /^Owl$/ })
+    .click();
+  await expect(
+    decorations.getByRole('button', { name: 'Silver coat' })
+  ).toHaveCount(0);
+  await decorations.getByRole('button', { name: 'Spread wings' }).click();
+  await page.getByRole('button', { name: 'Save my animal' }).click();
+  await expect(page.locator('#game-companion-editor')).toContainText(
+    'Animal saved.'
+  );
+  expect(profile.animal).toBe('owl');
+  expect(profile.accessory).toBe('signature');
+  const save = await page
+    .getByRole('button', { name: 'Save my animal' })
+    .boundingBox();
+  expect(save!.y + save!.height).toBeLessThanOrEqual(512);
+  await page.screenshot({ path: 'artifacts/avatar-preview/owl-wings.png' });
+});

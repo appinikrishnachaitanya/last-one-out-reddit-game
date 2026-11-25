@@ -1,6 +1,7 @@
 import { DailyApi } from './daily-api';
 import { portrait } from './portraits';
 import {
+  animalStyles,
   canWear,
   companions,
   defaultCompanion,
@@ -20,7 +21,37 @@ export function avatarPortrait(profile: CompanionProfile): string {
       : profile.accessory === 'leaf'
         ? '<path d="M73 15q25-4 14 17Q72 38 73 15" fill="#dcb855" stroke="#926c23"/><path d="M74 32l11-13" stroke="#926c23"/>'
         : '';
-  return base.replace('</svg>', accessory + '</svg>');
+  const signatures: Record<CompanionProfile['animal'], string> = {
+    fox: '<path d="M68 88C98 95 103 69 92 52C96 72 71 59 68 88" fill="#bf652b" stroke="#713a1c" stroke-width="1.5"/><path d="M92 52q9 17 2 27l-9-9q9-5 7-18" fill="#fff0ce"/>',
+    owl: '<g fill="#b17b46" stroke="#64432c" stroke-width="1.5"><path d="M22 84Q-4 73 5 34Q18 51 28 57Z"/><path d="M78 84Q104 73 95 34Q82 51 72 57Z"/><path d="M8 47l13 22M6 60l13 17M92 47L79 69M94 60L81 77" fill="none"/></g>',
+    rabbit:
+      '<g fill="#f8deb1" stroke="#c7955e"><path d="M28 29Q50 19 72 29" fill="none" stroke="#527348" stroke-width="4"/><circle cx="30" cy="27" r="5"/><circle cx="43" cy="24" r="5"/><circle cx="57" cy="24" r="5"/><circle cx="70" cy="27" r="5"/></g>',
+    turtle:
+      '<g fill="#6d964e" stroke="#385b32"><path d="M17 77q-9-20 3-18q10 5-3 18M24 87q-10-19 2-16q9 7-2 16M76 87q10-19-2-16q-9 7 2 16M83 77q9-20-3-18q-10 5 3 18"/></g>',
+    badger:
+      '<path d="M25 68Q50 83 75 68L86 93Q50 105 14 93Z" fill="#496a48" stroke="#294b36" stroke-width="2"/><path d="M50 79v18" stroke="#b3bd82"/><circle cx="50" cy="81" r="3" fill="#dbbb6c"/>',
+    deer: '<g fill="none" stroke="#9b724a" stroke-width="3" stroke-linecap="round"><path d="M33 34L27 20L22 7M28 21L16 17M26 17L31 8M67 34L73 20L78 7M72 21L84 17M74 17L69 8"/></g>',
+    panda:
+      '<path d="M75 88Q103 94 94 62Q89 49 83 61Q96 83 75 77Z" fill="#bf743c" stroke="#69402a" stroke-width="2"/><path d="M80 86l12-4M85 76l11-5M85 64l8-5" stroke="#713d26" stroke-width="5"/>',
+    otter:
+      '<g fill="none" stroke="#88c5c7" stroke-width="2"><path d="M12 80Q4 96 50 97Q96 96 88 80M20 78Q10 89 50 90Q90 89 80 78"/><path d="M9 64q6-8 11 0M83 67q6-8 10 0"/></g>',
+  };
+  let styled = base;
+  if (profile.accessory === 'coat' && profile.animal === 'fox') {
+    styled = styled
+      .replace(
+        '<defs>',
+        '<defs><filter id="fox-coat"><feColorMatrix type="saturate" values="0.2"/><feComponentTransfer><feFuncR type="linear" slope="0.82"/><feFuncG type="linear" slope="0.9"/><feFuncB type="linear" slope="1.08"/></feComponentTransfer></filter>'
+      )
+      .replace('<image ', '<image filter="url(#fox-coat)" ');
+  }
+  const decoration =
+    profile.accessory === 'signature'
+      ? signatures[profile.animal]
+      : profile.accessory === 'frame'
+        ? '<circle cx="50" cy="50" r="46" fill="none" stroke="#bfa368" stroke-width="5"/><circle cx="50" cy="50" r="49" fill="none" stroke="#526f40" stroke-width="2"/><g fill="#6f8b4e"><ellipse cx="12" cy="73" rx="4" ry="9" transform="rotate(-30 12 73)"/><ellipse cx="88" cy="73" rx="4" ry="9" transform="rotate(30 88 73)"/><ellipse cx="19" cy="84" rx="4" ry="8" transform="rotate(-45 19 84)"/><ellipse cx="81" cy="84" rx="4" ry="8" transform="rotate(45 81 84)"/></g>'
+        : accessory;
+  return styled.replace('</svg>', decoration + '</svg>');
 }
 export async function loadCompanion(
   api: DailyApi
@@ -52,11 +83,14 @@ export function setupCompanionEditor(
   options.className = 'companion-options';
   options.setAttribute('role', 'group');
   options.setAttribute('aria-label', 'Favorite animal avatar');
-  const accessoryLabel = document.createElement('label');
-  accessoryLabel.textContent = 'Accessory ';
-  const accessory = document.createElement('select');
-  accessory.setAttribute('aria-label', 'Avatar accessory');
-  accessoryLabel.append(accessory);
+  const accessoryLabel = document.createElement('fieldset');
+  accessoryLabel.className = 'animal-decorations';
+  const legend = document.createElement('legend');
+  legend.textContent = 'Style your animal';
+  const accessory = document.createElement('div');
+  accessory.setAttribute('role', 'group');
+  accessory.setAttribute('aria-label', 'Animal decorations');
+  accessoryLabel.append(legend, accessory);
   const status = document.createElement('p');
   status.setAttribute('role', 'status');
   const save = document.createElement('button');
@@ -85,31 +119,56 @@ export function setupCompanionEditor(
         choice.setAttribute('aria-pressed', String(draft.animal === animal.id));
         choice.addEventListener('click', () => {
           draft.animal = animal.id;
+          if (draft.accessory === 'coat' && animal.id !== 'fox')
+            draft.accessory = 'none';
           render();
         });
         return choice;
       })
     );
+    const styles: {
+      id: CompanionProfile['accessory'];
+      name: string;
+      rescues: number;
+    }[] = [
+      { id: 'none', name: 'Natural', rescues: 0 },
+      { id: 'frame', name: 'Woodland frame', rescues: 1 },
+      { id: 'signature', name: animalStyles[draft.animal].name, rescues: 3 },
+      ...(draft.animal === 'fox'
+        ? [{ id: 'coat' as const, name: 'Silver coat', rescues: 5 }]
+        : []),
+    ];
     accessory.replaceChildren(
-      ...[
-        ['none', 'None', 0],
-        ['lantern', 'Lantern', 1],
-        ['leaf', 'Golden leaf', 3],
-      ].map(([value, title, required]) => {
-        const option = new Option(
-          `${title}${rescues < Number(required) ? ` · ${required} rescues` : ''}`,
-          String(value)
+      ...styles.map((style) => {
+        const choice = document.createElement('button');
+        choice.type = 'button';
+        choice.innerHTML = avatarPortrait({ ...draft, accessory: style.id });
+        const name = document.createElement('span');
+        name.textContent = style.name;
+        choice.append(name);
+        choice.title =
+          style.id === 'signature'
+            ? animalStyles[draft.animal].description
+            : style.name;
+        choice.disabled = pending || rescues < style.rescues;
+        choice.setAttribute(
+          'aria-pressed',
+          String(draft.accessory === style.id)
         );
-        option.disabled = rescues < Number(required);
-        return option;
+        if (rescues < style.rescues) {
+          const lock = document.createElement('small');
+          lock.textContent = `${style.rescues} rescues`;
+          choice.append(lock);
+        }
+        choice.addEventListener('click', () => {
+          draft.accessory = style.id;
+          render();
+        });
+        return choice;
       })
     );
-    accessory.value = draft.accessory;
+    preview.setAttribute('aria-label', `${draft.animal} avatar preview`);
   }
-  accessory.addEventListener('change', () => {
-    draft.accessory = accessory.value as CompanionProfile['accessory'];
-    render();
-  });
   save.addEventListener('click', async () => {
     if (pending || !canWear(draft, rescues)) return;
     pending = true;

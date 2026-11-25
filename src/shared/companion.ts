@@ -20,7 +20,7 @@ export const scarfColors = {
 export type CompanionProfile = {
   animal: CompanionId;
   scarf: keyof typeof scarfColors;
-  accessory: 'none' | 'lantern' | 'leaf';
+  accessory: 'none' | 'lantern' | 'leaf' | 'frame' | 'signature' | 'coat';
 };
 export const defaultCompanion: CompanionProfile = {
   animal: 'fox',
@@ -33,9 +33,12 @@ export function parseCompanion(value: unknown): CompanionProfile | undefined {
     !companions.some(({ id }) => id === value.animal) ||
     typeof value.scarf !== 'string' ||
     !Object.hasOwn(scarfColors, value.scarf) ||
-    !['none', 'lantern', 'leaf'].includes(String(value.accessory))
+    !['none', 'lantern', 'leaf', 'frame', 'signature', 'coat'].includes(
+      String(value.accessory)
+    )
   )
     return undefined;
+  if (value.accessory === 'coat' && value.animal !== 'fox') return undefined;
   return value as CompanionProfile;
 }
 export function canWear(profile: CompanionProfile, rescued: number): boolean {
@@ -43,6 +46,46 @@ export function canWear(profile: CompanionProfile, rescued: number): boolean {
   return (
     rescued >= required &&
     (profile.accessory === 'none' ||
-      rescued >= (profile.accessory === 'leaf' ? 3 : 1))
+      rescued >=
+        (profile.accessory === 'signature' || profile.accessory === 'leaf'
+          ? 3
+          : profile.accessory === 'coat'
+            ? 5
+            : 1))
   );
 }
+
+export const animalStyles = {
+  fox: {
+    name: 'Full tail',
+    description: 'A sweeping russet tail with a cream tip.',
+  },
+  owl: {
+    name: 'Spread wings',
+    description: 'Feathered wings around your owl’s portrait.',
+  },
+  rabbit: {
+    name: 'Flower crown',
+    description: 'A crown of woodland blossoms.',
+  },
+  turtle: {
+    name: 'Mossy shell',
+    description: 'Fern leaves around your turtle’s shell.',
+  },
+  badger: {
+    name: 'Forest cloak',
+    description: 'A soft moss-green woodland cloak.',
+  },
+  deer: {
+    name: 'Woodland antlers',
+    description: 'Branching antlers with tiny leaves.',
+  },
+  panda: {
+    name: 'Ringed tail',
+    description: 'A curled tail with warm copper rings.',
+  },
+  otter: {
+    name: 'River ripples',
+    description: 'Silver-blue ripples around your otter.',
+  },
+} as const;

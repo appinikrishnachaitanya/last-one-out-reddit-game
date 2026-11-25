@@ -17,7 +17,7 @@ import type { Edition, Completion, AttemptStats } from '../shared/daily';
 import { isAnimalId, titleCase } from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
 import { DailyApi } from './daily-api';
-import { portrait, portraitOffsets } from './portraits';
+import { portrait } from './portraits';
 function el(id: string): HTMLElement {
   const e = document.getElementById(id);
   if (!e) throw new Error(`Missing ${id}`);
@@ -469,11 +469,31 @@ export class Results {
     const identity = this.identity?.title;
     if (!identity) return;
     try {
-      const art = new Image();
-      art.src = ['owl', 'deer', 'panda', 'otter'].includes(favorite)
+      const source = ['owl', 'deer', 'panda', 'otter'].includes(favorite)
         ? '/art/companion-unlocks.webp'
         : '/art/animals.webp';
-      await art.decode();
+      const response = await fetch(source);
+      if (!response.ok) throw new Error('Avatar art unavailable');
+      const artBlob = await response.blob();
+      const artData = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Could not read avatar art'));
+        reader.readAsDataURL(artBlob);
+      });
+      const svg = avatarPortrait(profile)
+        .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
+        .replace(source, artData);
+      const svgUrl = URL.createObjectURL(
+        new Blob([svg], { type: 'image/svg+xml' })
+      );
+      const art = new Image();
+      try {
+        art.src = svgUrl;
+        await art.decode();
+      } finally {
+        URL.revokeObjectURL(svgUrl);
+      }
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
       canvas.height = 600;
@@ -485,37 +505,7 @@ export class Results {
       ctx.beginPath();
       ctx.roundRect(28, 28, 1024, 544, 30);
       ctx.fill();
-      const [x, y] = portraitOffsets[favorite];
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(811, 300, 166, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(
-        art,
-        (-x * art.width) / 200,
-        (-y * art.height) / 200,
-        art.width / 2,
-        art.height / 2,
-        645,
-        134,
-        332,
-        332
-      );
-      if (profile.accessory === 'lantern') {
-        ctx.fillStyle = '#ffd175';
-        ctx.fillRect(898, 368, 48, 68);
-        ctx.fillStyle = '#fff2bf';
-        ctx.fillRect(908, 380, 28, 42);
-        ctx.strokeStyle = '#80592c';
-        ctx.lineWidth = 5;
-        ctx.strokeRect(898, 368, 48, 68);
-      } else if (profile.accessory === 'leaf') {
-        ctx.fillStyle = '#dcb855';
-        ctx.beginPath();
-        ctx.ellipse(902, 173, 18, 30, 0.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
+      ctx.drawImage(art, 638, 127, 346, 346);
       ctx.fillStyle = '#132f28';
       ctx.font = 'bold 58px Georgia';
       ctx.fillText(identity, 72, 240, 540);

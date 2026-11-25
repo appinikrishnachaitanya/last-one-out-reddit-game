@@ -60,3 +60,17 @@ test('companion unlocks use saved rescues and persist per account', async () => 
   assert.equal(parseCompanion({ ...profile, animal: 'unknown' }), undefined);
   assert.equal(canWear({ ...defaultCompanion, accessory: 'leaf' }, 2), false);
 });
+
+test('decorations follow the animal and require earned rescues', () => {
+  assert.equal(
+    parseCompanion({ ...defaultCompanion, animal: 'owl', accessory: 'coat' }),
+    undefined
+  );
+  const tail = { ...defaultCompanion, accessory: 'signature' as const };
+  assert.equal(canWear(tail, 2), false);
+  assert.equal(canWear(tail, 3), true);
+  assert.equal(canWear({ ...defaultCompanion, accessory: 'frame' }, 0), false);
+  assert.equal(canWear({ ...defaultCompanion, accessory: 'frame' }, 1), true);
+  assert.equal(canWear({ ...defaultCompanion, accessory: 'coat' }, 4), false);
+  assert.equal(canWear({ ...defaultCompanion, accessory: 'coat' }, 5), true);
+});
