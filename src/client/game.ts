@@ -956,11 +956,6 @@ button('result-home').addEventListener('click', () => {
   rememberRun();
   window.location.assign('/splash.html');
 });
-button('back-to-board').addEventListener('click', () => {
-  result.hidden = true;
-  refresh();
-  button('view-result').focus();
-});
 button('view-result').addEventListener('click', () => {
   result.hidden = false;
   refresh();

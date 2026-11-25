@@ -65,7 +65,7 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
   panelTitle.textContent = view === 'progress' ? 'My Map' : 'Card collection';
   panel.classList.toggle('map-panel', view === 'progress');
   panel.querySelector('form button')!.textContent =
-    view === 'progress' ? '← Back' : '×';
+    view === 'progress' ? 'Back' : '×';
   content.replaceChildren();
   status.textContent = 'Loading your rescues…';
   if (!panel.open) panel.showModal();

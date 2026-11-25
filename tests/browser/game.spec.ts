@@ -1276,10 +1276,7 @@ test('Undo stays available and the first Hint is separate for each daily', async
     await send(page, animal);
   await expect(page.locator('#clean-badge')).toHaveText('B Rank');
   await expect(page.locator('#card-undos')).toContainText('Hint used');
-  await page.locator('#back-to-board').click();
-  await expect(page.locator('#result')).toBeHidden();
-  await page.locator('#view-result').click();
-  await expect(page.locator('#result')).toBeVisible();
+  await expect(page.locator('#back-to-board')).toHaveCount(0);
   await page.locator('#edition-picker').selectOption('loo-2026-11-19');
   await expect(page.locator('#hint')).toBeEnabled();
 });

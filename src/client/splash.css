@@ -498,3 +498,10 @@ dialog.map-panel {
   height: max(240px, calc(100dvh - 272px));
   min-height: 240px;
 }
+
+#welcome-settings form button {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 4px;
+}

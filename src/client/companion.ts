@@ -40,7 +40,7 @@ export function setupCompanionEditor(
 ): void {
   const back = document.createElement('button');
   back.type = 'button';
-  back.textContent = '← Settings';
+  back.textContent = 'Settings';
   back.addEventListener('click', () => {
     const section = container.closest('details');
     section?.removeAttribute('open');
@@ -151,6 +151,13 @@ export function setupCompanionEditor(
       status.append(retry);
     }
   };
-  container.replaceChildren(back, preview, options, accessoryLabel, save, status);
+  container.replaceChildren(
+    back,
+    preview,
+    options,
+    accessoryLabel,
+    save,
+    status
+  );
   void refresh();
 }
