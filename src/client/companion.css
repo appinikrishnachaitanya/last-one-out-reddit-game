@@ -154,3 +154,37 @@
     max-width: 36px;
   }
 }
+
+#my-animal > summary,
+#welcome-my-animal > summary {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  border: 1px solid #b7d2b763;
+  border-radius: 8px;
+  background: #123936;
+  color: #fff1d6;
+  font:
+    700 14px/1.2 system-ui,
+    sans-serif;
+  justify-content: space-between;
+}
+#my-animal > summary::after,
+#welcome-my-animal > summary::after {
+  content: '›';
+  font-size: 22px;
+  line-height: 1;
+}
+#my-animal > summary:focus-visible,
+#welcome-my-animal > summary:focus-visible {
+  outline: 2px solid #e5fa78;
+  outline-offset: 3px;
+}
+@media (max-height: 620px) {
+  #my-animal[open] > summary,
+  #welcome-my-animal[open] > summary {
+    display: none;
+  }
+}
