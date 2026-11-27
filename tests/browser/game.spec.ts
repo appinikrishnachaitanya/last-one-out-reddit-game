@@ -1176,10 +1176,16 @@ test('daily victory opens a live leaderboard in a narrow Reddit frame', async ({
     'u/FernKeeper'
   );
   await expectNoHorizontalOverflow(page);
-  await recordFinish('t2_new', 1000);
-  await expect(dialog.getByText('Your place: #2 of 3')).toBeVisible({
+  await Promise.all(
+    Array.from({ length: 10 }, (_, i) => recordFinish(`t2_new${i}`, 1000 + i))
+  );
+  await expect(dialog.getByText('Your place: #2 of 12')).toBeVisible({
     timeout: 18000,
   });
+  await expect(dialog.getByRole('listitem')).toHaveCount(10);
+  await expect(
+    dialog.getByText('Live · updates every 15 seconds')
+  ).toBeInViewport();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(action).toBeFocused();

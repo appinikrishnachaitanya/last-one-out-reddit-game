@@ -11,6 +11,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   background: linear-gradient(155deg, #f9f4e2, #ecf1dd);
+  text-align: left;
 }
 
 .leaderboard-header {
@@ -101,6 +102,12 @@
 .leaderboard-you-label {
   font-size: 12px;
   font-weight: 750;
+}
+
+@media (max-height: 540px) {
+  #leaderboard li {
+    min-height: 30px;
+  }
 }
 
 .leaderboard-footer {
