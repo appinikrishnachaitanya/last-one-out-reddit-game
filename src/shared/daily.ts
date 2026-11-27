@@ -39,8 +39,11 @@ export type AttemptStats = {
   perfectRuns: number;
 };
 export function rescueRank(undos: number, hintUsed = false): 'S' | 'A' | 'B' {
-  const assists = undos + Number(hintUsed);
+  const assists = rescueAssists(undos, hintUsed);
   return assists === 0 ? 'S' : assists <= 2 ? 'A' : 'B';
+}
+export function rescueAssists(undos: number, hintUsed = false): number {
+  return undos + Number(hintUsed);
 }
 export function rescueShare(
   edition: Edition,

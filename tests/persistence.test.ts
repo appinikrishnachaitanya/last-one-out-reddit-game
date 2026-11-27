@@ -153,7 +153,7 @@ const request = (
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-test('leaderboard ranks first verified rescues, shares tied places, and returns your place beyond the top ten', async () => {
+test('leaderboard ranks assists instead of time, shares tied places, and ranks players beyond the top ten', async () => {
   const lookedUp: string[] = [];
   const f = fixture({
     resolveUsername: async (id) => {
@@ -167,19 +167,25 @@ test('leaderboard ranks first verified rescues, shares tied places, and returns 
       f.store,
       day1,
       `t2_${String(i).padStart(2, '0')}`,
-      payload(),
-      new Date(now.getTime() + Math.max(0, i - 1) * 1000)
+      {
+        ...payload(),
+        personalUndos: i,
+        hintUsed: i === 0,
+        elapsedSeconds: 12 - i,
+      },
+      new Date(now.getTime() + (11 - i) * 1000)
     );
   const response = await request(f.app, 'leaderboard', undefined, 't2_11');
   assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
   const board = await response.json();
   assert.equal(board.total, 12);
   assert.equal(board.yourPlace, 12);
+  assert.equal(board.yourAssists, 11);
   assert.equal(board.leaders.length, 10);
   assert.deepEqual(board.leaders.slice(0, 3), [
-    { place: 1, username: 'keeper00', you: false },
-    { place: 1, username: null, you: false },
-    { place: 3, username: 'keeper02', you: false },
+    { place: 1, username: 'keeper00', you: false, assists: 1 },
+    { place: 1, username: null, you: false, assists: 1 },
+    { place: 3, username: 'keeper02', you: false, assists: 2 },
   ]);
   assert.equal(lookedUp.length, 10);
   const replay = await request(f.app, 'complete', payload(), 't2_11');
@@ -192,6 +198,7 @@ test('leaderboard ranks first verified rescues, shares tied places, and returns 
   assert.deepEqual(await (await request(f.app, 'leaderboard')).json(), {
     total: 0,
     yourPlace: null,
+    yourAssists: null,
     leaders: [],
   });
   f.noPost();

@@ -50,6 +50,8 @@
 
 #leaderboard #leaderboard-rule {
   margin: 6px 0 12px;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 #leaderboard .leaderboard-place {
@@ -59,6 +61,17 @@
   background: #214a3b;
   color: #fff6df;
   font-weight: 750;
+}
+
+#leaderboard .leaderboard-place:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: 8px;
+}
+
+#leaderboard-your-score {
+  color: #f4ddaa;
 }
 
 #leaderboard #leaderboard-rows {
@@ -100,13 +113,24 @@
 }
 
 .leaderboard-you-label {
-  font-size: 12px;
+  margin-inline-start: 5px;
+  font-size: 10px;
   font-weight: 750;
+}
+
+.leaderboard-score {
+  max-width: 7ch;
+  color: #345641;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 @media (max-height: 540px) {
   #leaderboard li {
-    min-height: 30px;
+    min-height: 28px;
   }
 }
 

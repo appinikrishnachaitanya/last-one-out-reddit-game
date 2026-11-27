@@ -1,5 +1,5 @@
 import { showLoginPrompt, showShareSheet } from '@devvit/web/client';
-import { isObject } from '../shared/daily';
+import { isObject, rescueAssists } from '../shared/daily';
 import type { Edition } from '../shared/daily';
 import { titleCase } from '../shared/engine';
 import {
@@ -182,7 +182,8 @@ export class FriendChallenge {
     if (view?.comparison) {
       const { host, guest } = view.comparison;
       const difference =
-        host.undos + Number(host.hint) - guest.undos - Number(guest.hint);
+        rescueAssists(host.undos, host.hint) -
+        rescueAssists(guest.undos, guest.hint);
       const winner = difference < 0 ? view.host : view.guest;
       description.textContent = !difference
         ? 'A draw. Same number of assists.'

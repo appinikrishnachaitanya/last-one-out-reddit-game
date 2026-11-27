@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="companion.css" />
     <link rel="stylesheet" href="leaderboard.css" />
     <link rel="stylesheet" href="friend-challenge.css" />
+    <link rel="stylesheet" href="result.css" />
   </head>
   <body>
     <main id="app">
@@ -201,20 +202,15 @@
             loading="lazy"
           />
           <div class="result-summary">
-            <p class="eyebrow">Rescue complete</p>
+            <p id="card-day"></p>
             <h2 id="result-title">Everyone home.</h2>
-            <div class="result-card" id="result-card">
-              <div id="card-portrait"></div>
-              <div class="card-facts">
-                <p id="card-day"></p>
-                <p id="card-undos"></p>
-                <p id="card-time" hidden></p>
-                <p id="card-streak" hidden></p>
-                <p id="clean-badge" hidden></p>
-                <p id="card-animal"></p>
-              </div>
-            </div>
+            <p id="card-streak" hidden></p>
           </div>
+        </div>
+        <div class="result-card" id="result-card" aria-label="Your result">
+          <p id="clean-badge" hidden></p>
+          <p id="card-assists"></p>
+          <p id="card-time" hidden></p>
         </div>
         <div class="result-actions">
           <button id="copy-result" class="primary">Share result</button>
@@ -226,7 +222,12 @@
           >
             Leaderboard
           </button>
-          <button id="comments" class="secondary">Discuss on Reddit</button>
+        </div>
+        <div class="result-links">
+          <button id="friend-challenge-open" type="button" aria-haspopup="dialog" hidden>
+            Beat my rescue
+          </button>
+          <button id="comments" type="button">Discuss on Reddit</button>
         </div>
         <dialog
           id="leaderboard"
@@ -244,13 +245,16 @@
               </button>
             </form>
           </div>
-          <p id="leaderboard-rule">Earliest verified rescues rank first.</p>
+          <p id="leaderboard-rule">
+            Fewest assists wins. Ties share a place.<br />
+            Each undo +1 · Using a hint +1
+          </p>
           <p
             id="leaderboard-place"
             class="leaderboard-place"
             role="status"
             hidden
-          ></p>
+          ><span id="leaderboard-position"></span><span id="leaderboard-your-score"></span></p>
           <p id="leaderboard-status" role="status"></p>
           <ol id="leaderboard-rows" aria-label="Top ten rescuers" hidden></ol>
           <div class="leaderboard-footer">
@@ -258,19 +262,6 @@
             <button id="leaderboard-retry" type="button" hidden>Retry</button>
           </div>
         </dialog>
-        <div class="result-social">
-          <p class="result-question">
-            Which animal did you almost send too early?
-          </p>
-          <button
-            id="friend-challenge-open"
-            type="button"
-            aria-haspopup="dialog"
-            hidden
-          >
-            Beat my rescue
-          </button>
-        </div>
         <dialog id="result-share" aria-labelledby="share-title">
           <form method="dialog">
             <button aria-label="Close sharing">×</button>
@@ -287,23 +278,23 @@
           <p id="post-status" role="status" hidden></p>
         </dialog>
         <p id="favorite-status" role="status" hidden></p>
-        <section
-          id="comparison"
-          aria-label="Community opening moves"
-          aria-live="polite"
-          hidden
-        ></section>
         <p id="save-status" role="status"></p>
         <button id="retry-save" hidden>Retry saving · no replay needed</button>
         <pre id="copy-fallback" hidden tabindex="0"></pre>
         <details id="community-details" hidden>
-          <summary>See how Reddit solved it</summary>
+          <summary>Rescue recap</summary>
+          <div class="result-companion">
+            <div id="card-portrait"></div>
+            <p id="card-animal"></p>
+          </div>
+          <p id="card-undos"></p>
+          <p id="card-opening" hidden></p>
           <p id="identity-explanation"></p>
           <p id="rescue-hero"></p>
           <ul id="bridge-recap"></ul>
+          <section id="comparison" aria-label="Community opening moves" aria-live="polite" hidden></section>
           <p>
-            Which move fooled you? Start a short, spoiler-free tip with [hint]
-            in the comments. A top-voted tip can appear in the next daily.
+            Start a spoiler-free comment with [hint]. A top-voted tip can appear in the next daily.
           </p>
         </details>
         <div class="result-footer">

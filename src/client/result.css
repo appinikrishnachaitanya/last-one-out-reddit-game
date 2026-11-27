@@ -1,0 +1,206 @@
+#app #result {
+  --result-ink: #183a32;
+  --result-line: #c9c5a7;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 680px;
+  margin-inline: auto;
+  padding: 0 13px 8px;
+  border: 1px solid #bcb28d;
+  border-radius: 14px;
+  background: #faf3df;
+  color: var(--result-ink);
+  text-align: left;
+}
+
+#app #result .result-top {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: clamp(108px, 23vw, 157px);
+  margin: 0 -13px;
+  padding: 13px;
+  overflow: hidden;
+  border-radius: 13px 13px 0 0;
+  background: #18352b;
+}
+
+#result .result-top::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(90deg, #142e25 3%, #142e25e8 28%, #142e2514 100%),
+    linear-gradient(0deg, #102920bd, transparent 75%);
+  content: '';
+}
+
+#app #result .reunion-illustration {
+  position: absolute;
+  z-index: -2;
+  inset: 0 0 0 auto;
+  display: block;
+  width: 76%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  object-position: center 46%;
+}
+
+#app #result .result-summary {
+  text-align: left;
+}
+
+#app #result-title {
+  max-width: 75%;
+  margin: 4px 0 0;
+  color: #fff6de;
+  font-size: clamp(26px, 6vw, 40px);
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+#app #result :is(#card-day, #card-streak) {
+  margin: 0;
+  color: #f4d9a1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+}
+
+#app #result #card-streak {
+  margin-top: 5px;
+  letter-spacing: 0;
+}
+
+#app #result #result-card {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0;
+  margin: 10px 0;
+  padding: 0;
+  border: 1px solid #d3cfb2;
+  border-radius: 8px;
+  background: #f0eed8;
+}
+
+#app #result #result-card p {
+  flex: 1 1 0;
+  align-content: center;
+  min-height: 38px;
+  margin: 0;
+  padding: 4px 6px;
+  color: var(--result-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+#result #result-card p + p {
+  border-left: 1px solid #d3cfb2;
+}
+
+#app #result .result-actions,
+#app #result .result-links {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 7px;
+  margin: 0;
+}
+
+#app #result :is(.result-actions, .result-links, .result-footer) button {
+  min-height: 44px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+#app #result .result-actions #open-leaderboard {
+  border-color: #71866d;
+  background: #e1eace;
+}
+
+#app #result .result-links button {
+  border-color: transparent;
+  background: transparent;
+  color: #284d3b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+#app #result .result-links button:hover {
+  background: #eee8ce;
+}
+
+#app #result #community-details {
+  margin: 0;
+  padding: 0;
+  border-color: var(--result-line);
+  text-align: left;
+}
+
+#app #result #community-details summary {
+  align-content: center;
+  min-height: 44px;
+  padding: 5px 0;
+  color: var(--result-ink);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+#app #result .result-companion {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#app #result #card-portrait {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+}
+
+#app #result #comparison {
+  margin-block: 8px;
+  padding: 7px 9px;
+  border-left: 2px solid #8b9c72;
+  background: #edf0db;
+  text-align: left;
+}
+
+#app #result #comparison h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+#app #result .result-footer {
+  margin-top: 0;
+  border-color: var(--result-line);
+}
+
+#app #result[data-saved] #save-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+@media (min-width: 550px) {
+  #app #result {
+    padding-inline: 18px;
+  }
+
+  #app #result .result-top {
+    margin-inline: -18px;
+    padding: 17px 18px;
+  }
+}

@@ -354,9 +354,6 @@ body {
 }
 
 @media (max-height: 620px) {
-  #result:has(#comparison:not([hidden])):has(#retry-save[hidden]) #save-status {
-    display: none;
-  }
   #app .result {
     margin-top: 4px;
   }
@@ -452,17 +449,6 @@ body {
 #app #result-title {
   font-family: 'Source Serif 4', Georgia, serif;
   letter-spacing: -0.035em;
-}
-
-#app .result-question {
-  display: none;
-}
-
-#app .result:has(#comments:not([hidden])) .result-question {
-  display: block;
-  margin: 7px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 #app .result-footer {

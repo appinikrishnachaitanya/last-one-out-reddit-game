@@ -4,7 +4,7 @@ import type { Context } from 'hono';
 import type { Dependencies, GameContext } from '../app.ts';
 import { editionAt, editionById, editionFromPost } from '../core/schedule.ts';
 import { loadCompletion } from '../core/completions.ts';
-import { isObject } from '../../shared/daily.ts';
+import { isObject, rescueAssists } from '../../shared/daily.ts';
 import type { Completion, Edition } from '../../shared/daily.ts';
 import { challengeCode, redditName } from '../../shared/friend-challenge.ts';
 import type { FriendChallengeView } from '../../shared/friend-challenge.ts';
@@ -50,8 +50,6 @@ function parseInvite(raw: string, code: string): Invite {
     rematch: value.rematch,
   };
 }
-const assists = (run: Completion) =>
-  run.personalUndos + Number(run.hintUsed === true);
 const trail = (run: Completion) => ({
   undos: run.personalUndos,
   hint: run.hintUsed === true,
@@ -176,7 +174,10 @@ export function friendChallengeRoutes(deps: Dependencies) {
       canJoin: role === 'visitor' && Boolean(asPlayer(viewer)) && !guest,
       joined: Boolean(guest),
       rematch: invite.rematch,
-      target: !invite.rematch && hostRun ? assists(hostRun) : null,
+      target:
+        !invite.rematch && hostRun
+          ? rescueAssists(hostRun.personalUndos, hostRun.hintUsed)
+          : null,
       comparison,
       rematchDay: rematchDay ? editionById(rematchDay).number : null,
     };

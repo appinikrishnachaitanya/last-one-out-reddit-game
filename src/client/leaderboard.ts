@@ -2,6 +2,12 @@ import type { DailyApi } from './daily-api';
 import { parseLeaderboard } from '../shared/leaderboard';
 import type { Leaderboard } from '../shared/leaderboard';
 
+function score(assists: number): string {
+  return assists === 0
+    ? 'Clean'
+    : `${assists.toLocaleString()} ${assists === 1 ? 'assist' : 'assists'}`;
+}
+
 function element(id: string): HTMLElement {
   const node = document.getElementById(id);
   if (!node) throw new Error(`Missing ${id}`);
@@ -91,9 +97,12 @@ export class LeaderboardDialog {
     const place = element('leaderboard-place');
     const field = board.total === 1 ? 'rescuer' : 'rescuers';
     place.hidden = board.total === 0;
-    place.textContent = board.yourPlace
+    element('leaderboard-position').textContent = board.yourPlace
       ? `Your place: #${board.yourPlace} of ${board.total.toLocaleString()}`
       : `${board.total.toLocaleString()} ${field} so far`;
+    const yourScore = element('leaderboard-your-score');
+    yourScore.textContent =
+      board.yourAssists === null ? '' : score(board.yourAssists);
     const rows = element('leaderboard-rows');
     rows.hidden = board.total === 0;
     rows.replaceChildren(
@@ -107,13 +116,16 @@ export class LeaderboardDialog {
         const name = document.createElement('span');
         name.className = 'leaderboard-name';
         name.textContent = leader.username ? `u/${leader.username}` : 'Rescuer';
-        row.append(rank, name);
         if (leader.you) {
           const label = document.createElement('span');
           label.className = 'leaderboard-you-label';
           label.textContent = 'You';
-          row.append(label);
+          name.append(label);
         }
+        const assists = document.createElement('span');
+        assists.className = 'leaderboard-score';
+        assists.textContent = score(leader.assists);
+        row.append(rank, name, assists);
         return row;
       })
     );

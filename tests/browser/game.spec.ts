@@ -477,9 +477,8 @@ test('production-shaped response hides the preview picker, restores a saved post
   await page.locator('#community-details').evaluate((el) => {
     el.setAttribute('open', '');
   });
-  await expect(page.locator('#comparison')).toContainText(
-    "You're among the first rescuers today"
-  );
+  await expect(page.locator('#card-opening')).toContainText('You started with Fox.');
+  await expect(page.locator('#comparison')).toBeHidden();
   await expect(page.locator('#card-animal')).toContainText('Fox');
   expect(posts).toBe(0);
   await page.locator('#copy-result').click();
@@ -600,9 +599,8 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   await page.locator('#community-details').evaluate((el) => {
     el.setAttribute('open', '');
   });
-  await expect(page.locator('#comparison')).toContainText(
-    "You're among the first rescuers today"
-  );
+  await expect(page.locator('#card-opening')).toContainText('You started with Turtle.');
+  await expect(page.locator('#comparison')).toBeHidden();
   expect(completedJourneys).toBe(1);
   expect(events.filter((e) => e === 'start')).toHaveLength(1);
   expect(events.filter((e) => e === 'progress')).toHaveLength(3);
@@ -780,7 +778,7 @@ test('Full screen emits the registered Reddit expanded-view effect and keeps a p
   await page.locator('#undo').click();
   await expect(page.locator('#rescue-count')).toHaveText('0 / 4');
 });
-test('the compact saved result keeps copy and comments inside one short frame', async ({
+test('the compact saved result keeps all actions inside mobile and desktop Reddit frames', async ({
   page,
 }) => {
   const edition = {
@@ -806,9 +804,17 @@ test('the compact saved result keeps copy and comments inside one short frame', 
       body: JSON.stringify({
         status: 'ready',
         mode: 'reddit',
+        username: 'FernKeeper',
         edition,
         completion,
         community: { total: 3, openings: { fox: 2, rabbit: 1 } },
+        attemptStats: {
+          players: 12,
+          totalSolves: 3,
+          perfectRuns: 1,
+          firstMoves: { fox: 9, turtle: 3 },
+          firstMistakes: { turtle: 2 },
+        },
         commentsUrl: 'https://www.reddit.com/comments/judgepost/',
       }),
     })
@@ -835,19 +841,32 @@ test('the compact saved result keeps copy and comments inside one short frame', 
       },
     })
   );
-  for (const width of [288, 390, 640, 900]) {
-    await page.setViewportSize({ width, height: 512 });
+  for (const [width, height] of [
+    [288, 512],
+    [375, 596],
+    [724, 596],
+    [900, 512],
+  ]) {
+    await page.setViewportSize({ width, height });
     await page.goto('http://127.0.0.1:5175/game.html');
     await expect(page.locator('#result')).toBeVisible();
     await expect(page.locator('.reunion-illustration')).toBeVisible();
-    await expect(page.locator('.result-question')).toBeVisible();
+    await expect(page.locator('#card-assists')).toHaveText('0 assists');
     await expect(page.locator('#next-crossing')).toBeVisible();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    for (const id of ['copy-result', 'comments', 'result-home']) {
+    for (const id of [
+      'copy-result',
+      'open-leaderboard',
+      'friend-challenge-open',
+      'comments',
+      'result-home',
+    ]) {
       const box = await page.locator(`#${id}`).boundingBox();
       expect(box?.y).toBeGreaterThanOrEqual(0);
-      expect((box?.y ?? 0) + (box?.height ?? 0), `${id} at ${width}×512`)
-        .toBeLessThanOrEqual(512);
+      expect(
+        (box?.y ?? 0) + (box?.height ?? 0),
+        `${id} at ${width}×${height}`
+      ).toBeLessThanOrEqual(height);
     }
     await expect(page.locator('#community-details')).not.toHaveAttribute(
       'open'
@@ -856,8 +875,9 @@ test('the compact saved result keeps copy and comments inside one short frame', 
       await page
         .locator('#result')
         .evaluate((el) => el.getBoundingClientRect().bottom),
-      `result at ${width}×512`
-    ).toBeLessThanOrEqual(512);
+      `result at ${width}×${height}`
+    ).toBeLessThanOrEqual(height);
+    await expect(page.locator('#comparison')).toBeHidden();
   }
   await expect(page.locator('#clean-badge')).toBeVisible();
   await expect(page.locator('#next-crossing')).toContainText('1h');
@@ -866,11 +886,14 @@ test('the compact saved result keeps copy and comments inside one short frame', 
     page.locator('#archive-result a').filter({ hasText: 'Earlier crossing' })
   ).toBeHidden();
   await page.locator('#community-details summary').click();
-  await expect(page.locator('#comparison')).toContainText(
-    "You're among the first rescuers today"
+  await expect(page.locator('#card-opening')).toContainText(
+    'You started with Fox.'
   );
+  await expect(page.locator('#comparison')).toContainText('How players opened');
+  await expect(page.locator('#comparison')).toContainText('75%');
   await page.screenshot({ path: 'artifacts/compact-result-desktop.png' });
 });
+
 test('first visit opens on a playable board with a contextual cue and a visible timer', async ({
   browser,
 }) => {
@@ -1106,7 +1129,7 @@ test('daily victory opens a live leaderboard in a narrow Reddit frame', async ({
         puzzleId: edition.puzzleId,
         boardVersion: edition.boardVersion,
         sequence,
-        personalUndos: 0,
+        personalUndos: 1,
         favorite: 'fox',
       },
       new Date(now.getTime() + offset)
@@ -1170,9 +1193,13 @@ test('daily victory opens a live leaderboard in a narrow Reddit frame', async ({
     dialog.getByText('Could not load the leaderboard.')
   ).toBeVisible();
   await dialog.getByRole('button', { name: 'Retry' }).click();
-  await expect(dialog.getByText('Your place: #2 of 2')).toBeVisible();
-  await expect(dialog.getByText('Live · updates every 15 seconds')).toBeVisible();
+  await expect(dialog.getByText('Your place: #1 of 2')).toBeVisible();
+  await expect(dialog.locator('#leaderboard-your-score')).toHaveText('Clean');
+  await expect(
+    dialog.getByText('Live · updates every 15 seconds')
+  ).toBeVisible();
   await expect(dialog.getByText('u/AlderKeeper')).toBeVisible();
+  await expect(dialog.getByText('1 assist').first()).toBeVisible();
   await expect(dialog.locator('.leaderboard-you')).toContainText(
     'u/FernKeeper'
   );
@@ -1182,7 +1209,7 @@ test('daily victory opens a live leaderboard in a narrow Reddit frame', async ({
   );
   await page.bringToFront();
   await page.clock.fastForward(15000);
-  await expect(dialog.getByText('Your place: #2 of 12')).toBeVisible();
+  await expect(dialog.getByText('Your place: #1 of 12')).toBeVisible();
   await expect(dialog.getByRole('listitem')).toHaveCount(10);
   await expect(
     dialog.getByText('Live · updates every 15 seconds')

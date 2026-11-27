@@ -1,29 +1,3 @@
-#result .result-social:has(#friend-challenge-open:not([hidden])) {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-block: 4px;
-  text-align: left;
-}
-
-#app
-  #result
-  .result-social:has(#friend-challenge-open:not([hidden]))
-  .result-question {
-  margin: 0;
-}
-
-#app #result #friend-challenge-open {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding-inline: 10px;
-  border-color: #617b5e;
-  background: #e3ebcc;
-  font-size: 12px;
-  font-weight: 750;
-}
-
 #app #friend-challenge {
   box-sizing: border-box;
   width: min(440px, calc(100% - 24px));

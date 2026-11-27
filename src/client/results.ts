@@ -11,6 +11,7 @@ import {
   openingPercent,
   parseAttemptStats,
   rescueRank,
+  rescueAssists,
 } from '../shared/daily';
 import { navigateTo, showShareSheet } from '@devvit/web/client';
 import type { Edition, Completion, AttemptStats } from '../shared/daily';
@@ -121,6 +122,7 @@ export class Results {
     (el('result-share') as HTMLDialogElement).close();
     void loadCompanion(this.api).catch(() => undefined);
     el('comparison').hidden = true;
+    el('card-opening').hidden = true;
     this.setIdentity(
       saved?.sequence ?? sequence,
       saved ? Boolean(saved.recovered || saved.openingTrap) : recovered
@@ -145,11 +147,13 @@ export class Results {
         ? ''
         : `Time ${formatElapsed(this.elapsedSeconds)}`;
     const rank = rescueRank(this.undos, this.hintUsed);
+    const assists = rescueAssists(this.undos, this.hintUsed);
+    el('card-assists').textContent = `${assists} ${assists === 1 ? 'assist' : 'assists'}`;
     el('clean-badge').hidden = false;
     el('clean-badge').textContent =
       rank === 'S' ? 'S Rank · Clean Crossing' : `${rank} Rank`;
     el('card-portrait').innerHTML = avatarPortrait(companionProfile());
-    el('card-day').textContent = `DAY ${edition.number} · ${edition.date} UTC`;
+    el('card-day').textContent = `Day ${edition.number} · Rescue complete`;
     el('card-undos').textContent =
       `${this.undos} undo${this.undos === 1 ? '' : 's'}${this.hintUsed ? ' · Hint used' : ''}`;
     el('card-animal').textContent =
@@ -161,6 +165,7 @@ export class Results {
     }
   }
   status(text: string, retry = false): void {
+    el('result').toggleAttribute('data-saved', this.validated && !this.demo && !retry);
     el('save-status').textContent = this.demo ? `${text} Preview only.` : text;
     el('retry-save').hidden = !retry;
   }
@@ -330,17 +335,17 @@ export class Results {
     this.stats = stats;
     if (this.demo) return;
     const box = el('comparison');
+    el('community-details').hidden = false;
     box.replaceChildren();
-    box.hidden = false;
-    const intro = document.createElement('p');
+    const intro = el('card-opening');
     intro.textContent = `You started with ${titleCase(ownOpening)}.`;
-    box.append(intro);
-    if (!stats || stats.players < 10) {
-      const early = document.createElement('p');
-      early.textContent = `You're among the first rescuers today${stats ? ` · ${stats.players}/10 players` : ''}`;
-      box.append(early);
-      return;
-    }
+    intro.hidden = false;
+    box.hidden = true;
+    if (!stats || stats.players < 10) return;
+    const heading = document.createElement('h3');
+    heading.textContent = 'How players opened';
+    box.append(heading);
+    box.hidden = false;
     for (const [animal] of highestCount(stats.firstMoves).slice(0, 3)) {
       if (!isAnimalId(animal)) continue;
       const percent = openingPercent(stats, animal) ?? 0;
