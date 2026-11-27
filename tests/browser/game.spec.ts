@@ -403,6 +403,11 @@ test('production-shaped response hides the preview picker, restores a saved post
   await expect(page.locator('#welcome-hook')).toHaveText(
     'Turtle can leave. Should it?'
   );
+  await page.setViewportSize({ width: 380, height: 512 });
+  const panel = (await page.locator('.welcome-panel').boundingBox())!;
+  expect(Math.abs(panel.x + panel.width / 2 - 190)).toBeLessThan(1);
+  expect(Math.abs(panel.y + panel.height / 2 - 256)).toBeLessThan(1);
+  await expect(playButton).toBeInViewport();
   await page.setViewportSize({ width: 288, height: 320 });
   const play = await playButton.boundingBox();
   expect(play!.y + play!.height).toBeLessThanOrEqual(320);

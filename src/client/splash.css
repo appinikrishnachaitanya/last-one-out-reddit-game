@@ -23,8 +23,7 @@ main {
   min-height: 100dvh;
   margin-inline: auto;
   display: grid;
-  align-items: end;
-  justify-items: start;
+  place-items: center;
   padding: clamp(12px, 4vw, 36px);
   background:
     linear-gradient(0deg, #081f1ef2 0%, #09262547 55%, #09262508 100%),
@@ -44,7 +43,7 @@ main {
 
 @media (min-width: 700px) {
   main {
-    align-items: center;
+    justify-items: start;
   }
 
   .welcome-panel {
