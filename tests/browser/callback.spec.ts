@@ -35,7 +35,7 @@ test('the daily post leads with Rabbit and reopens the same crossing after the r
   const recall = page.getByRole('button', { name: 'Rescue Rabbit' });
   await expect(recall).toBeInViewport();
   await expect(
-    page.getByRole('button', { name: 'Play Today’s Rescue' })
+    page.getByRole('button', { name: 'Play daily' })
   ).toBeInViewport();
   await recall.click();
   await expect(page.locator('html')).toHaveAttribute(

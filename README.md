@@ -88,7 +88,7 @@ Share result opens Download image and Post Rescue to Comments. Collection and cu
 
 ### Rescue showcase
 
-On a daily Reddit post, **Rescue Rabbit** opens a short, playable introduction. Complete it and choose **Play this daily crossing** to open the same post’s puzzle. **Play Today’s Rescue** opens the daily directly.
+On a daily Reddit post, **Rescue Rabbit** opens a short, playable introduction. Complete it and choose **Play this daily crossing** to open the same post’s puzzle. **Play daily** opens the daily directly.
 
 Run `npm run demo` and open `http://localhost:5173/callback.html` to try the two-board showcase. The opening starts with Rabbit stranded and three friends at the campfire. Call one bridge keeper back, send Rabbit across, then bring the keeper home. In Firefly Commons, either keeper can help Rabbit, but Badger still needs a second bridge. Undo or try the other keeper in one tap.
 

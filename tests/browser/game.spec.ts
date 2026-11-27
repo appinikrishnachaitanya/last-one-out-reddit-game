@@ -413,7 +413,7 @@ test('production-shaped response hides the preview picker, restores a saved post
     'Day 1 · Moonroot Crossing'
   );
   await page.setViewportSize({ width: 390, height: 512 });
-  const playButton = page.getByRole('button', { name: 'Play Today’s Rescue' });
+  const playButton = page.getByRole('button', { name: 'Play daily' });
   await expect(playButton).toHaveAccessibleDescription('Solo or shared');
   await expect(page.locator('#welcome-hook')).toHaveText(
     'Turtle can leave. Should it?'
@@ -475,7 +475,7 @@ test('production-shaped response hides the preview picker, restores a saved post
   );
   await page.reload();
   await expect(
-    page.getByRole('button', { name: 'View Your Rescue' })
+    page.getByRole('button', { name: 'View rescue' })
   ).toHaveAccessibleDescription('Or take a turn');
   await page.setViewportSize({ width: 288, height: 320 });
   for (const action of await page.locator('.welcome-actions button').all()) {

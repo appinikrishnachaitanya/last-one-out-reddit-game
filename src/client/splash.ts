@@ -94,7 +94,7 @@ const daily = api
       play.setAttribute('aria-describedby', playModes.id);
     }
     if (!completion) return;
-    if (!challenge) playLabel.textContent = 'View Your Rescue';
+    if (!challenge) playLabel.textContent = 'View rescue';
     badge.hidden = true;
   })
   .catch(() => {
