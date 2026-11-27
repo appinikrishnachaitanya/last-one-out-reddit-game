@@ -1151,6 +1151,7 @@ test('daily victory opens a live leaderboard in a narrow Reddit frame', async ({
   });
   await page.setViewportSize({ width: 288, height: 512 });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.clock.install();
   await page.goto('http://127.0.0.1:5175/game.html');
   await expect(page.locator('canvas')).toBeVisible();
   for (const animal of sequence) await send(page, animal);
@@ -1179,9 +1180,9 @@ test('daily victory opens a live leaderboard in a narrow Reddit frame', async ({
   await Promise.all(
     Array.from({ length: 10 }, (_, i) => recordFinish(`t2_new${i}`, 1000 + i))
   );
-  await expect(dialog.getByText('Your place: #2 of 12')).toBeVisible({
-    timeout: 18000,
-  });
+  await page.bringToFront();
+  await page.clock.fastForward(15000);
+  await expect(dialog.getByText('Your place: #2 of 12')).toBeVisible();
   await expect(dialog.getByRole('listitem')).toHaveCount(10);
   await expect(
     dialog.getByText('Live · updates every 15 seconds')
