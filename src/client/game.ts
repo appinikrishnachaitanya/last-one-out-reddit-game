@@ -1262,12 +1262,14 @@ async function load(previewId?: string): Promise<void> {
     const firstCue = element('first-move', HTMLElement);
     const stats = data.previousRescues;
     const mostStranded = stats && highestCount(stats.stranded)[0];
+    const showRecap =
+      stats && !localDemo && (stats.totalSolves > 0 || stats.yesterday);
     firstCue.textContent =
-      stats && !localDemo && (stats.totalSolves > 0 || stats.yesterday)
+      showRecap
         ? stats.yesterday
           ? `Yesterday: ${stats.totalSolves.toLocaleString()} rescues • Most stranded: ${mostStranded ? titleCase(mostStranded[0]) : '—'} • Perfect runs: ${stats.totalSolves ? `${Math.round((stats.perfectRuns / stats.totalSolves) * 100)}%` : '—'}`
           : `Today: ${stats.totalSolves.toLocaleString()} rescues`
-        : 'Tap to preview a path. Watch who holds the bridges.';
+        : 'Tap an animal. Leaving can fold a bridge.';
     firstCue.hidden = firstAttempt || !!data.completion;
     selected = undefined;
     scene.blocked = [];
@@ -1334,7 +1336,11 @@ async function load(previewId?: string): Promise<void> {
     if (data.completion) {
       scene.celebrate(reduced || motionPreference.matches);
       say('Your saved rescue. Everyone is still home.');
-    } else say(firstAttempt ? 'Tap an animal to see its path.' : '');
+    } else {
+      say(
+        firstAttempt || showRecap ? 'Tap an animal to preview its path.' : ''
+      );
+    }
     flow.ready();
   } catch (error) {
     if (current !== epoch) return;

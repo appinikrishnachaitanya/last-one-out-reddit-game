@@ -12,20 +12,21 @@
       <div class="welcome-panel">
         <div class="welcome">
           <div class="welcome-toolbar">
-            <span>DAILY RESCUE</span
-            ><button data-settings aria-haspopup="dialog">Settings ⚙</button>
+            <p class="edition" id="edition" aria-live="polite">Daily rescue</p>
+            <button data-settings aria-haspopup="dialog">Settings ⚙</button>
           </div>
-          <p class="edition" id="edition" aria-live="polite">Daily rescue</p>
           <h1>Last One Out</h1>
-          <p id="welcome-profile" class="welcome-profile">
-            Welcome to the crossing
-          </p>
-          <div id="home-companion" class="home-companion"></div>
-          <p class="hook">
-            Getting home is easy. Knowing when to stay is the puzzle.
+          <p id="welcome-hook" class="hook">
+            Send everyone home. Who has to stay?
           </p>
           <button id="play">Play Today’s Rescue</button>
           <p id="badge" role="status" hidden></p>
+          <div class="welcome-account">
+            <div id="home-companion" class="home-companion"></div>
+            <p id="welcome-profile" class="welcome-profile">
+              Welcome to the crossing
+            </p>
+          </div>
         </div>
         <nav class="welcome-links" aria-label="Your rescues">
           <button id="home-nav" aria-current="page">Home</button>

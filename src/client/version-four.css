@@ -1,10 +1,23 @@
 :root {
   --forest: #0b302f;
   --deep: #092523;
+  --surface: #103936;
   --cream: #fff1d6;
   --warm: #ffc267;
   --citron: #e5fa78;
   --danger: #ff9c85;
+}
+
+html[data-scenery='dawn'] {
+  --forest: #14353a;
+  --deep: #0d282e;
+  --surface: #1b4146;
+}
+
+html[data-scenery='autumn'] {
+  --forest: #362b22;
+  --deep: #261e18;
+  --surface: #47372a;
 }
 
 body {
@@ -63,7 +76,7 @@ body {
 #app button {
   border-color: #b2cab08c;
   color: var(--cream);
-  background: #103936;
+  background: var(--surface);
   box-shadow: none;
   font-weight: 700;
 }
@@ -168,7 +181,7 @@ body {
 }
 
 #app .control-column {
-  background: #103936;
+  background: var(--surface);
   border-color: #7f9a826b;
   box-shadow: none;
 }
@@ -373,6 +386,16 @@ body {
   overflow-wrap: anywhere;
 }
 
+@media (max-width: 559px) {
+  #app:not(.touring) #first-move {
+    order: 1;
+  }
+
+  #app:not(.touring) #game-container {
+    order: 2;
+  }
+}
+
 #app .rescue {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
@@ -382,7 +405,7 @@ body {
   padding: 3px;
   border: 1px solid #b2cab048;
   border-radius: 12px;
-  background: #092523;
+  background: var(--deep);
 }
 
 #app #rescue-modes button {
@@ -424,6 +447,70 @@ body {
 
 #app .result :is(#community-details, #past-crossings) {
   border-top: 1px solid #b7a57b;
+}
+
+#app #result-title {
+  font-family: 'Source Serif 4', Georgia, serif;
+  letter-spacing: -0.035em;
+}
+
+#app .result-question {
+  display: none;
+}
+
+#app .result:has(#comments:not([hidden])) .result-question {
+  display: block;
+  margin: 7px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#app .result-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px 12px;
+  border-top: 1px solid #b7a57b;
+  margin-top: 6px;
+  padding-top: 4px;
+}
+
+#app #next-crossing {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-height: 620px) {
+  #app .result-top {
+    display: grid;
+    grid-template-columns: minmax(64px, 0.65fr) minmax(0, 1.35fr);
+    gap: clamp(8px, 3vw, 16px);
+  }
+
+  #app .result .reunion-illustration {
+    display: block;
+    height: clamp(92px, 25vw, 124px);
+  }
+
+  #app .result-summary {
+    text-align: left;
+  }
+
+  #app .result-card {
+    justify-content: flex-start;
+  }
+
+  #app #result-title {
+    font-size: clamp(20px, 6vw, 28px);
+  }
+
+  #app #card-portrait {
+    width: clamp(38px, 12vw, 58px);
+    height: clamp(38px, 12vw, 58px);
+    flex-basis: clamp(38px, 12vw, 58px);
+  }
 }
 
 #app .collection-grid li {
@@ -501,7 +588,6 @@ body {
   #app:not(.touring)
     :is(
       #game-container,
-      .puzzle-heading,
       #first-move,
       .feedback,
       .actions,
@@ -509,6 +595,16 @@ body {
     ) {
     width: var(--inline-play-width);
     margin-inline: auto;
+  }
+
+  #app:not(.touring) .puzzle-heading {
+    width: min(100%, max(var(--inline-play-width), 300px));
+    margin-inline: auto;
+  }
+
+  #app:not(.touring) .puzzle-heading h2 {
+    font-size: clamp(17px, 5vw, 20px);
+    line-height: 1.1;
   }
 
   #app:not(.touring) #shared-rescue {
@@ -726,9 +822,8 @@ body {
 }
 
 #app #result-home {
-  float: left;
   min-height: 44px;
-  margin-right: 8px;
+  margin-inline-start: auto;
 }
 
 #app #close-help,

@@ -140,6 +140,10 @@ test('all animals and primary controls fit Reddit’s 512px inline frame', async
     expect((send?.y ?? 1000) + (send?.height ?? 1000)).toBeLessThanOrEqual(512);
     const board = await page.locator('canvas').boundingBox();
     expect(board?.width).toBeGreaterThanOrEqual(240);
+    if (width < 560) {
+      const title = await page.locator('#board-title').boundingBox();
+      expect(title!.y + title!.height).toBeLessThanOrEqual(board!.y);
+    }
     await expectNoHorizontalOverflow(page);
   }
   await page.setViewportSize({ width: 390, height: 512 });
@@ -392,6 +396,14 @@ test('production-shaped response hides the preview picker, restores a saved post
   );
   await page.setViewportSize({ width: 390, height: 512 });
   await expect(page.locator('#play')).toHaveText('Play Today’s Rescue');
+  await expect(page.locator('#welcome-hook')).toHaveText(
+    'Turtle can leave. Should it?'
+  );
+  await page.setViewportSize({ width: 288, height: 320 });
+  const play = await page.locator('#play').boundingBox();
+  expect(play!.y + play!.height).toBeLessThanOrEqual(320);
+  await expectNoHorizontalOverflow(page);
+  await page.setViewportSize({ width: 390, height: 512 });
   await expect(page.locator('#welcome-profile')).toHaveText(
     'Welcome, u/trailtester'
   );
@@ -827,6 +839,8 @@ test('the compact saved result keeps copy and comments inside one short frame', 
     await page.setViewportSize({ width, height: 512 });
     await page.goto('http://127.0.0.1:5175/game.html');
     await expect(page.locator('#result')).toBeVisible();
+    await expect(page.locator('.reunion-illustration')).toBeVisible();
+    await expect(page.locator('.result-question')).toBeVisible();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     for (const id of ['copy-result', 'comments']) {
       const box = await page.locator(`#${id}`).boundingBox();

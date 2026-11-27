@@ -68,9 +68,7 @@
       </div>
       <div id="play-layout" class="play-layout" data-play>
         <div class="board-column">
-          <p id="first-move" hidden>
-            Tap to preview a path. Watch who holds the bridges.
-          </p>
+          <p id="first-move" hidden></p>
           <div
             id="game-container"
             data-play
@@ -188,7 +186,6 @@
         </form>
       </dialog>
       <section id="result" class="result" hidden aria-labelledby="result-title">
-        <button id="result-home" class="secondary">Home</button>
         <div class="result-top">
           <img
             class="reunion-illustration"
@@ -197,7 +194,7 @@
             loading="lazy"
           />
           <div class="result-summary">
-            <p class="eyebrow">ALL FOUR FRIENDS ARE SAFE</p>
+            <p class="eyebrow">Rescue complete</p>
             <h2 id="result-title">Everyone home.</h2>
             <div class="result-card" id="result-card">
               <div id="card-portrait"></div>
@@ -214,8 +211,9 @@
         </div>
         <div class="result-actions">
           <button id="copy-result" class="primary">Share result</button>
-          <button id="comments" class="secondary">Reddit comments</button>
+          <button id="comments" class="secondary">Discuss on Reddit</button>
         </div>
+        <p class="result-question">Which animal did you almost send too early?</p>
         <dialog id="result-share" aria-labelledby="share-title">
           <form method="dialog">
             <button aria-label="Close sharing">×</button>
@@ -251,7 +249,10 @@
             in the comments. A top-voted tip can appear in the next daily.
           </p>
         </details>
-        <p id="next-crossing" hidden></p>
+        <div class="result-footer">
+          <p id="next-crossing" hidden></p>
+          <button id="result-home" class="secondary">Home</button>
+        </div>
         <details id="past-crossings" hidden>
           <summary>Card collection &amp; past crossings</summary>
           <div id="card-collection"></div>

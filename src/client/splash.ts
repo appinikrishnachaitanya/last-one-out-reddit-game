@@ -9,7 +9,7 @@ import {
 import { cardStamp } from './card-stamp';
 import { requestExpandedMode } from '@devvit/web/client';
 import { DailyApi } from './daily-api';
-import { boardById } from '../shared/boards';
+import { MOONROOT, boardById } from '../shared/boards';
 import { isAnimalId, titleCase } from '../shared/engine';
 import { isObject } from '../shared/daily';
 import type { Completion } from '../shared/daily';
@@ -50,6 +50,9 @@ const daily = api
     if (data.username) profile.textContent = `Welcome, u/${data.username}`;
     title = boardById(data.edition.puzzleId, data.edition.boardVersion).title;
     edition.textContent = `Day ${data.edition.number} · ${title}`;
+    if (data.edition.puzzleId === MOONROOT.id && !data.completion)
+      document.querySelector<HTMLElement>('#welcome-hook')!.textContent =
+        'Turtle can leave. Should it?';
     completion = data.completion;
     mapEdition = data.edition;
     if (!completion) return;
