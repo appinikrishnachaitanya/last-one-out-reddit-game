@@ -1473,6 +1473,53 @@ test('a Challenge edition fits the inline frame and can be completed', async ({
   );
 });
 
+test('an expert crossing exposes a late trap and can be recovered on a small phone', async ({
+  page,
+}) => {
+  const { editionAt } = await import('../../src/server/core/schedule.ts');
+  const { boardById } = await import('../../src/shared/boards.ts');
+  const { replay, solve, trace } = await import('../../src/shared/engine.ts');
+  const edition = editionAt(new Date('2026-12-19T00:00:00Z'))!;
+  const board = boardById(edition.puzzleId, edition.boardVersion);
+  const [first, second, third, last] = solve(board)[0]!;
+  expect(board.bridges).toHaveLength(4);
+  expect(trace(board, replay(board, [first!, second!]), last!).legal).toBe(
+    true
+  );
+  await page.setViewportSize({ width: 320, height: 512 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page);
+  await page.locator('#edition-picker').selectOption(edition.id);
+  await expect(page.locator('#board-title')).toHaveText(board.title);
+  await expectNoHorizontalOverflow(page);
+  const actions = await page.locator('.actions').boundingBox();
+  expect(actions!.y + actions!.height).toBeLessThanOrEqual(512);
+  const canvas = page.locator('#game-container canvas');
+  const sendFromBoard = async (id: string) => {
+    const animal = board.animals.find((candidate) => candidate.id === id)!;
+    const box = (await canvas.boundingBox())!;
+    await canvas.click({
+      position: {
+        x: (box.width * (66 + animal.x * 48)) / 420,
+        y: (box.height * (66 + animal.y * 48)) / 420,
+      },
+    });
+    await expect(page.locator('#send')).toBeEnabled();
+    await page.locator('#send').click();
+    await expect(page.locator('#restart')).toBeEnabled();
+  };
+  await sendFromBoard(first!);
+  await sendFromBoard(second!);
+  await sendFromBoard(last!);
+  await expect(page.locator('#feedback')).toContainText('Stranded!');
+  await page.locator('#undo').click();
+  await sendFromBoard(third!);
+  await sendFromBoard(last!);
+  await expect(page.locator('#save-status')).toContainText(
+    'validated and saved'
+  );
+});
+
 test('Remix Sunday rejects a broken crossing and lets a moderator test and export an approved draft', async ({
   page,
 }) => {

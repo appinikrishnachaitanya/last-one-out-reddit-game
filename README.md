@@ -55,7 +55,7 @@ For a live judge rehearsal, open the same Day 1 post on four signed-in accounts.
 
 - **Shared TypeScript** owns the board definitions, rules, and solver. **Phaser** renders motion and routes. HTML provides accessible controls and results.
 - **Devvit Web 0.15.4 and Hono** bind each post to a unique UTC edition and its immutable board version. A `0 0 * * *` Devvit Scheduler task creates or retrieves the next post in private installations. Public test posts use the explicit moderator action.
-- The ten dated boards run November 18–27 UTC. From Day 11, the 21 Challenge boards run in a deterministic shuffled cycle. Everyone sees the same UTC daily, every board appears once per cycle, and consecutive cycles never meet on the same board. Existing editions retain their original boards and saves. The end screen countdown uses server time. The archive includes the original editions and recent rotation posts. Earned cards persist after posts age out of that list.
+- The ten dated boards run November 18–27 UTC. The original 21 Challenge dates run November 28–December 18. Starting December 19, each shuffled cycle has 33 boards, with an expert crossing every two or three days. Each of the 12 expert boards has four active bridges, one successful order, and a legal trap at each of the first three decisions. The end screen countdown uses server time. The archive includes the original editions and recent rotation posts. Earned cards persist after posts age out of that list.
 - **Devvit Redis** stores first validated completions by account and edition. The server replays every final sequence, and atomic first-write storage prevents duplicate contributions. Redis also stores portrait preferences, earned card indexes, recharge state and comment receipts. Streaks are derived from dated rescues.
 - **Permissions** in `devvit.json` are `reddit: true`, `redis: true`, `realtime: true`, and `journeys: true`. Scheduler is registered in the top-level `scheduler.tasks` config. Comments post as the app. Flair requires the installed app to have effective subreddit flair permissions.
 - **Journeys** reports ready, first move, progress, and server-validated completion independently of gameplay. In-Reddit ingestion requires approval and live verification. [Journeys details](docs/JOURNEYS.md)
@@ -66,7 +66,7 @@ To add a new board, register a new ID/version in `src/shared/boards.ts`, solve i
 
 ### Challenge playtesting
 
-The moderator edition picker and local preview list the original editions and the first 21 Challenge dates. Select a Challenge edition to test it before the scheduled UTC date. The solver report is for development and contains spoilers.
+The moderator edition picker and local preview include the original editions, the first 21 Challenge dates, and the first scheduled date for each expert crossing. Select an edition to test it before its scheduled UTC date. The solver report is for development and contains spoilers.
 
 The timer counts up from the first committed Solo move and can be hidden. The board stays playable when Undo runs out, and motion can be reduced or skipped. [W3C timing guidance](https://www.w3.org/WAI/WCAG22/Understanding/timing-adjustable.html) · [W3C animation guidance](https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html) · [W3C touch target guidance](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
 

@@ -15,6 +15,12 @@ export const ANIMAL_COLORS = {
   fox: '#dd9671',
   badger: '#adbcc1',
 };
+const BRIDGE_PALETTES: Record<string, { outline: number; ink: string }> = {
+  moon: { outline: 0xf3cd86, ink: '#75501d' },
+  star: { outline: 0xacc6e8, ink: '#234f69' },
+  leaf: { outline: 0xaad8a0, ink: '#38582c' },
+  ridge: { outline: 0xd7b9ee, ink: '#59346d' },
+};
 const O = 42,
   C = 48;
 const pixel = (p: Point) => ({
@@ -169,10 +175,7 @@ export class Crossing extends Phaser.Scene {
     for (const b of this.session.board.bridges) {
       const p = pixel(b),
         open = bridgeOpen(this.session.state, b);
-      const bridgeColor =
-        b.id === 'star' ? 0xacc6e8 : b.id === 'leaf' ? 0xaad8a0 : 0xf3cd86;
-      const bridgeText =
-        b.id === 'star' ? '#234f69' : b.id === 'leaf' ? '#38582c' : '#75501d';
+      const palette = BRIDGE_PALETTES[b.id] ?? BRIDGE_PALETTES.moon!;
       g.fillStyle(0x091d26);
       g.fillRoundedRect(p.x - 23, p.y - 23, 46, 46, 6);
       const deck = this.add.graphics().setPosition(p.x, p.y).setDepth(1);
@@ -189,12 +192,12 @@ export class Crossing extends Phaser.Scene {
         deck.fillRoundedRect(-20, -20 + i * 11, 40, 8, 2);
       deck.setScale(1, open ? 1 : 0.16);
       this.bridgeDecks.set(b.id, deck);
-      g.lineStyle(2, bridgeColor, open ? 0.85 : 0.25);
+      g.lineStyle(2, palette.outline, open ? 0.85 : 0.25);
       g.lineBetween(p.x - 22, p.y - 22, p.x - 22, p.y + 22);
       g.lineBetween(p.x + 22, p.y - 22, p.x + 22, p.y + 22);
       g.fillStyle(0xffefce);
       g.fillRoundedRect(p.x - 11, p.y - 39, 22, 21, 5);
-      this.label(p.x, p.y - 29, b.symbol, 16, open ? bridgeText : '#a63724');
+      this.label(p.x, p.y - 29, b.symbol, 16, open ? palette.ink : '#a63724');
       if (!open) {
         g.lineStyle(2, 0xebaa95, 0.8);
         g.lineBetween(p.x - 8, p.y - 8, p.x + 8, p.y + 8);
@@ -297,6 +300,7 @@ export class Crossing extends Phaser.Scene {
         canHoldBridge(bridge, holder.id)
       );
       for (const [index, b] of bridges.entries()) {
+        const palette = BRIDGE_PALETTES[b.id] ?? BRIDGE_PALETTES.moon!;
         const badgeX = p.x - 17 + index * 27;
         if (holder.id === this.selected) {
           const q = pixel(b);
@@ -305,18 +309,9 @@ export class Crossing extends Phaser.Scene {
         }
         g.fillStyle(0xffefcc);
         g.fillCircle(badgeX, p.y - 19, 11);
-        g.lineStyle(
-          2,
-          b.id === 'star' ? 0xacc6e8 : b.id === 'leaf' ? 0xaad8a0 : 0xf3cd86
-        );
+        g.lineStyle(2, palette.outline);
         g.strokeCircle(badgeX, p.y - 19, 11);
-        this.label(
-          badgeX,
-          p.y - 20,
-          b.symbol,
-          16,
-          b.id === 'star' ? '#234f69' : b.id === 'leaf' ? '#38582c' : '#75501d'
-        );
+        this.label(badgeX, p.y - 20, b.symbol, 16, palette.ink);
       }
     }
   }

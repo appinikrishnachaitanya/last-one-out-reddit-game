@@ -1,4 +1,5 @@
-import { CHALLENGES } from '../../shared/boards.ts';
+import { CHALLENGES, EXPERT_CROSSINGS } from '../../shared/boards.ts';
+import type { Board } from '../../shared/engine.ts';
 import type { Edition } from '../../shared/daily.ts';
 import { isObject } from '../../shared/daily.ts';
 // Published entries and board versions are immutable. Add new dated editions; never rotate by array index.
@@ -76,9 +77,11 @@ export const EDITIONS: readonly Edition[] = [
 ];
 const dayMs = 86_400_000;
 const rotationStart = Date.parse('2026-11-28T00:00:00Z');
-// Version the seed and pool together when a new rotation era is introduced.
-function shuffle(cycle: number) {
-  const pool = [...CHALLENGES];
+// The original 21 dates were already available to playtest moderators.
+const expertStart = Date.parse('2026-12-19T00:00:00Z');
+export const challengeTotal = CHALLENGES.length + EXPERT_CROSSINGS.length;
+function shuffle(boards: readonly Board[], cycle: number) {
+  const pool = [...boards];
   let state = (0x94a33721 ^ Math.imul(cycle + 1, 0x9e3779b9)) >>> 0;
   for (let i = pool.length - 1; i > 0; i--) {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
@@ -87,17 +90,34 @@ function shuffle(cycle: number) {
   }
   return pool;
 }
+
+function expertRotation(cycle: number): Board[] {
+  const standard = shuffle(CHALLENGES, cycle + 1);
+  const expert = shuffle(EXPERT_CROSSINGS, cycle);
+  let nextStandard = 0;
+  let nextExpert = 0;
+  return Array.from({ length: challengeTotal }, (_, slot) => {
+    const expertThroughSlot = Math.ceil(
+      ((slot + 1) * expert.length) / challengeTotal
+    );
+    return nextExpert < expertThroughSlot
+      ? expert[nextExpert++]!
+      : standard[nextStandard++]!;
+  });
+}
 export function editionAt(date: Date): Edition | undefined {
   const iso = date.toISOString().slice(0, 10);
   const original = EDITIONS.find((e) => e.date === iso);
   if (original) return original;
   const offset = Math.floor((date.getTime() - rotationStart) / dayMs);
   if (offset < 0) return undefined;
-  const cycle = Math.floor(offset / CHALLENGES.length);
-  const pool = shuffle(cycle);
-  if (cycle && shuffle(cycle - 1).at(-1)?.id === pool[0]?.id)
-    [pool[0], pool[1]] = [pool[1]!, pool[0]!];
-  const board = pool[offset % pool.length]!;
+  const expertOffset = Math.floor((date.getTime() - expertStart) / dayMs);
+  const board =
+    expertOffset < 0
+      ? shuffle(CHALLENGES, 0)[offset]!
+      : expertRotation(Math.floor(expertOffset / challengeTotal))[
+          expertOffset % challengeTotal
+        ]!;
   return {
     puzzleId: board.id,
     boardVersion: board.version,
@@ -107,9 +127,15 @@ export function editionAt(date: Date): Edition | undefined {
   };
 }
 
-export const challengePreviews: readonly Edition[] = CHALLENGES.map((_, i) =>
-  editionAt(new Date(rotationStart + i * dayMs))!
-);
+const expertIds = new Set(EXPERT_CROSSINGS.map(({ id }) => id));
+export const challengePreviews: readonly Edition[] = [
+  ...CHALLENGES.map((_, i) => editionAt(new Date(rotationStart + i * dayMs))!),
+  ...expertRotation(0).flatMap((board, slot) =>
+    expertIds.has(board.id)
+      ? [editionAt(new Date(expertStart + slot * dayMs))!]
+      : []
+  ),
+];
 export function editionById(id: string): Edition {
   if (!/^loo-\d{4}-\d{2}-\d{2}$/.test(id))
     throw new Error('Invalid edition ID');

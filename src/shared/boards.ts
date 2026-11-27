@@ -489,27 +489,234 @@ const challengeLayouts: ChallengeLayout[] = [
   ],
 ];
 const challengeAnimals = ['turtle', 'rabbit', 'fox', 'badger'] as const;
-const challengeBridgeIds = ['moon', 'star', 'leaf'] as const;
-const challengeBridgeMarks = ['☾', '✦', '◆'] as const;
+const challengeBridgeIds = ['moon', 'star', 'leaf', 'ridge'] as const;
+const challengeBridgeMarks = ['☾', '✦', '◆', '▲'] as const;
+function challengeBoard(
+  [title, animals, bridges]: ChallengeLayout,
+  id: string,
+  subtitle: string
+): Board {
+  return crossing(
+    id,
+    title,
+    subtitle,
+    animals.map(([x, y, direction], i) => ({
+      id: challengeAnimals[i]!,
+      x,
+      y,
+      direction,
+    })),
+    bridges.map(([x, y, holder], i) => ({
+      id: challengeBridgeIds[i]!,
+      symbol: challengeBridgeMarks[i]!,
+      x,
+      y,
+      holder,
+    }))
+  );
+}
 export const CHALLENGES: readonly Board[] = challengeLayouts.map(
-  ([title, animals, bridges], index) =>
-    crossing(
+  (layout, index) =>
+    challengeBoard(
+      layout,
       `challenge-${String(index + 1).padStart(2, '0')}-v1`,
-      title,
-      'Several ways out. One order gets everyone home.',
-      animals.map(([x, y, direction], i) => ({
-        id: challengeAnimals[i]!,
-        x,
-        y,
-        direction,
-      })),
-      bridges.map(([x, y, holder], i) => ({
-        id: challengeBridgeIds[i]!,
-        symbol: challengeBridgeMarks[i]!,
-        x,
-        y,
-        holder,
-      }))
+      'Several ways out. One order gets everyone home.'
+    )
+);
+
+const expertLayouts: ChallengeLayout[] = [
+  [
+    'Alder Span',
+    [
+      [3, 2, 'W'],
+      [1, 3, 'N'],
+      [5, 2, 'S'],
+      [2, 4, 'E'],
+    ],
+    [
+      [1, 0, 'turtle'],
+      [3, 4, 'fox'],
+      [6, 4, 'fox'],
+      [5, 4, 'rabbit'],
+    ],
+  ],
+  [
+    'Rainroot Junction',
+    [
+      [2, 2, 'S'],
+      [5, 5, 'W'],
+      [1, 3, 'E'],
+      [3, 2, 'S'],
+    ],
+    [
+      [2, 3, 'badger'],
+      [2, 6, 'rabbit'],
+      [1, 5, 'fox'],
+      [4, 3, 'badger'],
+    ],
+  ],
+  [
+    'Hazelbraid Ford',
+    [
+      [4, 2, 'E'],
+      [4, 1, 'W'],
+      [2, 5, 'E'],
+      [1, 3, 'N'],
+    ],
+    [
+      [0, 1, 'fox'],
+      [1, 1, 'fox'],
+      [5, 5, 'turtle'],
+      [1, 0, 'rabbit'],
+    ],
+  ],
+  [
+    'Firelight Interchange',
+    [
+      [1, 1, 'E'],
+      [4, 5, 'N'],
+      [2, 3, 'S'],
+      [5, 4, 'N'],
+    ],
+    [
+      [4, 3, 'badger'],
+      [5, 2, 'fox'],
+      [3, 1, 'rabbit'],
+      [5, 1, 'fox'],
+    ],
+  ],
+  [
+    'Mossbank Lock',
+    [
+      [3, 3, 'W'],
+      [5, 5, 'W'],
+      [2, 4, 'W'],
+      [1, 4, 'N'],
+    ],
+    [
+      [1, 3, 'fox'],
+      [0, 3, 'rabbit'],
+      [1, 1, 'turtle'],
+      [3, 5, 'fox'],
+    ],
+  ],
+  [
+    'Bramble Narrows',
+    [
+      [4, 2, 'N'],
+      [1, 4, 'N'],
+      [3, 3, 'E'],
+      [2, 4, 'W'],
+    ],
+    [
+      [4, 3, 'rabbit'],
+      [0, 4, 'turtle'],
+      [1, 0, 'badger'],
+      [1, 1, 'turtle'],
+    ],
+  ],
+  [
+    'Amberwake Gate',
+    [
+      [5, 3, 'S'],
+      [5, 5, 'W'],
+      [4, 4, 'E'],
+      [1, 2, 'N'],
+    ],
+    [
+      [2, 5, 'badger'],
+      [1, 5, 'turtle'],
+      [5, 6, 'badger'],
+      [1, 0, 'fox'],
+    ],
+  ],
+  [
+    'Cedar Run',
+    [
+      [3, 1, 'W'],
+      [1, 3, 'E'],
+      [3, 4, 'E'],
+      [1, 4, 'E'],
+    ],
+    [
+      [2, 4, 'turtle'],
+      [3, 3, 'badger'],
+      [5, 3, 'fox'],
+      [4, 4, 'turtle'],
+    ],
+  ],
+  [
+    'Lantern Latch',
+    [
+      [3, 5, 'N'],
+      [1, 5, 'N'],
+      [2, 4, 'E'],
+      [5, 3, 'S'],
+    ],
+    [
+      [6, 4, 'rabbit'],
+      [1, 4, 'badger'],
+      [3, 1, 'badger'],
+      [3, 4, 'fox'],
+    ],
+  ],
+  [
+    'Willowspan Steps',
+    [
+      [3, 5, 'W'],
+      [2, 2, 'S'],
+      [1, 2, 'S'],
+      [3, 1, 'W'],
+    ],
+    [
+      [1, 5, 'badger'],
+      [2, 5, 'turtle'],
+      [0, 5, 'badger'],
+      [1, 4, 'rabbit'],
+    ],
+  ],
+  [
+    'Fernlight Crossing',
+    [
+      [5, 4, 'W'],
+      [1, 2, 'S'],
+      [5, 5, 'W'],
+      [2, 1, 'S'],
+    ],
+    [
+      [4, 5, 'turtle'],
+      [2, 4, 'rabbit'],
+      [4, 4, 'badger'],
+      [2, 5, 'badger'],
+    ],
+  ],
+  [
+    'Moonfen Passage',
+    [
+      [5, 3, 'W'],
+      [4, 2, 'S'],
+      [4, 4, 'W'],
+      [3, 2, 'N'],
+    ],
+    [
+      [3, 1, 'rabbit'],
+      [3, 4, 'rabbit'],
+      [4, 3, 'turtle'],
+      [2, 4, 'badger'],
+    ],
+  ],
+];
+const expertClues = [
+  'Watch which bridges serve two routes.',
+  'A friend in the way may also be holding a bridge.',
+  'A keeper may need to cross its own bridge.',
+];
+export const EXPERT_CROSSINGS: readonly Board[] = expertLayouts.map(
+  (layout, index) =>
+    challengeBoard(
+      layout,
+      `expert-${String(index + 1).padStart(2, '0')}-v1`,
+      expertClues[Math.floor(index / 4)]!
     )
 );
 
@@ -525,6 +732,7 @@ export const BOARDS: readonly Board[] = [
   LAST_LIGHT,
   HUSHWATER,
   ...CHALLENGES,
+  ...EXPERT_CROSSINGS,
 ];
 export function boardById(id: string, version: number): Board {
   const board = BOARDS.find((b) => b.id === id && b.version === version);

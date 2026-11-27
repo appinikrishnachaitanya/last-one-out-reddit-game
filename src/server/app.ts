@@ -20,7 +20,7 @@ import {
   recordAttempt,
 } from './core/attempts.ts';
 import { postRegistryKey } from './core/posts.ts';
-import { CHALLENGES, boardById } from '../shared/boards.ts';
+import { boardById } from '../shared/boards.ts';
 import { Hono } from 'hono';
 import type { Context as HonoContext } from 'hono';
 import { isAnimalId, titleCase } from '../shared/engine.ts';
@@ -36,6 +36,7 @@ import {
   recentEditions,
   EDITIONS,
   challengePreviews,
+  challengeTotal,
 } from './core/schedule.ts';
 export type GameContext = {
   userId?: string;
@@ -261,7 +262,7 @@ export function createApi(deps: Dependencies) {
       ...(userId && username && deps.mode === 'reddit'
         ? { owner: username }
         : {}),
-      challengeTotal: CHALLENGES.length,
+      challengeTotal,
       totalEditions: EDITIONS.length,
       cards: cards.filter((card) => card !== null),
       serverTime: now.getTime(),
