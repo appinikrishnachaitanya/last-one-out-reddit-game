@@ -14,6 +14,7 @@ import { isAnimalId, titleCase } from '../shared/engine';
 import { isObject } from '../shared/daily';
 import type { Completion } from '../shared/daily';
 import { portrait } from './portraits';
+import { readChallengeLink } from './challenge-link';
 
 declare const __LOCAL_DEMO__: boolean;
 const api = new DailyApi();
@@ -29,6 +30,12 @@ let title = 'Last One Out';
 let completion: Completion | null = null;
 let mapEdition: Edition | undefined;
 let request = 0;
+const challenge = !__LOCAL_DEMO__ && readChallengeLink('feed');
+if (challenge) {
+  play.textContent = 'Open Friend Challenge';
+  document.querySelector<HTMLElement>('#welcome-hook')!.textContent =
+    'A friend left you a rescue challenge.';
+}
 
 play.addEventListener('click', (event) => {
   if (__LOCAL_DEMO__) {
@@ -50,13 +57,13 @@ const daily = api
     if (data.username) profile.textContent = `Welcome, u/${data.username}`;
     title = boardById(data.edition.puzzleId, data.edition.boardVersion).title;
     edition.textContent = `Day ${data.edition.number} · ${title}`;
-    if (data.edition.puzzleId === MOONROOT.id && !data.completion)
+    if (!challenge && data.edition.puzzleId === MOONROOT.id && !data.completion)
       document.querySelector<HTMLElement>('#welcome-hook')!.textContent =
         'Turtle can leave. Should it?';
     completion = data.completion;
     mapEdition = data.edition;
     if (!completion) return;
-    play.textContent = 'View Your Rescue';
+    if (!challenge) play.textContent = 'View Your Rescue';
     badge.hidden = true;
   })
   .catch(() => {

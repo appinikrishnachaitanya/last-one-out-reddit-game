@@ -44,6 +44,10 @@ app.route(
       username: context.username,
     }),
     readPost: readBoundPost,
+    findChallengePlayer: async (username) => {
+      const player = await reddit.getUserByUsername(username);
+      return player ? { id: player.id, name: player.username } : undefined;
+    },
     resolveUsername: async (userId) => {
       if (!isT2(userId)) return undefined;
       const username = await cache(

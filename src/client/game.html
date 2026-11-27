@@ -12,6 +12,7 @@
     <title>Last One Out · Moonroot Crossing</title>
     <link rel="stylesheet" href="companion.css" />
     <link rel="stylesheet" href="leaderboard.css" />
+    <link rel="stylesheet" href="friend-challenge.css" />
   </head>
   <body>
     <main id="app">
@@ -257,7 +258,19 @@
             <button id="leaderboard-retry" type="button" hidden>Retry</button>
           </div>
         </dialog>
-        <p class="result-question">Which animal did you almost send too early?</p>
+        <div class="result-social">
+          <p class="result-question">
+            Which animal did you almost send too early?
+          </p>
+          <button
+            id="friend-challenge-open"
+            type="button"
+            aria-haspopup="dialog"
+            hidden
+          >
+            Beat my rescue
+          </button>
+        </div>
         <dialog id="result-share" aria-labelledby="share-title">
           <form method="dialog">
             <button aria-label="Close sharing">×</button>
@@ -307,6 +320,60 @@
           <p id="flair-status" role="status" hidden></p>
         </details>
       </section>
+      <dialog id="friend-challenge" aria-labelledby="friend-challenge-title">
+        <div class="challenge-masthead">
+          <div>
+            <p id="friend-challenge-day"></p>
+            <h2 id="friend-challenge-title">Beat my rescue</h2>
+          </div>
+          <form method="dialog">
+            <button type="submit" aria-label="Close friend challenge" autofocus>
+              ×
+            </button>
+          </form>
+        </div>
+        <div class="challenge-body">
+          <p id="friend-challenge-description"></p>
+          <form id="friend-challenge-invite" hidden>
+            <label for="friend-challenge-name">
+              Reddit username <span>(optional)</span>
+            </label>
+            <input
+              id="friend-challenge-name"
+              type="text"
+              placeholder="u/username"
+              maxlength="23"
+              autocapitalize="off"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="friend-challenge-invite-hint"
+            />
+            <p id="friend-challenge-invite-hint">
+              Leave blank for an open invite. The first friend to accept claims it.
+            </p>
+            <button class="primary" type="submit">Share challenge</button>
+          </form>
+          <div id="friend-challenge-trails" hidden></div>
+          <div class="challenge-actions">
+            <button id="friend-challenge-join" type="button" class="primary" hidden>
+              Accept challenge
+            </button>
+            <button id="friend-challenge-login" type="button" class="primary" hidden>
+              Sign in to join
+            </button>
+            <button id="friend-challenge-play" type="button" class="primary" hidden>
+              Play the crossing
+            </button>
+            <button id="friend-challenge-refresh" type="button" hidden>
+              Refresh challenge
+            </button>
+            <button id="friend-challenge-rematch" type="button" hidden>
+              Rematch next daily
+            </button>
+          </div>
+          <p id="friend-challenge-status" role="status"></p>
+        </div>
+      </dialog>
       <section id="empty-state" hidden>
         <h2>A quiet crossing</h2>
         <p id="empty-message" role="status"></p>

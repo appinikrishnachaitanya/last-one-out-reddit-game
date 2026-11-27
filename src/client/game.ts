@@ -26,6 +26,7 @@ import * as Phaser from 'phaser';
 import { MOONROOT, boardById } from '../shared/boards';
 import { DailyApi } from './daily-api';
 import { Results } from './results';
+import { FriendChallenge } from './friend-challenge';
 import { JourneyFlow } from './journeys';
 import { createTelemetryClient } from '@devvit/analytics/client/reddit';
 import type { DailyGoal, Edition } from '../shared/daily';
@@ -52,6 +53,7 @@ const feedback = element('feedback', HTMLParagraphElement);
 const result = element('result', HTMLElement);
 let session = new Session(MOONROOT);
 const api = new DailyApi();
+const friends = new FriendChallenge(api, localDemo);
 setupRemix(api);
 let edition: Edition | undefined;
 let commentsUrl: string | null = null;
@@ -1174,6 +1176,7 @@ async function saveResult(): Promise<void> {
       saved.firstCompletion,
       reduced || motionPreference.matches
     );
+    if (!localDemo) friends.completed();
     if (results.favorite !== saved.completion.favorite) await persistFavorite();
   } catch (error) {
     if (current === epoch)
@@ -1347,6 +1350,7 @@ async function load(previewId?: string): Promise<void> {
       );
     }
     flow.ready();
+    if (!localDemo) friends.enter(edition, data.username, Boolean(data.completion));
   } catch (error) {
     if (current !== epoch) return;
     playable(false);

@@ -1,0 +1,215 @@
+#result .result-social:has(#friend-challenge-open:not([hidden])) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-block: 4px;
+  text-align: left;
+}
+
+#app
+  #result
+  .result-social:has(#friend-challenge-open:not([hidden]))
+  .result-question {
+  margin: 0;
+}
+
+#app #result #friend-challenge-open {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding-inline: 10px;
+  border-color: #617b5e;
+  background: #e3ebcc;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+#app #friend-challenge {
+  box-sizing: border-box;
+  width: min(440px, calc(100% - 24px));
+  max-width: none;
+  max-height: calc(100% - 24px);
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #afad85;
+  border-radius: 14px;
+  background: #f6eed7;
+  text-align: left;
+}
+
+.challenge-masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 10px;
+  padding: 15px clamp(12px, 4vw, 22px);
+  border-bottom: 3px solid #968456;
+  background:
+    linear-gradient(90deg, #142d22f2, #0f2b26b0),
+    #193e2f url('/art/feed-river.webp') center 54% / cover;
+  color: #fff1ca;
+}
+
+#friend-challenge :is(h2, h3, p, form, ol) {
+  margin: 0;
+}
+
+#friend-challenge-day {
+  color: #f0dda8;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#friend-challenge #friend-challenge-day {
+  font-size: 10px;
+}
+
+#friend-challenge h2 {
+  font:
+    750 clamp(25px, 7vw, 36px) / 1.08 'Source Serif 4',
+    Georgia,
+    serif;
+}
+
+#friend-challenge button {
+  min-height: 44px;
+}
+
+#friend-challenge .challenge-masthead button {
+  width: 44px;
+  padding: 0;
+  border-color: #dbc796;
+  background: #f6eed7;
+  color: #193d2e;
+  font-size: 22px;
+}
+
+.challenge-body {
+  padding: 14px clamp(12px, 4vw, 22px) 18px;
+}
+
+#friend-challenge #friend-challenge-invite:not([hidden]) {
+  display: grid;
+  gap: 7px;
+  margin-top: 13px;
+}
+
+#friend-challenge-invite label {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+#friend-challenge-invite label span {
+  font-weight: 400;
+}
+
+#friend-challenge-name {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #687e65;
+  border-radius: 7px;
+  background: #fffaf0;
+  color: #16392e;
+  font: inherit;
+  font-size: 16px;
+}
+
+#friend-challenge :is(#friend-challenge-invite-hint, #friend-challenge-status) {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#friend-challenge #friend-challenge-status:not(:empty) {
+  margin-top: 10px;
+}
+
+.challenge-actions:has(button:not([hidden])) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+#friend-challenge-trails:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.challenge-trail {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid #a1ae87;
+  border-radius: 10px;
+  background: #e6ead0;
+}
+
+.challenge-trail:nth-child(2) {
+  border-color: #b9a474;
+  background: #f0e4c4;
+}
+
+.challenge-trail h3 {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+#friend-challenge .challenge-trail p {
+  font-size: 12px;
+}
+
+#friend-challenge .challenge-trail ol {
+  display: grid;
+  gap: 3px;
+  margin-top: 6px;
+  padding: 0;
+  list-style-position: inside;
+}
+
+.challenge-trail li {
+  display: block;
+  padding: 3px 4px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.challenge-trail li::before {
+  display: inline-block;
+  width: 21px;
+  height: 21px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: #c3b88c url('/art/animals.webp') var(--portrait, 0 0) / 200% 200%;
+  vertical-align: middle;
+  content: '';
+}
+
+.challenge-trail [data-animal='rabbit'] {
+  --portrait: 100% 0;
+}
+.challenge-trail [data-animal='fox'] {
+  --portrait: 0 100%;
+}
+.challenge-trail [data-animal='badger'] {
+  --portrait: 100% 100%;
+}
+
+.challenge-trail .trail-turn {
+  border-color: #91713d;
+  background: #fff0bf;
+  font-weight: 750;
+}
+
+#friend-challenge .trail-caption {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  font-weight: 750;
+}

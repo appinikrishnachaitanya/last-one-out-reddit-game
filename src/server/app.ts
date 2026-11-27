@@ -4,6 +4,7 @@ import {
   canWear,
 } from '../shared/companion.ts';
 import { remixRoutes } from './routes/remix.ts';
+import { friendChallengeRoutes } from './routes/friend-challenge.ts';
 import { goldenLeavesKey, readDailyGoal } from './core/daily-goal.ts';
 import {
   CommunityMoveError,
@@ -53,6 +54,7 @@ export type Dependencies = {
   getContext: (c: HonoContext) => Promise<GameContext>;
   readPost: (postId: string) => Promise<unknown>;
   resolveUsername?: (userId: string) => Promise<string | undefined>;
+  findChallengePlayer?: (username: string) => Promise<{ id: string; name: string } | undefined>;
   communityStorage?: CommunityStorage;
   notifyCommunity?: (channel: string, revision: number) => Promise<void>;
   readCommentHint?: (postId: string) => Promise<CommentHint | undefined>;
@@ -75,6 +77,7 @@ function precedingEdition(edition: Edition): Edition | undefined {
 export function createApi(deps: Dependencies) {
   const api = new Hono();
   api.route('/remix', remixRoutes(deps));
+  api.route('/challenge', friendChallengeRoutes(deps));
   async function requestEdition(c: HonoContext) {
     const ctx = await deps.getContext(c);
     if (!ctx.postId) return { ctx, edition: undefined };
