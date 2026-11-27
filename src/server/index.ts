@@ -19,6 +19,7 @@ import { isT3 } from '@devvit/web/shared';
 import { parseCommentHint } from '../shared/daily';
 import { HINT_REFILL_MS } from '../shared/hint-refill';
 import { editionAt } from './core/schedule';
+import { postRegistryKey } from './core/posts';
 const app = new Hono();
 app.route(
   '/api',
@@ -134,6 +135,19 @@ app.route(
   })
 );
 app.route('/api/telemetry', telemetryRoutes);
+app.get('/api/callback/destination', async (c) => {
+  const edition = editionAt(new Date());
+  const post = edition
+    ? await redis.hGet(postRegistryKey(edition), 'post').catch(() => undefined)
+    : undefined;
+  const daily = typeof post === 'string' && isT3(post);
+  return c.json({
+    daily,
+    url: daily
+      ? `https://www.reddit.com/comments/${post.slice(3)}/`
+      : `https://www.reddit.com/r/${context.subredditName}/`,
+  });
+});
 app.route('/internal/menu', menu);
 app.post('/internal/settings/daily-goal-target', async (c) => {
   const payload: unknown = await c.req.json().catch(() => null);

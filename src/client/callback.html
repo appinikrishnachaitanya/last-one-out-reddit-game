@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102923" />
+    <title>Last One Out · Rescue Showcase</title>
+    <link rel="stylesheet" href="callback.css" />
+  </head>
+  <body>
+    <main>
+      <header class="masthead">
+        <span>Last One Out</span>
+        <span id="chapter">1 / 2 · Moonroot Crossing</span>
+      </header>
+      <section id="crossing" class="crossing" aria-labelledby="prompt">
+        <div class="intro">
+          <h1 id="prompt">Rabbit is stranded.</h1>
+          <p id="dispatch" role="status">Call one bridge keeper back.</p>
+        </div>
+        <div class="river">
+          <div id="river-board" role="img" aria-label="Forest crossing"></div>
+          <p id="crossing-count">3 home · 1 waiting</p>
+        </div>
+        <div class="shore">
+          <h2 id="shore-label">At the campfire</h2>
+          <div
+            id="animals"
+            class="animals"
+            role="group"
+            aria-labelledby="shore-label"
+          ></div>
+          <div class="utility">
+            <button id="undo" type="button" disabled>Undo</button>
+            <a id="skip" class="daily-link" hidden>Daily crossing</a>
+          </div>
+        </div>
+      </section>
+      <section
+        id="reunion"
+        class="reunion"
+        aria-labelledby="reunion-title"
+        hidden
+      >
+        <img
+          src="/art/reunion.webp"
+          alt="Four animals reunited around the campfire"
+        />
+        <div class="reunion-copy">
+          <p class="kicker">4 / 4 home</p>
+          <h1 id="reunion-title" tabindex="-1">Turtle went back for Rabbit.</h1>
+          <div class="reunion-actions">
+            <button id="next" type="button" class="primary">
+              Try Firefly Commons
+            </button>
+            <a id="daily" class="daily-link" hidden>Play today’s crossing</a>
+            <button id="again" type="button">Replay rescue</button>
+          </div>
+          <button id="retry" type="button" hidden>Find today’s crossing</button>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="callback.ts"></script>
+  </body>
+</html>

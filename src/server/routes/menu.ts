@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { UiResponse } from '@devvit/web/shared';
-import { context } from '@devvit/web/server';
+import { context, reddit } from '@devvit/web/server';
 import { isObject } from '../../shared/daily';
 import {
   EDITIONS,
@@ -23,6 +23,26 @@ menu.use('*', async (c, next) => {
           error instanceof Error ? error.message : 'Moderator access required',
       },
       403
+    );
+  }
+});
+menu.post('/callback-showcase', async (c) => {
+  try {
+    const post = await reddit.submitCustomPost({
+      entry: 'callback',
+      title: 'Last One Out · Rabbit is stranded. Who would you call back?',
+      textFallback: {
+        text: 'Three friends made it home. Rabbit is still at the river. Open this post on Reddit to call one bridge keeper back.',
+      },
+    });
+    return c.json<UiResponse>({ navigateTo: url(post.id) });
+  } catch {
+    return c.json<UiResponse>(
+      {
+        showToast:
+          'Could not confirm the showcase post. Check the community before trying again.',
+      },
+      503
     );
   }
 });

@@ -16,6 +16,11 @@
         "inline": true,
         "entry": "splash.html",
         "height": "regular"
+      },
+      "callback": {
+        "inline": true,
+        "entry": "callback.html",
+        "height": "tall"
       }
     }
   },
@@ -25,6 +30,12 @@
   },
   "menu": {
     "items": [
+      {
+        "label": "Create rescue showcase",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/callback-showcase"
+      },
       {
         "label": "Open today\u2019s daily",
         "location": "subreddit",

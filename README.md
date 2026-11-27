@@ -85,3 +85,9 @@ Publication is manual. Register the approved JSON in the versioned board catalog
 Home opens My Map, Collection, and Settings. My Map uses an illustrated forest trail with tappable crossing landmarks. The account’s chosen animal marks the active crossing with “You are here.” Completed posts show check marks, upcoming markers stay locked, and older crossings are grouped into six-stop chapters. Continue rescue opens the same edition as the post. Settings → My Animal saves the account’s avatar and accessory in Redis. All four puzzle animals are available immediately. Owl unlocks after 2 saved rescues, Deer after 5, Red panda after 10, and Otter after 20. Lantern and Golden leaf accessories unlock after 1 and 3 rescues. Unlocks count distinct saved editions and are validated on the server. Avatar choices appear on Home, the result, and the downloaded image.
 
 Share result opens Download image and Post Rescue to Comments. Collection and customization are accessed from Home and Settings.
+
+### Rescue showcase
+
+Run `npm run demo` and open `http://localhost:5173/callback.html` to try the two-board showcase. The opening starts with Rabbit stranded and three friends at the campfire. Call one bridge keeper back, send Rabbit across, then bring the keeper home. Firefly Commons offers two keepers to choose from and Undo lets you try the other one.
+
+In a Devvit playtest community, a moderator can select **Create rescue showcase** to make the standalone interactive post. Create today's daily with **Open today’s daily** so the showcase can link straight to it. If today's post hasn't been created, the link goes to the rescue community. Showcase runs are independent of daily saves and scores.

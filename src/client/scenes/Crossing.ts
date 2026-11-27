@@ -2,7 +2,7 @@ import { scenery } from '../atmosphere';
 import type { Scenery } from '../atmosphere';
 import * as Phaser from 'phaser';
 import { bridgeOpen, isHome, samePoint, trace } from '../../shared/engine';
-import type { AnimalId, Point, Session } from '../../shared/engine';
+import type { AnimalId, Point, Session, State } from '../../shared/engine';
 export const ANIMAL_COLORS = {
   turtle: '#a5c896',
   rabbit: '#e4d3bd',
@@ -16,11 +16,12 @@ const pixel = (p: Point) => ({
   y: O + p.y * C + C / 2,
 });
 export class Crossing extends Phaser.Scene {
-  session: Session;
+  session: Pick<Session, 'state' | 'board'>;
   onSelect: (id: AnimalId) => void;
   selected: AnimalId | undefined;
   practiceTarget: AnimalId | undefined;
   blocked: AnimalId[] = [];
+  previewRoutes?: readonly AnimalId[];
   busy = false;
   ready = false;
   bridgeDecks = new Map<string, Phaser.GameObjects.Graphics>();
@@ -30,7 +31,10 @@ export class Crossing extends Phaser.Scene {
   backdrop?: Phaser.GameObjects.Image;
   reunionArt: Phaser.GameObjects.Image | undefined;
   tokens = new Map<AnimalId, Phaser.GameObjects.Container>();
-  constructor(session: Session, onSelect: (id: AnimalId) => void) {
+  constructor(
+    session: Pick<Session, 'state' | 'board'>,
+    onSelect: (id: AnimalId) => void
+  ) {
     super('Crossing');
     this.session = session;
     this.onSelect = onSelect;
@@ -232,7 +236,8 @@ export class Crossing extends Phaser.Scene {
       this.routeArt.lineStyle(3, 0xffe09a);
       this.routeArt.strokeCircle(x, y, 25);
     }
-    const routes = this.selected ? [this.selected] : this.blocked;
+    const routes =
+      this.previewRoutes ?? (this.selected ? [this.selected] : this.blocked);
     for (const id of routes) {
       const g = this.routeArt;
       const a = this.session.board.animals.find((a) => a.id === id);
@@ -560,6 +565,48 @@ export class Crossing extends Phaser.Scene {
         scaleY: 0.16,
         duration: 155,
         ease: 'Sine.easeIn',
+        onComplete: () => resolve(),
+      });
+    });
+  }
+  async animateReturn(
+    id: AnimalId,
+    returned: State,
+    reduced: boolean
+  ): Promise<void> {
+    const board = this.session.board;
+    const animal = board.animals.find((piece) => piece.id === id);
+    if (!animal || reduced) return;
+    const first = pixel(trace(board, returned, id).path.at(-1) ?? animal);
+    const end = pixel(animal);
+    const token = this.animal(id, first.x, first.y).setDepth(4).setAlpha(0);
+    await new Promise<void>((resolve) => {
+      this.tweens.add({
+        targets: token,
+        ...end,
+        alpha: 1,
+        duration: 480,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          token.destroy();
+          resolve();
+        },
+      });
+    });
+  }
+  async raiseBridges(holder: AnimalId, reduced: boolean): Promise<void> {
+    if (reduced) return;
+    const decks = this.session.board.bridges
+      .filter((bridge) => bridge.holder === holder)
+      .flatMap((bridge) => this.bridgeDecks.get(bridge.id) ?? []);
+    if (!decks.length) return;
+    for (const deck of decks) deck.setScale(1, 0.16);
+    await new Promise<void>((resolve) => {
+      this.tweens.add({
+        targets: decks,
+        scaleY: 1,
+        duration: 250,
+        ease: 'Cubic.easeOut',
         onComplete: () => resolve(),
       });
     });
