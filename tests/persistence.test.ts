@@ -94,7 +94,7 @@ test('illegal, malformed, partial, wrong edition/version and anonymous submissio
 function fixture(
   options: Pick<
     Dependencies,
-    'share' | 'setFlair' | 'hintRefill' | 'readCommentHint'
+    'share' | 'setFlair' | 'hintRefill' | 'readCommentHint' | 'resolveUsername'
   > & {
     telemetry?: () => Promise<void>;
     store?: MemoryStore;
@@ -120,6 +120,7 @@ function fixture(
       setFlair: options.setFlair,
       hintRefill: options.hintRefill,
       readCommentHint: options.readCommentHint,
+      resolveUsername: options.resolveUsername,
     })
   );
   return {
@@ -152,6 +153,51 @@ const request = (
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
+test('leaderboard ranks first verified rescues, shares tied places, and returns your place beyond the top ten', async () => {
+  const lookedUp: string[] = [];
+  const f = fixture({
+    resolveUsername: async (id) => {
+      lookedUp.push(id);
+      if (id === 't2_01') throw new Error('Account lookup unavailable');
+      return `keeper${id.slice(3)}`;
+    },
+  });
+  for (let i = 11; i >= 0; i--)
+    await complete(
+      f.store,
+      day1,
+      `t2_${String(i).padStart(2, '0')}`,
+      payload(),
+      new Date(now.getTime() + Math.max(0, i - 1) * 1000)
+    );
+  const response = await request(f.app, 'leaderboard', undefined, 't2_11');
+  assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
+  const board = await response.json();
+  assert.equal(board.total, 12);
+  assert.equal(board.yourPlace, 12);
+  assert.equal(board.leaders.length, 10);
+  assert.deepEqual(board.leaders.slice(0, 3), [
+    { place: 1, username: 'keeper00', you: false },
+    { place: 1, username: null, you: false },
+    { place: 3, username: 'keeper02', you: false },
+  ]);
+  assert.equal(lookedUp.length, 10);
+  const replay = await request(f.app, 'complete', payload(), 't2_11');
+  assert.equal((await replay.json()).firstCompletion, false);
+  assert.deepEqual(
+    await (await request(f.app, 'leaderboard', undefined, 't2_11')).json(),
+    board
+  );
+  f.setEdition(day3);
+  assert.deepEqual(await (await request(f.app, 'leaderboard')).json(), {
+    total: 0,
+    yourPlace: null,
+    leaders: [],
+  });
+  f.noPost();
+  assert.equal((await request(f.app, 'leaderboard')).status, 404);
+});
+
 test('API hides aggregates before solve, binds to the post, and restores the saved result after midnight without writing', async () => {
   const f = fixture();
   assert.equal((await request(f.app, 'comparison')).status, 403);

@@ -1168,7 +1168,12 @@ async function saveResult(): Promise<void> {
       displayDailyGoal(saved.goal);
       if (saved.firstCompletion) showGoalToast(saved.goal);
     }
-    results.saved(saved.completion, saved.attemptStats, saved.firstCompletion);
+    results.saved(
+      saved.completion,
+      saved.attemptStats,
+      saved.firstCompletion,
+      reduced || motionPreference.matches
+    );
     if (results.favorite !== saved.completion.favorite) await persistFavorite();
   } catch (error) {
     if (current === epoch)

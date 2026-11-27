@@ -1,0 +1,230 @@
+#app #open-leaderboard {
+  background: #d9e8cc;
+  border-color: #638061;
+}
+
+#app #leaderboard {
+  box-sizing: border-box;
+  width: min(400px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  padding: clamp(12px, 4vw, 22px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: linear-gradient(155deg, #f9f4e2, #ecf1dd);
+}
+
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 8px;
+}
+
+#leaderboard :is(h2, p, form, ol) {
+  margin: 0;
+}
+
+#leaderboard h2 {
+  font:
+    700 clamp(24px, 8vw, 34px) / 1.05 'Source Serif 4',
+    Georgia,
+    serif;
+}
+
+#leaderboard .leaderboard-day {
+  margin-bottom: 3px;
+  color: #43604f;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+#leaderboard .leaderboard-header button {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 22px;
+}
+
+#leaderboard #leaderboard-rule {
+  margin: 6px 0 12px;
+}
+
+#leaderboard .leaderboard-place {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #214a3b;
+  color: #fff6df;
+  font-weight: 750;
+}
+
+#leaderboard #leaderboard-rows {
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboard-rank {
+  align-content: center;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  border-radius: 6px;
+  background: #e4ebda;
+}
+
+#leaderboard li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  padding: 4px 7px;
+  border-bottom: 1px solid #becab5;
+}
+
+#leaderboard .leaderboard-first {
+  color: #473109;
+  background: #f4d590;
+}
+
+#leaderboard .leaderboard-you {
+  border-radius: 6px;
+  background: #d6e6ce;
+}
+
+.leaderboard-name {
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-you-label {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.leaderboard-footer {
+  margin-top: 7px;
+}
+
+#leaderboard #leaderboard-live {
+  color: #365646;
+  font-size: 12px;
+}
+
+#leaderboard #leaderboard-live::before {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #407453;
+  content: '';
+}
+
+#leaderboard #leaderboard-retry {
+  min-height: 44px;
+}
+
+#result .result-top {
+  position: relative;
+}
+
+.victory-fireflies {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.victory-fireflies i {
+  position: absolute;
+  bottom: 9%;
+  left: var(--start);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  opacity: 0;
+  background: #fff6b0;
+  box-shadow:
+    0 0 9px 3px #efb94d,
+    0 0 18px 5px #ffcf6373;
+}
+
+.victory-fireflies i:nth-child(1) {
+  --start: 8%;
+  --drift: 20px;
+  --delay: 75ms;
+}
+.victory-fireflies i:nth-child(2) {
+  --start: 20%;
+  --drift: -12px;
+  --delay: 210ms;
+}
+.victory-fireflies i:nth-child(3) {
+  --start: 32%;
+  --drift: 12px;
+  --delay: 0ms;
+}
+.victory-fireflies i:nth-child(4) {
+  --start: 45%;
+  --drift: -18px;
+  --delay: 280ms;
+}
+.victory-fireflies i:nth-child(5) {
+  --start: 55%;
+  --drift: 20px;
+  --delay: 125ms;
+}
+.victory-fireflies i:nth-child(6) {
+  --start: 68%;
+  --drift: -15px;
+  --delay: 240ms;
+}
+.victory-fireflies i:nth-child(7) {
+  --start: 79%;
+  --drift: -10px;
+  --delay: 45ms;
+}
+.victory-fireflies i:nth-child(8) {
+  --start: 89%;
+  --drift: 12px;
+  --delay: 190ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #result.victory-reveal .victory-fireflies i {
+    animation: rescue-fireflies 1.35s ease-out var(--delay) both;
+  }
+
+  #result.victory-reveal .result-card {
+    animation: rescue-lantern 900ms ease-out;
+  }
+}
+
+@keyframes rescue-fireflies {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.35);
+  }
+  27% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), -105px) scale(0.55);
+  }
+}
+
+@keyframes rescue-lantern {
+  35% {
+    box-shadow:
+      0 0 0 3px #b57c2190,
+      0 0 22px #e9ac5370;
+  }
+}

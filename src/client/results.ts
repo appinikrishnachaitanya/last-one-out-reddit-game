@@ -18,6 +18,7 @@ import { isAnimalId, titleCase } from '../shared/engine';
 import type { AnimalId } from '../shared/engine';
 import { DailyApi } from './daily-api';
 import { portrait } from './portraits';
+import { LeaderboardDialog } from './leaderboard';
 function el(id: string): HTMLElement {
   const e = document.getElementById(id);
   if (!e) throw new Error(`Missing ${id}`);
@@ -38,6 +39,7 @@ export class Results {
   stats: AttemptStats | undefined;
   countdown?: number;
   api = new DailyApi();
+  private leaderboard = new LeaderboardDialog(this.api);
   private sharedLink: string | undefined;
   private refreshingComparison = false;
   shareState: 'ready' | 'busy' | 'done' | 'pending' = 'ready';
@@ -55,6 +57,9 @@ export class Results {
       if (this.edition) this.renderCard();
     });
     el('retry-save').addEventListener('click', () => this.onRetry());
+    el('open-leaderboard').addEventListener('click', () => {
+      if (this.edition) this.leaderboard.open(this.edition.number);
+    });
     el('copy-result').addEventListener('click', () => {
       (el('result-share') as HTMLDialogElement).showModal();
     });
@@ -83,6 +88,8 @@ export class Results {
     recovered = false
   ): void {
     this.edition = edition;
+    this.leaderboard.close();
+    el('result').classList.remove('victory-reveal');
     this.undos = saved?.personalUndos ?? undos;
     this.hintUsed = saved ? saved.hintUsed === true : hintUsed;
     this.elapsedSeconds = saved ? saved.elapsedSeconds : elapsedSeconds;
@@ -109,6 +116,7 @@ export class Results {
     this.sharing();
     el('favorite-status').textContent = '';
     el('comments').hidden = !url;
+    el('open-leaderboard').hidden = this.demo;
     el('community-details').removeAttribute('open');
     (el('result-share') as HTMLDialogElement).close();
     void loadCompanion(this.api).catch(() => undefined);
@@ -159,7 +167,8 @@ export class Results {
   saved(
     record: Completion,
     stats: AttemptStats | undefined,
-    first: boolean
+    first: boolean,
+    reducedMotion: boolean
   ): void {
     this.validated = true;
     this.sharing();
@@ -167,6 +176,8 @@ export class Results {
     this.elapsedSeconds = record.elapsedSeconds;
     this.hintUsed = record.hintUsed === true;
     this.renderCard();
+    if (first && !reducedMotion) el('result').classList.add('victory-reveal');
+    this.leaderboard.refresh();
     this.status(
       first
         ? 'Rescue validated and saved.'

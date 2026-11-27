@@ -2,6 +2,7 @@ import { validGoalTarget } from './core/daily-goal';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import {
+  cache,
   createServer,
   getServerPort,
   context,
@@ -20,7 +21,7 @@ import {
 } from './platform';
 import { menu } from './routes/menu';
 import { telemetryRoutes } from './routes/telemetry';
-import { isT3 } from '@devvit/web/shared';
+import { isT2, isT3 } from '@devvit/web/shared';
 import { parseCommentHint } from '../shared/daily';
 import { HINT_REFILL_MS } from '../shared/hint-refill';
 import { editionAt } from './core/schedule';
@@ -43,6 +44,14 @@ app.route(
       username: context.username,
     }),
     readPost: readBoundPost,
+    resolveUsername: async (userId) => {
+      if (!isT2(userId)) return undefined;
+      const username = await cache(
+        async () => (await reddit.getUserById(userId))?.username ?? null,
+        { key: `leaderboard:username:${userId}`, ttl: 300 }
+      );
+      return username ?? undefined;
+    },
     communityStorage: {
       get: (key) => redis.get(key),
       commit: async (key, expected, value, archive) => {

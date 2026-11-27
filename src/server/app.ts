@@ -26,6 +26,7 @@ import { isAnimalId, titleCase } from '../shared/engine.ts';
 import { isObject, rescueShare } from '../shared/daily.ts';
 import type { CommentHint, Edition } from '../shared/daily.ts';
 import { community, complete, loadCompletion } from './core/completions.ts';
+import { readLeaderboard } from './core/leaderboard.ts';
 import type { CompletionStore } from './core/completions.ts';
 import {
   editionAt,
@@ -51,6 +52,7 @@ export type Dependencies = {
   now: () => Date;
   getContext: (c: HonoContext) => Promise<GameContext>;
   readPost: (postId: string) => Promise<unknown>;
+  resolveUsername?: (userId: string) => Promise<string | undefined>;
   communityStorage?: CommunityStorage;
   notifyCommunity?: (channel: string, revision: number) => Promise<void>;
   readCommentHint?: (postId: string) => Promise<CommentHint | undefined>;
@@ -483,6 +485,22 @@ export function createApi(deps: Dependencies) {
         { error: 'Your card art could not be saved. Try again.' },
         503
       );
+    }
+  });
+  api.get('/leaderboard', async (c) => {
+    try {
+      const { ctx, edition } = await requestEdition(c);
+      if (deps.mode !== 'reddit' || !edition)
+        return c.json(
+          { error: 'Open a Reddit daily to see its leaderboard.' },
+          404
+        );
+      c.header('Cache-Control', 'private, no-store');
+      return c.json(
+        await readLeaderboard(deps.store, edition, ctx, deps.resolveUsername)
+      );
+    } catch {
+      return c.json({ error: 'Could not load the leaderboard.' }, 503);
     }
   });
   api.get('/lifelines', async (c) => {

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="version-four.css" />
     <title>Last One Out · Moonroot Crossing</title>
     <link rel="stylesheet" href="companion.css" />
+    <link rel="stylesheet" href="leaderboard.css" />
   </head>
   <body>
     <main id="app">
@@ -189,6 +190,9 @@
       </dialog>
       <section id="result" class="result" hidden aria-labelledby="result-title">
         <div class="result-top">
+          <div class="victory-fireflies" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
           <img
             class="reunion-illustration"
             src="/art/reunion.webp"
@@ -213,8 +217,46 @@
         </div>
         <div class="result-actions">
           <button id="copy-result" class="primary">Share result</button>
+          <button
+            id="open-leaderboard"
+            type="button"
+            class="secondary"
+            hidden
+          >
+            Leaderboard
+          </button>
           <button id="comments" class="secondary">Discuss on Reddit</button>
         </div>
+        <dialog
+          id="leaderboard"
+          aria-labelledby="leaderboard-title"
+          aria-describedby="leaderboard-rule"
+        >
+          <div class="leaderboard-header">
+            <div>
+              <p id="leaderboard-day" class="leaderboard-day"></p>
+              <h2 id="leaderboard-title">Leaderboard</h2>
+            </div>
+            <form method="dialog">
+              <button type="submit" aria-label="Close leaderboard" autofocus>
+                ×
+              </button>
+            </form>
+          </div>
+          <p id="leaderboard-rule">Earliest verified rescues rank first.</p>
+          <p
+            id="leaderboard-place"
+            class="leaderboard-place"
+            role="status"
+            hidden
+          ></p>
+          <p id="leaderboard-status" role="status"></p>
+          <ol id="leaderboard-rows" aria-label="Top ten rescuers" hidden></ol>
+          <div class="leaderboard-footer">
+            <p id="leaderboard-live" hidden>Live · updates every 15 seconds</p>
+            <button id="leaderboard-retry" type="button" hidden>Retry</button>
+          </div>
+        </dialog>
         <p class="result-question">Which animal did you almost send too early?</p>
         <dialog id="result-share" aria-labelledby="share-title">
           <form method="dialog">

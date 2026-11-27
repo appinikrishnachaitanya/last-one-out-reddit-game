@@ -1083,6 +1083,111 @@ test('Version 4 captures the playable screens and keeps scenery and sound prefer
   await desktop.screenshot({ path: 'artifacts/version4/09-desktop-board.png' });
 });
 
+test('daily victory opens a live leaderboard in a narrow Reddit frame', async ({
+  page,
+}) => {
+  const { createApi } = await import('../../src/server/app.ts');
+  const { MemoryStore } = await import('../../src/server/core/memory-store.ts');
+  const { complete } = await import('../../src/server/core/completions.ts');
+  const { bindingFor, EDITIONS } =
+    await import('../../src/server/core/schedule.ts');
+  const { Hono } = await import('hono');
+  const edition = EDITIONS[0]!;
+  const store = new MemoryStore();
+  const now = new Date(`${edition.date}T12:00:00.000Z`);
+  const sequence = ['fox', 'rabbit', 'turtle', 'badger'];
+  const recordFinish = (id: string, offset: number) =>
+    complete(
+      store,
+      edition,
+      id,
+      {
+        editionId: edition.id,
+        puzzleId: edition.puzzleId,
+        boardVersion: edition.boardVersion,
+        sequence,
+        personalUndos: 0,
+        favorite: 'fox',
+      },
+      new Date(now.getTime() + offset)
+    );
+  await recordFinish('t2_older', -1000);
+  const app = new Hono().route(
+    '/api',
+    createApi({
+      mode: 'reddit',
+      store,
+      now: () => now,
+      getContext: async () => ({
+        userId: 't2_me',
+        username: 'FernKeeper',
+        postId: 't3_test',
+      }),
+      readPost: async () => bindingFor(edition),
+      resolveUsername: async (id) =>
+        id === 't2_older' ? 'AlderKeeper' : 'OakKeeper',
+    })
+  );
+  let leaderboardRequests = 0;
+  await page.route('**/api/**', async (route) => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname;
+    if (path === '/api/leaderboard' && ++leaderboardRequests === 1) {
+      await route.fulfill({
+        status: 503,
+        json: { error: 'Temporarily offline' },
+      });
+      return;
+    }
+    const response = await app.request(path, {
+      method: req.method(),
+      body: req.postData() ?? undefined,
+    });
+    await route.fulfill({
+      status: response.status,
+      headers: Object.fromEntries(response.headers),
+      body: await response.text(),
+    });
+  });
+  await page.setViewportSize({ width: 288, height: 512 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('http://127.0.0.1:5175/game.html');
+  await expect(page.locator('canvas')).toBeVisible();
+  for (const animal of sequence) await send(page, animal);
+  await expect(page.locator('#result')).toHaveClass(/victory-reveal/);
+  await expect(page.locator('.victory-fireflies i').first()).toHaveCSS(
+    'animation-name',
+    'rescue-fireflies'
+  );
+  const action = page.getByRole('button', { name: 'Leaderboard', exact: true });
+  await expect(action).toBeInViewport();
+  expect(leaderboardRequests).toBe(0);
+  await action.click();
+  const dialog = page.getByRole('dialog', { name: 'Leaderboard' });
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByText('Could not load the leaderboard.')
+  ).toBeVisible();
+  await dialog.getByRole('button', { name: 'Retry' }).click();
+  await expect(dialog.getByText('Your place: #2 of 2')).toBeVisible();
+  await expect(dialog.getByText('Live · updates every 15 seconds')).toBeVisible();
+  await expect(dialog.getByText('u/AlderKeeper')).toBeVisible();
+  await expect(dialog.locator('.leaderboard-you')).toContainText(
+    'u/FernKeeper'
+  );
+  await expectNoHorizontalOverflow(page);
+  await recordFinish('t2_new', 1000);
+  await expect(dialog.getByText('Your place: #2 of 3')).toBeVisible({
+    timeout: 18000,
+  });
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(action).toBeFocused();
+  await page.reload();
+  await expect(action).toBeVisible();
+  await expect(page.locator('#result')).not.toHaveClass(/victory-reveal/);
+});
+
 test('Community Rescue shows yesterday, prevents a repeat turn, and preserves the solo board', async ({
   page,
 }) => {
