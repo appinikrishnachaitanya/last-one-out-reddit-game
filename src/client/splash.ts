@@ -9,7 +9,12 @@ import {
 import { cardStamp } from './card-stamp';
 import { requestExpandedMode } from '@devvit/web/client';
 import { DailyApi } from './daily-api';
-import { MOONROOT, boardById } from '../shared/boards';
+import {
+  CHALLENGES,
+  EXPERT_CROSSINGS,
+  MOONROOT,
+  boardById,
+} from '../shared/boards';
 import { isAnimalId, titleCase } from '../shared/engine';
 import { isObject } from '../shared/daily';
 import type { Completion } from '../shared/daily';
@@ -19,6 +24,8 @@ import { readChallengeLink } from './challenge-link';
 declare const __LOCAL_DEMO__: boolean;
 const api = new DailyApi();
 const play = document.querySelector<HTMLButtonElement>('#play')!;
+const playLabel = document.querySelector<HTMLElement>('#play-label')!;
+const playModes = document.querySelector<HTMLElement>('#play-modes')!;
 const recall = document.querySelector<HTMLButtonElement>('#try-recall')!;
 const edition = document.querySelector<HTMLElement>('#edition')!;
 const profile = document.querySelector<HTMLElement>('#welcome-profile')!;
@@ -31,10 +38,13 @@ let title = 'Last One Out';
 let completion: Completion | null = null;
 let mapEdition: Edition | undefined;
 let request = 0;
+const challengeIds = new Set(
+  [...CHALLENGES, ...EXPERT_CROSSINGS].map(({ id }) => id)
+);
 const challenge = !__LOCAL_DEMO__ && readChallengeLink('feed');
 if (challenge) {
   recall.hidden = true;
-  play.textContent = 'Open Friend Challenge';
+  playLabel.textContent = 'Open Friend Challenge';
   document.querySelector<HTMLElement>('#welcome-hook')!.textContent =
     'A friend left you a rescue challenge.';
 }
@@ -77,8 +87,13 @@ const daily = api
         'Turtle can leave. Should it?';
     completion = data.completion;
     mapEdition = data.edition;
+    if (!challenge && data.communityEnabled) {
+      if (completion) playModes.textContent = 'Or take one shared turn';
+      playModes.hidden = false;
+      play.setAttribute('aria-describedby', playModes.id);
+    }
     if (!completion) return;
-    if (!challenge) play.textContent = 'View Your Rescue';
+    if (!challenge) playLabel.textContent = 'View Your Rescue';
     badge.hidden = true;
   })
   .catch(() => {
@@ -133,8 +148,7 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
     const setCount = challengeTotal
       ? new Set(
           cards.flatMap(({ puzzleId }) =>
-            typeof puzzleId === 'string' &&
-            /^challenge-\d{2}-v1$/.test(puzzleId)
+            typeof puzzleId === 'string' && challengeIds.has(puzzleId)
               ? [puzzleId]
               : []
           )

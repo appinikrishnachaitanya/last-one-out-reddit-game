@@ -373,6 +373,7 @@ test('production-shaped response hides the preview picker, restores a saved post
         edition,
         username: 'trailtester',
         completion: solvedOnSplash ? completion : null,
+        communityEnabled: true,
         community: { total: 1, openings: { fox: 1 } },
         commentsUrl: 'https://www.reddit.com/comments/judgetest/',
       }),
@@ -395,12 +396,15 @@ test('production-shaped response hides the preview picker, restores a saved post
     'Day 1 · Moonroot Crossing'
   );
   await page.setViewportSize({ width: 390, height: 512 });
-  await expect(page.locator('#play')).toHaveText('Play Today’s Rescue');
+  const playButton = page.getByRole('button', { name: 'Play Today’s Rescue' });
+  await expect(playButton).toHaveAccessibleDescription(
+    'Solo or take one shared turn'
+  );
   await expect(page.locator('#welcome-hook')).toHaveText(
     'Turtle can leave. Should it?'
   );
   await page.setViewportSize({ width: 288, height: 320 });
-  const play = await page.locator('#play').boundingBox();
+  const play = await playButton.boundingBox();
   expect(play!.y + play!.height).toBeLessThanOrEqual(320);
   await expectNoHorizontalOverflow(page);
   await page.setViewportSize({ width: 390, height: 512 });
@@ -421,20 +425,41 @@ test('production-shaped response hides the preview picker, restores a saved post
           },
           { day: 2, title: 'Willow Bridge', favorite: 'rabbit' },
           { day: 3, title: 'Lantern Bend', favorite: 'fox' },
+          {
+            day: 11,
+            title: 'Challenge crossing',
+            favorite: 'fox',
+            puzzleId: 'challenge-01-v1',
+          },
+          {
+            day: 32,
+            title: 'Expert crossing',
+            favorite: 'turtle',
+            puzzleId: 'expert-01-v1',
+          },
+          {
+            day: 65,
+            title: 'Expert crossing',
+            favorite: 'turtle',
+            puzzleId: 'expert-01-v1',
+          },
         ],
         signedIn: true,
         owner: 'trailtester',
         totalEditions: 10,
+        challengeTotal: 33,
         streak: 3,
         past: [],
       },
     })
   );
   await page.reload();
-  await expect(page.locator('#play')).toHaveText('View Your Rescue');
+  await expect(
+    page.getByRole('button', { name: 'View Your Rescue' })
+  ).toHaveAccessibleDescription('Or take one shared turn');
   await expect(page.locator('#badge')).toBeHidden();
   await page.getByRole('button', { name: 'My Map', exact: true }).click();
-  await expect(page.locator('.journey-heading')).toContainText('3 rescued');
+  await expect(page.locator('.journey-heading')).toContainText('6 rescued');
   await expect(page.locator('.journey-node[aria-current=step]')).toContainText(
     'Moonroot Crossing'
   );
@@ -445,7 +470,10 @@ test('production-shaped response hides the preview picker, restores a saved post
   });
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByRole('button', { name: 'Collection', exact: true }).click();
-  await expect(page.locator('.card-gallery li')).toHaveCount(3);
+  await expect(page.locator('#panel-status')).toHaveText(
+    '6 cards earned · Challenge set 2/33'
+  );
+  await expect(page.locator('.card-gallery li')).toHaveCount(6);
   await expect(page.locator('.card-gallery time')).toHaveAttribute(
     'datetime',
     completion.completedAt
@@ -477,7 +505,9 @@ test('production-shaped response hides the preview picker, restores a saved post
   await page.locator('#community-details').evaluate((el) => {
     el.setAttribute('open', '');
   });
-  await expect(page.locator('#card-opening')).toContainText('You started with Fox.');
+  await expect(page.locator('#card-opening')).toContainText(
+    'You started with Fox.'
+  );
   await expect(page.locator('#comparison')).toBeHidden();
   await expect(page.locator('#card-animal')).toContainText('Fox');
   expect(posts).toBe(0);
@@ -599,7 +629,9 @@ test('judge sequence on the production bundle uses the real validator: mistake, 
   await page.locator('#community-details').evaluate((el) => {
     el.setAttribute('open', '');
   });
-  await expect(page.locator('#card-opening')).toContainText('You started with Turtle.');
+  await expect(page.locator('#card-opening')).toContainText(
+    'You started with Turtle.'
+  );
   await expect(page.locator('#comparison')).toBeHidden();
   expect(completedJourneys).toBe(1);
   expect(events.filter((e) => e === 'start')).toHaveLength(1);
@@ -1287,7 +1319,9 @@ test('Community Rescue shows yesterday, prevents a repeat turn, and preserves th
   );
   await send(page, 'fox');
   await expect(page.locator('#rescue-count')).toHaveText('1 / 4');
-  await page.getByRole('button', { name: 'Community Rescue' }).click();
+  const communityTab = page.getByRole('button', { name: 'Community Rescue' });
+  await expect(communityTab.getByText('One move each')).toBeInViewport();
+  await communityTab.click();
   await expect(page.locator('#shared-status')).toHaveText(
     'Take one move this attempt.'
   );

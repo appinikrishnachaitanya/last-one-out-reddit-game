@@ -107,6 +107,13 @@ button:focus-visible {
   min-width: 0;
   padding-inline: 6px;
 }
+#play-modes:not([hidden]) {
+  display: block;
+  margin-top: 3px;
+  color: #cfe3bf;
+  font-size: 11px;
+  font-weight: 600;
+}
 .welcome-actions:has(#try-recall[hidden]) #play,
 #try-recall {
   background: #ffc267;

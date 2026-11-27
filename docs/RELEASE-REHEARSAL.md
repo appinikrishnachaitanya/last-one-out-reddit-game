@@ -3,21 +3,22 @@
 ## Judge demo
 
 - Open the [Hushwater Turn daily post](https://www.reddit.com/r/last_one_out_app_dev/comments/1y6f9a6/last_one_out_day_10_20261127/) with an approved account that has no saved rescue for Day 10. The private installation includes the [Devvit Admin Helper](https://developers.reddit.com/apps/devvit-dev-bot). Verify the link with a second account before submitting it.
-- Choose **Rescue Rabbit**, call Turtle back, send Rabbit home, then bring Turtle home. In **Firefly Commons**, try Fox first. Fox opens Rabbit’s bridge and leaves Badger’s bridge folded. Retry with Turtle to open both.
-- Choose **Play this daily crossing** to open Hushwater Turn. Finish Solo Rescue, check the result and assists leaderboard, then open Community Rescue and try one shared turn.
+- Show Rabbit stranded in **Rescue Rabbit**. Then open **Community Rescue** on the same daily post in two signed-in Reddit sessions with different accounts. Use a fresh shared attempt and choose a move that leaves a winning route open. Show the animal arrive on the second screen and the first player’s turn lock. Have the second player take the next turn.
+- Open **Firelight Interchange** with **Choose playtest edition → Day 32 · 2026-12-19**. In Solo Rescue, show a late wrong turn, recover with Undo, and finish. Keep the full solution out of public footage so viewers can still play it.
 
 **Devpost pitch**
 
-Rabbit is stranded. Which friend do you call back? In Last One Out, animals hold bridges open for each other. Send the wrong keeper home early and another animal loses its way across. Solve a fresh woodland crossing each day or take a turn on the shared Reddit board.
+You get one move. Who has to stay? In Last One Out, animals hold bridges open for each other. Send a keeper home too soon and a friend loses their way across. Solve a new forest crossing each day or take one turn on the board shared by everyone on the Reddit post.
 
 **Demo video, 55 seconds**
 
 | Time | Footage |
 | --- | --- |
-| 0–8s | Open the Reddit daily and tap **Rescue Rabbit**. Show Rabbit trapped across the folded bridge. |
-| 8–25s | In Firefly Commons, show how Fox helps Rabbit and how Turtle opens both paths. |
-| 25–43s | Open the same daily, preview a route, and cut to a solo finish with the assists leaderboard. |
-| 43–55s | Show a real Community Rescue turn and the next crossing on the result screen. |
+| 0–6s | Tap **Rescue Rabbit** and show the folded bridge. Ask who needs to stay. |
+| 6–20s | Cut to **Community Rescue** on that Reddit post. Show the first account send an animal home, the second account’s board update, and the first account’s turn lock. |
+| 20–31s | Show the second account take the next turn on the same board. |
+| 31–48s | Show the late trap and Undo on the expert crossing. Cut to the reunion without revealing the full order. |
+| 48–55s | End on the date of the next crossing and the playable Reddit link. Confirm access from a second account before using that link in the submission. |
 
 ## Private Reddit checks
 

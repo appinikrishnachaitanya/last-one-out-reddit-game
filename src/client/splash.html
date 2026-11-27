@@ -21,7 +21,10 @@
           </p>
           <div class="welcome-actions">
             <button id="try-recall" type="button">Rescue Rabbit</button>
-            <button id="play" type="button">Play Today’s Rescue</button>
+            <button id="play" type="button" aria-labelledby="play-label">
+              <span id="play-label">Play Today’s Rescue</span>
+              <span id="play-modes" hidden>Solo or take one shared turn</span>
+            </button>
           </div>
           <p id="badge" role="status" hidden></p>
           <div class="welcome-account">
