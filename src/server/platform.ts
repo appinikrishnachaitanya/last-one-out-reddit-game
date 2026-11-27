@@ -32,7 +32,7 @@ export async function requireModerator(): Promise<void> {
       'Use a private or under-200-member public playtest community'
     );
 }
-export async function readBoundPost(postId: string): Promise<unknown> {
+async function readOwnedPost(postId: string) {
   if (!isT3(postId)) throw new Error('Invalid Reddit post ID');
   const post = await reddit.getPostById(postId);
   if (
@@ -40,7 +40,19 @@ export async function readBoundPost(postId: string): Promise<unknown> {
     post.authorName.toLowerCase() !== context.appSlug.toLowerCase()
   )
     throw new Error('This is not a puzzle post from this app and community');
-  return post.getPostData();
+  return post;
+}
+export async function readBoundPost(postId: string): Promise<unknown> {
+  return (await readOwnedPost(postId)).getPostData();
+}
+export async function isPlayableEditionPost(
+  postId: string,
+  edition: Edition
+): Promise<boolean> {
+  const post = await readOwnedPost(postId);
+  if (post.removed || post.spam || post.removedByCategory === 'deleted')
+    return false;
+  return editionFromPost(await post.getPostData()).id === edition.id;
 }
 export async function createPost(edition: Edition): Promise<string> {
   return createOrRetrievePost(redis, edition, async () => {

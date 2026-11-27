@@ -88,6 +88,6 @@ Share result opens Download image and Post Rescue to Comments. Collection and cu
 
 ### Rescue showcase
 
-Run `npm run demo` and open `http://localhost:5173/callback.html` to try the two-board showcase. The opening starts with Rabbit stranded and three friends at the campfire. Call one bridge keeper back, send Rabbit across, then bring the keeper home. Firefly Commons offers two keepers to choose from and Undo lets you try the other one.
+Run `npm run demo` and open `http://localhost:5173/callback.html` to try the two-board showcase. The opening starts with Rabbit stranded and three friends at the campfire. Call one bridge keeper back, send Rabbit across, then bring the keeper home. In Firefly Commons, either keeper can help Rabbit, but Badger still needs a second bridge. Undo or try the other keeper in one tap.
 
-In a Devvit playtest community, a moderator can select **Create rescue showcase** to make the standalone interactive post. Create today's daily with **Open today’s daily** so the showcase can link straight to it. If today's post hasn't been created, the link goes to the rescue community. Showcase runs are independent of daily saves and scores.
+In a Devvit playtest community, a moderator can select **Create rescue showcase** to make the standalone interactive post. Create today's daily with **Open today’s daily** so the showcase can link straight to it. If today’s post is unavailable, the showcase links to the latest playable puzzle from the archive or, if none is available, the rescue community. Showcase runs are independent of daily saves and scores.

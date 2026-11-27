@@ -1,7 +1,50 @@
 import type { Edition } from '../../shared/daily.ts';
 import type { CompletionStore } from './completions.ts';
+import { EDITIONS, recentEditions } from './schedule.ts';
 export const postRegistryKey = (edition: Edition) =>
   `edition-post:v1:${edition.id}`;
+
+export async function findShowcaseCrossing(
+  store: Pick<CompletionStore, 'hGet'>,
+  now: Date,
+  isPlayable: (id: string, edition: Edition) => Promise<boolean>
+) {
+  const today = now.toISOString().slice(0, 10);
+  const editions = [
+    ...new Map(
+      [
+        ...recentEditions(now),
+        ...EDITIONS.filter((edition) => edition.date <= today),
+      ].map((edition) => [edition.id, edition])
+    ).values(),
+  ].sort((first, next) => next.date.localeCompare(first.date));
+  async function lookup(edition: Edition) {
+    const id = await store
+      .hGet(postRegistryKey(edition), 'post')
+      .catch(() => undefined);
+    if (!id || !/^t3_[a-z0-9]+$/.test(id)) return undefined;
+    return { edition, id };
+  }
+  // Take the fast path for today's post; read the archive only if needed.
+  for (let offset = 0; offset < editions.length;) {
+    const batch = editions.slice(offset, offset + (offset === 0 ? 1 : 8));
+    const candidates = await Promise.all(batch.map(lookup));
+    for (const candidate of candidates) {
+      if (
+        candidate &&
+        (await isPlayable(candidate.id, candidate.edition).catch(() => false))
+      ) {
+        const kind = candidate.edition.date === today ? 'today' : 'latest';
+        return {
+          kind,
+          url: `https://www.reddit.com/comments/${candidate.id.slice(3)}/`,
+        };
+      }
+    }
+    offset += batch.length;
+  }
+  return undefined;
+}
 export async function createOrRetrievePost(
   store: CompletionStore,
   edition: Edition,

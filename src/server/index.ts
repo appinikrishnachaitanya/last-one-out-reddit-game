@@ -12,14 +12,19 @@ import {
 } from '@devvit/web/server';
 import { telemetry } from '@devvit/analytics/server/reddit';
 import { createApi } from './app';
-import { createPost, readBoundPost, requirePostModerator } from './platform';
+import {
+  createPost,
+  isPlayableEditionPost,
+  readBoundPost,
+  requirePostModerator,
+} from './platform';
 import { menu } from './routes/menu';
 import { telemetryRoutes } from './routes/telemetry';
 import { isT3 } from '@devvit/web/shared';
 import { parseCommentHint } from '../shared/daily';
 import { HINT_REFILL_MS } from '../shared/hint-refill';
 import { editionAt } from './core/schedule';
-import { postRegistryKey } from './core/posts';
+import { findShowcaseCrossing } from './core/posts';
 const app = new Hono();
 app.route(
   '/api',
@@ -136,17 +141,18 @@ app.route(
 );
 app.route('/api/telemetry', telemetryRoutes);
 app.get('/api/callback/destination', async (c) => {
-  const edition = editionAt(new Date());
-  const post = edition
-    ? await redis.hGet(postRegistryKey(edition), 'post').catch(() => undefined)
-    : undefined;
-  const daily = typeof post === 'string' && isT3(post);
-  return c.json({
-    daily,
-    url: daily
-      ? `https://www.reddit.com/comments/${post.slice(3)}/`
-      : `https://www.reddit.com/r/${context.subredditName}/`,
-  });
+  const crossing = await findShowcaseCrossing(
+    redis,
+    new Date(),
+    isPlayableEditionPost
+  );
+  c.header('Cache-Control', 'no-store');
+  return c.json(
+    crossing ?? {
+      kind: 'community',
+      url: `https://www.reddit.com/r/${context.subredditName}/`,
+    }
+  );
 });
 app.route('/internal/menu', menu);
 app.post('/internal/settings/daily-goal-target', async (c) => {

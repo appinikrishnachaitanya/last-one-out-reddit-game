@@ -3,7 +3,12 @@ export type Point = Readonly<{ x: number; y: number }>;
 export type Animal = Point &
   Readonly<{ id: AnimalId; direction: 'N' | 'E' | 'S' | 'W' }>;
 export type Bridge = Point &
-  Readonly<{ id: string; symbol: string; holder: AnimalId }>;
+  Readonly<{
+    id: string;
+    symbol: string;
+    holder: AnimalId;
+    alternateHolder?: AnimalId;
+  }>;
 export type Board = Readonly<{
   id: string;
   version: number;
@@ -29,8 +34,12 @@ export const samePoint = (a: Point, b: Point): boolean =>
   a.x === b.x && a.y === b.y;
 export const isHome = (state: State, id: AnimalId): boolean =>
   state.home.includes(id);
+export const canHoldBridge = (bridge: Bridge, animal: AnimalId): boolean =>
+  bridge.holder === animal || bridge.alternateHolder === animal;
 export const bridgeOpen = (state: State, bridge: Bridge): boolean =>
-  !isHome(state, bridge.holder);
+  !isHome(state, bridge.holder) ||
+  (bridge.alternateHolder !== undefined &&
+    !isHome(state, bridge.alternateHolder));
 export const isAnimalId = (value: unknown): value is AnimalId =>
   value === 'turtle' ||
   value === 'rabbit' ||

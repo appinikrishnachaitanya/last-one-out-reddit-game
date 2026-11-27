@@ -1,23 +1,39 @@
 import { FIREFLY, MOONROOT } from './boards.ts';
-import { isHome, replay, trace } from './engine.ts';
+import { canHoldBridge, isHome, replay, trace } from './engine.ts';
 import type { AnimalId, Board, State } from './engine.ts';
 
 type Crossing = {
   board: Board;
   departures: readonly AnimalId[];
-  stranded: AnimalId;
+};
+
+// Showcase-only variant. The shared moon bridge can be held from either
+// bank, while the star bridge relies on Turtle alone.
+const fireflyCallback: Board = {
+  ...FIREFLY,
+  id: 'firefly-callback-v1',
+  subtitle: 'Either keeper can raise the moon bridge.',
+  bridges: [
+    {
+      id: 'moon',
+      symbol: '☾',
+      x: 4,
+      y: 2,
+      holder: 'turtle',
+      alternateHolder: 'fox',
+    },
+    { id: 'star', symbol: '✦', x: 5, y: 3, holder: 'turtle' },
+  ],
 };
 
 export const callbackCrossings: readonly Crossing[] = [
   {
     board: MOONROOT,
     departures: ['turtle', 'fox', 'badger'],
-    stranded: 'rabbit',
   },
   {
-    board: FIREFLY,
-    departures: ['turtle', 'badger', 'fox'],
-    stranded: 'rabbit',
+    board: fireflyCallback,
+    departures: ['turtle', 'fox'],
   },
 ];
 
@@ -32,7 +48,7 @@ export function recallKeeper(
 ): State | undefined {
   if (
     !isHome(state, keeper) ||
-    !board.bridges.some((bridge) => bridge.holder === keeper)
+    !board.bridges.some((bridge) => canHoldBridge(bridge, keeper))
   )
     return undefined;
   const restored = { home: state.home.filter((animal) => animal !== keeper) };

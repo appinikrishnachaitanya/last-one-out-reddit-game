@@ -1,7 +1,13 @@
 import { scenery } from '../atmosphere';
 import type { Scenery } from '../atmosphere';
 import * as Phaser from 'phaser';
-import { bridgeOpen, isHome, samePoint, trace } from '../../shared/engine';
+import {
+  bridgeOpen,
+  canHoldBridge,
+  isHome,
+  samePoint,
+  trace,
+} from '../../shared/engine';
 import type { AnimalId, Point, Session, State } from '../../shared/engine';
 export const ANIMAL_COLORS = {
   turtle: '#a5c896',
@@ -194,7 +200,7 @@ export class Crossing extends Phaser.Scene {
         g.lineBetween(p.x - 8, p.y - 8, p.x + 8, p.y + 8);
         g.lineBetween(p.x + 8, p.y - 8, p.x - 8, p.y + 8);
       }
-      if (this.selected === b.holder) {
+      if (this.selected && canHoldBridge(b, this.selected)) {
         g.lineStyle(3, 0xffdf9b);
         g.strokeRoundedRect(p.x - 23, p.y - 23, 46, 46, 5);
       }
@@ -283,35 +289,35 @@ export class Crossing extends Phaser.Scene {
         g.lineBetween(q.x - 5, q.y + 5, q.x + 5, q.y - 5);
       }
     }
-    // Latch plaques sit beside their holder, with the matching bridge symbol.
-    for (const b of this.session.board.bridges) {
-      const holder = this.session.board.animals.find((a) => a.id === b.holder);
-      if (!holder || isHome(this.session.state, b.holder)) continue;
+    // Each animal at its latch displays the bridges it can hold open.
+    for (const holder of this.session.board.animals) {
+      if (isHome(this.session.state, holder.id)) continue;
       const p = pixel(holder);
-      const siblings = this.session.board.bridges.filter(
-        (other) => other.holder === b.holder
+      const bridges = this.session.board.bridges.filter((bridge) =>
+        canHoldBridge(bridge, holder.id)
       );
-      const badgeX =
-        p.x - 17 + siblings.findIndex((other) => other.id === b.id) * 27;
-      if (b.holder === this.selected) {
-        const q = pixel(b);
-        g.lineStyle(2, 0xffce75, 0.9);
-        g.lineBetween(badgeX, p.y - 19, q.x, q.y - 29);
+      for (const [index, b] of bridges.entries()) {
+        const badgeX = p.x - 17 + index * 27;
+        if (holder.id === this.selected) {
+          const q = pixel(b);
+          g.lineStyle(2, 0xffce75, 0.9);
+          g.lineBetween(badgeX, p.y - 19, q.x, q.y - 29);
+        }
+        g.fillStyle(0xffefcc);
+        g.fillCircle(badgeX, p.y - 19, 11);
+        g.lineStyle(
+          2,
+          b.id === 'star' ? 0xacc6e8 : b.id === 'leaf' ? 0xaad8a0 : 0xf3cd86
+        );
+        g.strokeCircle(badgeX, p.y - 19, 11);
+        this.label(
+          badgeX,
+          p.y - 20,
+          b.symbol,
+          16,
+          b.id === 'star' ? '#234f69' : b.id === 'leaf' ? '#38582c' : '#75501d'
+        );
       }
-      g.fillStyle(0xffefcc);
-      g.fillCircle(badgeX, p.y - 19, 11);
-      g.lineStyle(
-        2,
-        b.id === 'star' ? 0xacc6e8 : b.id === 'leaf' ? 0xaad8a0 : 0xf3cd86
-      );
-      g.strokeCircle(badgeX, p.y - 19, 11);
-      this.label(
-        badgeX,
-        p.y - 20,
-        b.symbol,
-        16,
-        b.id === 'star' ? '#234f69' : b.id === 'leaf' ? '#38582c' : '#75501d'
-      );
     }
   }
   animal(id: AnimalId, x: number, y: number): Phaser.GameObjects.Container {
@@ -594,11 +600,9 @@ export class Crossing extends Phaser.Scene {
       });
     });
   }
-  async raiseBridges(holder: AnimalId, reduced: boolean): Promise<void> {
+  async raiseBridges(ids: string[], reduced: boolean): Promise<void> {
     if (reduced) return;
-    const decks = this.session.board.bridges
-      .filter((bridge) => bridge.holder === holder)
-      .flatMap((bridge) => this.bridgeDecks.get(bridge.id) ?? []);
+    const decks = ids.flatMap((id) => this.bridgeDecks.get(id) ?? []);
     if (!decks.length) return;
     for (const deck of decks) deck.setScale(1, 0.16);
     await new Promise<void>((resolve) => {
