@@ -1611,6 +1611,25 @@ test('forest map locates the chosen avatar, pages old crossings, and fits the Re
   await expect(page.locator('#personal-panel')).toBeHidden();
 });
 
+test('welcome Settings leaves space above the animal choices in a narrow frame', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 288, height: 512 });
+  await page.goto('/splash.html');
+  await page.locator('.welcome-toolbar [data-settings]').click();
+  await page.locator('#welcome-my-animal summary').click();
+  const back = await page
+    .locator('#welcome-companion-editor .companion-back')
+    .boundingBox();
+  const choices = await page
+    .getByRole('group', { name: 'Favorite animal avatar' })
+    .boundingBox();
+  expect(
+    back && choices ? choices.y - (back.y + back.height) : 0
+  ).toBeGreaterThanOrEqual(10);
+  await expectNoHorizontalOverflow(page);
+});
+
 test('animal decorations offer natural styles for each species and save the chosen look', async ({
   page,
 }) => {

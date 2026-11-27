@@ -71,6 +71,7 @@ export function setupCompanionEditor(
 ): void {
   const back = document.createElement('button');
   back.type = 'button';
+  back.className = 'companion-back';
   back.textContent = 'Settings';
   back.addEventListener('click', () => {
     const section = container.closest('details');

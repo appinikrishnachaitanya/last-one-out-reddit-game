@@ -53,6 +53,9 @@
   min-height: 44px;
   width: 100%;
 }
+.companion-back {
+  margin-block-end: 10px;
+}
 .forest-map {
   list-style: none;
   padding: 24px 12px;
