@@ -340,6 +340,23 @@ test('production-shaped response hides the preview picker, restores a saved post
   page,
 }) => {
   await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'canShare', {
+      value: () => document.documentElement.dataset.shareFallback !== 'true',
+    });
+    Object.defineProperty(navigator, 'share', {
+      value: async ({ files }: ShareData) => {
+        const file = files?.[0];
+        if (file && file.size > 0)
+          document.documentElement.dataset.sharedCard = `${file.name}:${file.type}`;
+      },
+    });
+    Object.defineProperty(navigator.clipboard, 'write', {
+      value: async (items: ClipboardItem[]) => {
+        const image = await items[0]?.getType('image/png');
+        if (image?.size)
+          document.documentElement.dataset.copiedCard = image.type;
+      },
+    });
     window.addEventListener('message', (event) => {
       if (event.data?.navigateToUrl)
         document.documentElement.dataset.navigation =
@@ -397,9 +414,7 @@ test('production-shaped response hides the preview picker, restores a saved post
   );
   await page.setViewportSize({ width: 390, height: 512 });
   const playButton = page.getByRole('button', { name: 'Play Today’s Rescue' });
-  await expect(playButton).toHaveAccessibleDescription(
-    'Solo or take one shared turn'
-  );
+  await expect(playButton).toHaveAccessibleDescription('Solo or shared');
   await expect(page.locator('#welcome-hook')).toHaveText(
     'Turtle can leave. Should it?'
   );
@@ -461,7 +476,15 @@ test('production-shaped response hides the preview picker, restores a saved post
   await page.reload();
   await expect(
     page.getByRole('button', { name: 'View Your Rescue' })
-  ).toHaveAccessibleDescription('Or take one shared turn');
+  ).toHaveAccessibleDescription('Or take a turn');
+  await page.setViewportSize({ width: 288, height: 320 });
+  for (const action of await page.locator('.welcome-actions button').all()) {
+    const bounds = (await action.boundingBox())!;
+    expect(bounds.height).toBeGreaterThanOrEqual(44);
+    expect(bounds.height).toBeLessThanOrEqual(48);
+  }
+  await expectNoHorizontalOverflow(page);
+  await page.setViewportSize({ width: 390, height: 512 });
   await expect(page.locator('#badge')).toBeHidden();
   await page.getByRole('button', { name: 'My Map', exact: true }).click();
   await expect(page.locator('.journey-heading')).toContainText('6 rescued');
@@ -491,12 +514,40 @@ test('production-shaped response hides the preview picker, restores a saved post
   });
   await page.setViewportSize({ width: 288, height: 512 });
   await expectNoHorizontalOverflow(page);
-  await page.locator('#personal-panel').evaluate((panel) => {
+  const collection = page.getByRole('dialog', { name: 'Card collection' });
+  const close = collection.getByRole('button', { name: 'Close', exact: true });
+  const beforeScroll = await close.boundingBox();
+  const list = collection.locator('.panel-body');
+  const scrollTop = await list.evaluate((panel) => {
     panel.scrollTop = panel.scrollHeight;
+    return panel.scrollTop;
   });
-  await expect(
-    page.getByRole('button', { name: 'Close', exact: true })
-  ).toBeInViewport();
+  expect(scrollTop).toBeGreaterThan(0);
+  expect((await close.boundingBox())!.y).toBe(beforeScroll!.y);
+  const earnedCard = collection.getByRole('button', {
+    name: 'Open Badger card for Day 1 · Moonroot Crossing',
+  });
+  await earnedCard.click();
+  const detail = page.getByRole('dialog', { name: 'Badger rescue card' });
+  await expect(detail.getByText('Day 1 · Moonroot Crossing')).toBeVisible();
+  await expect(detail.getByText('u/trailtester')).toBeVisible();
+  await detail.getByRole('button', { name: 'Share card' }).click();
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-shared-card',
+    'last-one-out-day-1-card.png:image/png'
+  );
+  await page
+    .locator('html')
+    .evaluate((html) => html.setAttribute('data-share-fallback', 'true'));
+  await detail.getByRole('button', { name: 'Share card' }).click();
+  await expect(detail.getByRole('status')).toContainText('Card image copied');
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-copied-card',
+    'image/png'
+  );
+  await detail.getByRole('button', { name: 'Back to collection' }).click();
+  await expect(earnedCard).toBeFocused();
+  expect(await list.evaluate((panel) => panel.scrollTop)).toBe(scrollTop);
   await page.setViewportSize({ width: 390, height: 512 });
   await page.keyboard.press('Escape');
   await expect(page.locator('#personal-panel')).toBeHidden();

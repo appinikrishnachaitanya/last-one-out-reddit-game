@@ -23,7 +23,7 @@
             <button id="try-recall" type="button">Rescue Rabbit</button>
             <button id="play" type="button" aria-labelledby="play-label">
               <span id="play-label">Play Today’s Rescue</span>
-              <span id="play-modes" hidden>Solo or take one shared turn</span>
+              <span id="play-modes" hidden>Solo or shared</span>
             </button>
           </div>
           <p id="badge" role="status" hidden></p>
@@ -50,8 +50,24 @@
           <button aria-label="Close" autofocus>×</button>
         </form>
       </header>
-      <p id="panel-status" role="status"></p>
-      <div id="panel-content"></div>
+      <div class="panel-body">
+        <p id="panel-status" role="status"></p>
+        <div id="panel-content"></div>
+      </div>
+    </dialog>
+    <dialog id="collection-card" aria-labelledby="collection-card-title">
+      <header>
+        <h2 id="collection-card-title">Rescue card</h2>
+        <form method="dialog">
+          <button aria-label="Back to collection">←</button>
+        </form>
+      </header>
+      <div class="panel-body">
+        <div id="collection-card-preview"></div>
+        <button id="share-collection-card" type="button">Share card</button>
+        <p id="collection-card-status" role="status"></p>
+        <textarea id="collection-card-copy" aria-label="Card text to copy" readonly hidden></textarea>
+      </div>
     </dialog>
     <dialog id="welcome-settings" aria-labelledby="settings-title">
       <header>

@@ -7,6 +7,7 @@ import {
   setupCompanionEditor,
 } from './companion';
 import { cardStamp } from './card-stamp';
+import { openCollectionCard } from './collection-card';
 import { requestExpandedMode } from '@devvit/web/client';
 import { DailyApi } from './daily-api';
 import {
@@ -88,7 +89,7 @@ const daily = api
     completion = data.completion;
     mapEdition = data.edition;
     if (!challenge && data.communityEnabled) {
-      if (completion) playModes.textContent = 'Or take one shared turn';
+      if (completion) playModes.textContent = 'Or take a turn';
       playModes.hidden = false;
       play.setAttribute('aria-describedby', playModes.id);
     }
@@ -107,6 +108,7 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
   panel.querySelector('form button')!.textContent =
     view === 'progress' ? 'Back' : '×';
   content.replaceChildren();
+  panel.querySelector('.panel-body')?.scrollTo(0, 0);
   status.textContent = 'Loading your rescues…';
   if (!panel.open) panel.showModal();
   try {
@@ -187,14 +189,31 @@ async function show(view: 'progress' | 'collection'): Promise<void> {
     for (const card of cards) {
       const item = document.createElement('li');
       item.dataset.animal = card.favorite;
-      const art = document.createElement('div');
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.setAttribute('aria-haspopup', 'dialog');
+      const art = document.createElement('span');
       art.className = 'card-art';
+      art.setAttribute('aria-hidden', 'true');
       art.innerHTML = portrait(card.favorite);
       const name = document.createElement('strong');
       name.textContent = titleCase(card.favorite);
       const crossing = document.createElement('span');
       crossing.textContent = `Day ${card.day} · ${card.title}`;
-      item.append(art, name, crossing, cardStamp(payload.owner, card.earnedAt));
+      action.setAttribute(
+        'aria-label',
+        `Open ${name.textContent} card for ${crossing.textContent}`
+      );
+      action.append(
+        art,
+        name,
+        crossing,
+        cardStamp(payload.owner, card.earnedAt)
+      );
+      action.addEventListener('click', () =>
+        openCollectionCard(card, payload.owner, __LOCAL_DEMO__)
+      );
+      item.append(action);
       grid.append(item);
     }
     if (cards.length) content.append(grid);
