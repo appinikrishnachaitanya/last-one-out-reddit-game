@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { BOARDS } from '../src/shared/boards.ts';
 import {
   initialState,
@@ -57,4 +57,5 @@ for (const board of BOARDS) {
   for (const order of solve(board))
     report += `- ${order.map(titleCase).join(' → ')}\n`;
 }
-writeFileSync('docs/SOLVER-REPORT.md', report);
+mkdirSync('artifacts', { recursive: true });
+writeFileSync('artifacts/solver-report.md', report);
