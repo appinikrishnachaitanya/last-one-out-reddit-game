@@ -1150,9 +1150,19 @@ footer button {
   #tour-step {
     font-size: 8px !important;
   }
-  .tour-exit {
-    min-height: 25px;
-    padding: 2px 7px;
+  .tour-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .tour-actions button {
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    padding-inline: 7px;
+    white-space: normal;
+    line-height: 1.2;
   }
 }
 @media (min-width: 560px) {

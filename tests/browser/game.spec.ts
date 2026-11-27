@@ -841,11 +841,13 @@ test('the compact saved result keeps copy and comments inside one short frame', 
     await expect(page.locator('#result')).toBeVisible();
     await expect(page.locator('.reunion-illustration')).toBeVisible();
     await expect(page.locator('.result-question')).toBeVisible();
+    await expect(page.locator('#next-crossing')).toBeVisible();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    for (const id of ['copy-result', 'comments']) {
+    for (const id of ['copy-result', 'comments', 'result-home']) {
       const box = await page.locator(`#${id}`).boundingBox();
       expect(box?.y).toBeGreaterThanOrEqual(0);
-      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(512);
+      expect((box?.y ?? 0) + (box?.height ?? 0), `${id} at ${width}×512`)
+        .toBeLessThanOrEqual(512);
     }
     await expect(page.locator('#community-details')).not.toHaveAttribute(
       'open'
@@ -853,7 +855,8 @@ test('the compact saved result keeps copy and comments inside one short frame', 
     expect(
       await page
         .locator('#result')
-        .evaluate((el) => el.getBoundingClientRect().bottom)
+        .evaluate((el) => el.getBoundingClientRect().bottom),
+      `result at ${width}×512`
     ).toBeLessThanOrEqual(512);
   }
   await expect(page.locator('#clean-badge')).toBeVisible();
@@ -901,6 +904,7 @@ for (const width of [288, 390, 640, 1024]) {
     await page.goto('http://127.0.0.1:5173/game.html');
     await page.locator('#help').click();
     await page.locator('#help-practice').click();
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const action = page.locator('#tour-action');
     const board = page.locator('#game-container canvas');
     for (const label of [
@@ -916,7 +920,10 @@ for (const width of [288, 390, 640, 1024]) {
         throw new Error('Practice board or panel is missing');
       expect(canvas.width).toBeGreaterThanOrEqual(200);
       expect(canvas.y).toBeGreaterThanOrEqual(0);
-      expect(panel.y + panel.height).toBeLessThanOrEqual(512);
+      expect(
+        panel.y + panel.height,
+        `practice step: ${label}`
+      ).toBeLessThanOrEqual(512);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth)
       ).toBeLessThanOrEqual(width);

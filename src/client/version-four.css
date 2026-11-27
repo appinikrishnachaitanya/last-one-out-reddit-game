@@ -466,11 +466,10 @@ body {
 }
 
 #app .result-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 4px 12px;
+  column-gap: 8px;
   border-top: 1px solid #b7a57b;
   margin-top: 6px;
   padding-top: 4px;
@@ -479,6 +478,7 @@ body {
 #app #next-crossing {
   margin: 0;
   font-size: 13px;
+  line-height: 1.25;
   font-weight: 700;
 }
 
@@ -510,6 +510,21 @@ body {
     width: clamp(38px, 12vw, 58px);
     height: clamp(38px, 12vw, 58px);
     flex-basis: clamp(38px, 12vw, 58px);
+  }
+}
+
+@media (max-width: 359px) and (max-height: 620px) {
+  #app .result-top {
+    grid-template-columns: minmax(58px, 0.55fr) minmax(0, 1.45fr);
+  }
+
+  #app .result-top .result-card {
+    gap: 6px;
+  }
+
+  #app .result-top .card-facts p {
+    margin-block: 2px;
+    font-size: 12px;
   }
 }
 
@@ -823,7 +838,7 @@ body {
 
 #app #result-home {
   min-height: 44px;
-  margin-inline-start: auto;
+  grid-column: 2;
 }
 
 #app #close-help,
