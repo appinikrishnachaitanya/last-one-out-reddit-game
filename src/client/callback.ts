@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { navigateTo } from '@devvit/web/client';
+import { navigateTo, requestExpandedMode } from '@devvit/web/client';
 import {
   callbackCrossings,
   callbackStart,
@@ -285,6 +285,7 @@ game.events.once('board-ready', () => {
 });
 renderControls();
 
+let currentPost = false;
 async function findDaily(): Promise<void> {
   retry.disabled = true;
   try {
@@ -299,7 +300,8 @@ async function findDaily(): Promise<void> {
         !response.ok ||
         !isObject(data) ||
         typeof data.url !== 'string' ||
-        (data.kind !== 'today' &&
+        (data.kind !== 'current' &&
+          data.kind !== 'today' &&
           data.kind !== 'latest' &&
           data.kind !== 'community') ||
         !/^https:\/\/www\.reddit\.com\/(comments\/[a-z0-9]+|r\/[a-z0-9_]+)\/$/i.test(
@@ -311,14 +313,16 @@ async function findDaily(): Promise<void> {
       kind = data.kind;
     }
     daily.href = skip.href = href;
-    daily.textContent =
-      kind === 'today'
+    currentPost = kind === 'current';
+    daily.textContent = currentPost
+      ? 'Play this daily crossing'
+      : kind === 'today'
         ? 'Play today’s crossing'
         : kind === 'latest'
           ? 'Play the latest crossing'
           : 'Visit the rescue community';
     skip.textContent =
-      kind === 'today'
+      kind === 'today' || currentPost
         ? 'Daily crossing'
         : kind === 'latest'
           ? 'Latest crossing'
@@ -334,6 +338,14 @@ for (const link of [daily, skip]) {
   link.addEventListener('click', (event) => {
     if (__LOCAL_DEMO__) return;
     event.preventDefault();
+    if (currentPost) {
+      try {
+        requestExpandedMode(event, 'game');
+        return;
+      } catch {
+        // The post link also works when expanded navigation is unavailable.
+      }
+    }
     navigateTo(link.href);
   });
 }

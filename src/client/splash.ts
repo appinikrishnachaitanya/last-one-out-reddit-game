@@ -19,6 +19,7 @@ import { readChallengeLink } from './challenge-link';
 declare const __LOCAL_DEMO__: boolean;
 const api = new DailyApi();
 const play = document.querySelector<HTMLButtonElement>('#play')!;
+const recall = document.querySelector<HTMLButtonElement>('#try-recall')!;
 const edition = document.querySelector<HTMLElement>('#edition')!;
 const profile = document.querySelector<HTMLElement>('#welcome-profile')!;
 const badge = document.querySelector<HTMLElement>('#badge')!;
@@ -32,10 +33,24 @@ let mapEdition: Edition | undefined;
 let request = 0;
 const challenge = !__LOCAL_DEMO__ && readChallengeLink('feed');
 if (challenge) {
+  recall.hidden = true;
   play.textContent = 'Open Friend Challenge';
   document.querySelector<HTMLElement>('#welcome-hook')!.textContent =
     'A friend left you a rescue challenge.';
 }
+
+recall.addEventListener('click', (event) => {
+  if (__LOCAL_DEMO__) {
+    window.location.assign('/callback.html');
+    return;
+  }
+  try {
+    requestExpandedMode(event, 'recall', { title: 'Rescue Rabbit' });
+  } catch {
+    badge.textContent = 'Open this post in Reddit to try the rescue.';
+    badge.hidden = false;
+  }
+});
 
 play.addEventListener('click', (event) => {
   if (__LOCAL_DEMO__) {

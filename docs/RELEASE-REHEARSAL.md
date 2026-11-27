@@ -1,5 +1,24 @@
 # Last One Out release rehearsal
 
+## Judge demo
+
+- Open the [Hushwater Turn daily post](https://www.reddit.com/r/last_one_out_app_dev/comments/1y6f9a6/last_one_out_day_10_20261127/) with an approved account that has no saved rescue for Day 10. The private installation includes the [Devvit Admin Helper](https://developers.reddit.com/apps/devvit-dev-bot). Verify the link with a second account before submitting it.
+- Choose **Rescue Rabbit**, call Turtle back, send Rabbit home, then bring Turtle home. In **Firefly Commons**, try Fox first. Fox opens Rabbit’s bridge and leaves Badger’s bridge folded. Retry with Turtle to open both.
+- Choose **Play this daily crossing** to open Hushwater Turn. Finish Solo Rescue, check the result and assists leaderboard, then open Community Rescue and try one shared turn.
+
+**Devpost pitch**
+
+Rabbit is stranded. Which friend do you call back? In Last One Out, animals hold bridges open for each other. Send the wrong keeper home early and another animal loses its way across. Solve a fresh woodland crossing each day or take a turn on the shared Reddit board.
+
+**Demo video, 55 seconds**
+
+| Time | Footage |
+| --- | --- |
+| 0–8s | Open the Reddit daily and tap **Rescue Rabbit**. Show Rabbit trapped across the folded bridge. |
+| 8–25s | In Firefly Commons, show how Fox helps Rabbit and how Turtle opens both paths. |
+| 25–43s | Open the same daily, preview a route, and cut to a solo finish with the assists leaderboard. |
+| 43–55s | Show a real Community Rescue turn and the next crossing on the result screen. |
+
 ## Private Reddit checks
 
 Use the [private test community](https://www.reddit.com/r/last_one_out_app_dev/). The moderator can choose the Moonroot edition from the community menu. Four distinct Reddit accounts with access to the subreddit are needed for a full shared rescue.

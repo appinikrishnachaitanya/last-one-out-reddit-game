@@ -1,5 +1,59 @@
 import { expect, test } from '@playwright/test';
 
+test('the daily post leads with Rabbit and reopens the same crossing after the rescue', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 350 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const origin = 'http://127.0.0.1:5175';
+  await page.addInitScript((host) => {
+    Object.defineProperty(globalThis, 'devvit', {
+      value: {
+        entrypoints: {
+          game: `${host}/game.html`,
+          recall: `${host}/callback.html`,
+        },
+        webViewMode: location.pathname === '/callback.html' ? 1 : 0,
+      },
+    });
+    window.addEventListener('message', (event) => {
+      if (event.data?.immersiveMode)
+        document.documentElement.dataset.expanded = JSON.stringify(
+          event.data.immersiveMode
+        );
+    });
+  }, origin);
+  await page.route('**/api/callback/destination', (route) =>
+    route.fulfill({
+      json: {
+        kind: 'current',
+        url: 'https://www.reddit.com/comments/judgepost/',
+      },
+    })
+  );
+  await page.goto(`${origin}/splash.html`);
+  const recall = page.getByRole('button', { name: 'Rescue Rabbit' });
+  await expect(recall).toBeInViewport();
+  await expect(
+    page.getByRole('button', { name: 'Play Today’s Rescue' })
+  ).toBeInViewport();
+  await recall.click();
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-expanded',
+    /callback.html/
+  );
+  await page.setViewportSize({ width: 320, height: 512 });
+  await page.goto(`${origin}/callback.html`);
+  await page.getByRole('button', { name: 'Call back Turtle' }).click();
+  await page.getByRole('button', { name: 'Send home Rabbit' }).click();
+  await page.getByRole('button', { name: 'Send home Turtle' }).click();
+  await page.getByRole('link', { name: 'Play this daily crossing' }).click();
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-expanded',
+    /game.html/
+  );
+});
+
 test('a visitor calls one keeper back, tries a harder crossing, and opens the daily', async ({
   page,
 }) => {

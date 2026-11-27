@@ -95,15 +95,27 @@ button:focus-visible {
   outline: 2px solid #ffd48c;
   outline-offset: 3px;
 }
-#play {
+.welcome-actions {
+  display: grid;
+  gap: 6px;
   margin-top: 3px;
+}
+.welcome-actions:has(#try-recall:not([hidden])) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.welcome-actions button {
+  min-width: 0;
+  padding-inline: 6px;
+}
+.welcome-actions:has(#try-recall[hidden]) #play,
+#try-recall {
   background: #ffc267;
   color: #252415;
   border-color: #ffc267;
-  width: 100%;
 }
 @media (hover: hover) {
-  #play:hover {
+  .welcome-actions:has(#try-recall[hidden]) #play:hover,
+  #try-recall:hover {
     background: #ffd28b;
   }
 }

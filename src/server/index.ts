@@ -24,7 +24,7 @@ import { telemetryRoutes } from './routes/telemetry';
 import { isT2, isT3 } from '@devvit/web/shared';
 import { parseCommentHint } from '../shared/daily';
 import { HINT_REFILL_MS } from '../shared/hint-refill';
-import { editionAt } from './core/schedule';
+import { editionAt, editionFromPost } from './core/schedule';
 import { findShowcaseCrossing } from './core/posts';
 const app = new Hono();
 app.route(
@@ -154,12 +154,23 @@ app.route(
 );
 app.route('/api/telemetry', telemetryRoutes);
 app.get('/api/callback/destination', async (c) => {
+  c.header('Cache-Control', 'no-store');
+  const postId = context.postId;
+  if (isT3(postId)) {
+    const edition = await readBoundPost(postId)
+      .then(editionFromPost)
+      .catch(() => undefined);
+    if (edition)
+      return c.json({
+        kind: 'current',
+        url: `https://www.reddit.com/comments/${postId.slice(3)}/`,
+      });
+  }
   const crossing = await findShowcaseCrossing(
     redis,
     new Date(),
     isPlayableEditionPost
   );
-  c.header('Cache-Control', 'no-store');
   return c.json(
     crossing ?? {
       kind: 'community',

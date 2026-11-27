@@ -21,6 +21,9 @@
         "inline": true,
         "entry": "callback.html",
         "height": "tall"
+      },
+      "recall": {
+        "entry": "callback.html"
       }
     }
   },
